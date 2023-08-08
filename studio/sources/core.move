@@ -7,9 +7,9 @@
         - Composed token: TBA.
         - Collections.
 
-    TODO: freeze transfer after minting.
     TODO: add events.
     TODO: add asserts.
+    TODO: organise functions
 */
 module studio_addr::token {
 
@@ -193,11 +193,15 @@ module studio_addr::token {
             property_types,
             property_values,
         );
+        // TODO: event plain token minted
     }
 
     // Mint a dynamic token
-    // TODO: should this be entry?
-    public entry fun mint_dynamic_token(
+    /*
+        This function must be triggered by create_dynamic_token.
+        TODO: does this have to be universal?
+    */
+    fun mint_dynamic_token(
         creator: &signer,
         collection: String,
         description: String,
@@ -206,28 +210,6 @@ module studio_addr::token {
         property_keys: vector<String>,
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
-    ) {
-        mint_dynamic_token_internal(
-            creator,
-            collection,
-            description,
-            name,
-            uri,
-            property_keys,
-            property_types,
-            property_values,
-        )
-    }
-
-    fun mint_dynamic_token_internal(
-        creator: &signer,
-        collection: String,
-        description: String,
-        name: String,
-        uri: String,
-        property_keys: vector<String>,
-        property_types: vector<String>,
-        property_values: vector<vector<u8>>,        
     ) {
         aptos_token::mint(
             creator,
@@ -239,6 +221,7 @@ module studio_addr::token {
             property_types,
             property_values,
         );
+        // TODO: event dynamic token minted
     }
 
     // Combine object.
@@ -246,41 +229,88 @@ module studio_addr::token {
     public entry fun combine_object(
         creator: &signer, 
         dynamic_token: Object<DynamicToken>,
-        object_one: Object<aptos_token::AptosToken>
+        object: Object<aptos_token::AptosToken>
     ) acquires DynamicToken {    
+        combine_object_internal(creator, dynamic_token, object);
+    }
+
+    fun combine_object_internal(
+        creator: &signer, 
+        dynamic_token: Object<DynamicToken>,
+        object: Object<aptos_token::AptosToken>
+    ) acquires DynamicToken {
         let dynamic_token_obj = borrow_global_mut<DynamicToken>(object::object_address(&dynamic_token)); 
         
-        // TODO: Wrap up in a transfer function
-        // Unfreeze transfer
-        aptos_token::unfreeze_transfer(creator, object_one);
+        // Assert
+        // TODO: Assert transfer is not freezed (object not equiped to dynamic nft)
+        // TODO: Assert the signer is the owner 
+        aptos_token::unfreeze_transfer(creator, object);
         // Transfer
-        option::fill(&mut dynamic_token_obj.object_one, object_one);
-        object::transfer_to_object(creator, object_one, dynamic_token);
+        option::fill(&mut dynamic_token_obj.object_one, object);
+        object::transfer_to_object(creator, object, dynamic_token);
         // Freeze transfer
-        aptos_token::freeze_transfer(creator, object_one);
+        aptos_token::freeze_transfer(creator, object);
+        // TODO: event here or in internal?
     }
 
     // Uncombine tokens
     // TODO: this should be used in both dynamic and composite tokens?
     public entry fun uncombine_object(
         creator: &signer, 
-        dynamic_token: Object<DynamicToken>,
-        object_one: Object<aptos_token::AptosToken>
-    ) acquires DynamicToken {    
+        dynamic_token: Object<DynamicToken>
+    ) acquires DynamicToken {
+        // TODO: Assert the signer is the owner 
+        // TODO: Assert the object is in the dynamic token   
+        uncombine_object_internal(creator, dynamic_token);
+        // TODO: event here or in internal?
+    }
+
+    fun uncombine_object_internal(
+        creator: &signer,
+        dynamic_token: Object<DynamicToken>
+    ) acquires DynamicToken {
         let dynamic_token_obj = borrow_global_mut<DynamicToken>(object::object_address(&dynamic_token)); 
         let stored_object_one = option::extract(&mut dynamic_token_obj.object_one);
-
-        // TODO: Wrap up in a transfer function
         // Unfreeze transfer
         aptos_token::unfreeze_transfer(creator, stored_object_one);
         // Transfer
         object::transfer(creator, stored_object_one, signer::address_of(creator));
-        // TODO: asserts
-        // Freeze transfer
-        aptos_token::freeze_transfer(creator, stored_object_one);
+        // TODO: event?
     }
 
-    // TODO: Transfer functions
+    // TODO: Transfer function
+    public entry fun transfer(
+        creator: &signer, 
+        object: Object<aptos_token::AptosToken>
+    ) {
+        // TODO: Assert transfer is unfreezed (object not equiped to dynamic nft)
+        // TODO: Assert the signer is the object owner
+        // Transfer
+        object::transfer(creator, object, signer::address_of(creator));
+        // TODO: event?
+    }
+
+    // Create a dynamic token
+    /*
+        The user have two or more plain tokens and wants to combine them,
+        to do so, the user has to use this function.
+        This will mint a new dynamic token and combine the objects.
+        - The user has to specify the dynamic token's attributes.
+        - The user has to specify which objects to combine.
+        - params:
+    */
+    public entry fun create_dynamic_token(
+
+    ) {
+
+    }
+
+    // TODO: Create a dynamic token
+    /*
+        steps:
+        - Uncombines the dynamic token
+        - Burns the dynamic token
+    */
 
     /*
     View Functions

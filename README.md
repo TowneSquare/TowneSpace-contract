@@ -5,8 +5,10 @@ A marketplace for trading NFTs leveraging Aptos and Token V2.
 ## Roadmap
 
 1. [ ] Create marketplace contracts
-2. [ ] Create a marketplace for web
-3. [ ] Create a marketplace for mobile
+2. [ ] Create studio contracts
+3. [ ] Create a marketplace for web
+4. [ ] Create a studio for web
+5. [ ] Create a marketplace for mobile
 
 --------------------
 
@@ -59,9 +61,12 @@ classDiagram
 
 #### Studio
 
-(using move-examples/object-token/hero.move as a reference)
-- compose NFTs: Un/equip NFT to another NFTs.
-> Class Diagrams will be implemented upon discussing the structure explictly.
+built on top of aptos_token.move
+functionalities:
+- Create tokenV2 and collections.
+- Create Dynamic NFTs.
+- Create Composed NFTs.
+> Class Diagrams will be added soon.
 
 ## Schedule
 
@@ -71,7 +76,7 @@ gantt
     dateFormat  DD-MM-YYYY
     section Contracts
     marketplaceV2  :17-07-2023, 3d
-    studio   :04-08-2023  , 7d
+    studio   :04-08-2023  , 9d
     audit   :14-09-2023 , 14d
     section UI 
     web  :11-08-2023 , 21d

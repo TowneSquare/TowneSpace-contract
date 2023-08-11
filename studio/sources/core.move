@@ -17,16 +17,16 @@
     TODO: enforce #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     TODO: add function that transforms a dynamic nft into a plain token
 */
-module studio_addr::core {
+module studio::core {
 
     use aptos_framework::object::{Self, ConstructorRef, Object};
+    use aptos_framework::timestamp;
     use aptos_std::simple_map::{Self, SimpleMap};
     use aptos_token_objects::aptos_token;
     use aptos_token_objects::collection;
     use aptos_token_objects::property_map;
     use aptos_token_objects::royalty;
     use aptos_token_objects::token;
-
     use std::error;
     use std::features;
     use std::option::{Self, Option};
@@ -72,7 +72,8 @@ module studio_addr::core {
     struct TokenCollection has key {
         name: String,
         symbol: String,
-        // TODO: add more data
+        // TODO: Timestamp
+        // TODO: add more data?
         // TODO: add events
     }
 
@@ -83,6 +84,7 @@ module studio_addr::core {
         description: String,
         name: String,
         uri: String,
+        // TODO: Timestamp
         // TODO: add events
     }
 
@@ -104,12 +106,14 @@ module studio_addr::core {
         mutator_ref: Option<token::MutatorRef>,
         // Allows to mutate properties of the dynamic token.
         property_mutator_ref: property_map::MutatorRef,
+        // TODO: Timestamp
         // TODO: add events
     }
 
     // Composed token
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     struct ComposedToken has key {
+        // TODO: Timestamp
         // TODO: add events
     }
 
@@ -407,15 +411,15 @@ module studio_addr::core {
         object: Object<PlainToken>
     ) acquires DynamicToken {
         let dynamic_token_obj = borrow_global_mut<DynamicToken>(object::object_address(&dynamic_token)); 
-        // TODO: recheck i
-        let i = 0;
+        // index = vector length
+        let index = vector::length(&dynamic_token.objects);
         // TODO: Assert transfer is not freezed (object not equiped to dynamic nft)
         // TODO: Assert the signer is the owner 
         // TODO: Assert the object does not exist in the dynamic token
 
         
         // TODO: add the object to the vector
-        vector::insert<Object<PlainToken>>(&mut dynamic_token_obj.objects, i, object);
+        vector::insert<Object<PlainToken>>(&mut dynamic_token_obj.objects, index, object);
         // TODO: Transfer the object to the dynamic token
         object::transfer_to_object(creator, object, dynamic_token);
         // Freeze transfer
@@ -429,9 +433,7 @@ module studio_addr::core {
         creator: &signer, 
         dynamic_token: Object<DynamicToken>,
         object: Object<PlainToken>
-    ) acquires DynamicToken {
-        // TODO: Assert the signer is the owner 
-        // TODO: Assert the object is in the dynamic token   
+    ) acquires DynamicToken {  
         uncombine_object_internal(creator, dynamic_token, object);
         // TODO: event here (overal events here, explicit ones in internal)
     }
@@ -441,27 +443,31 @@ module studio_addr::core {
         dynamic_token: Object<DynamicToken>,
         object: Object<PlainToken>
     ) acquires DynamicToken {
+        // TODO: Assert the signer is the owner 
+        // TODO: Assert the object is in the dynamic token 
         let dynamic_token_obj = borrow_global_mut<DynamicToken>(object::object_address(&dynamic_token)); 
         // TODO: get the index "i" of the object. Prob use borrow and inline funcs
         // TODO: store it in i
-        let i=0;
+        // pattern matching
+        let (_, index) = vector::index_of(&dynamic_token_obj.objects, &object);
         // TODO: assert the object exists in the dynamic token
         // Unfreeze transfer
         aptos_token::unfreeze_transfer(creator, object);
         // Remove the object from the vector
-        vector::remove<Object<PlainToken>>(&mut dynamic_token_obj.objects, i);
+        vector::remove<Object<PlainToken>>(&mut dynamic_token_obj.objects, index);
         // Transfer
         object::transfer(creator, object, signer::address_of(creator));
         // TODO: events
     }
 
     // TODO: Transfer function
-    public entry fun transfer(
+    public entry fun raw_transfer(
         creator: &signer, 
         object: Object<PlainToken>
     ) {
         // TODO: Assert transfer is unfreezed (object not equiped to dynamic nft)
         // TODO: Assert the signer is the object owner
+        // TODO: Include a small fee
         // Transfer
         object::transfer(creator, object, signer::address_of(creator));
         // TODO: event?
@@ -481,7 +487,7 @@ module studio_addr::core {
 
     // TODO: freeze transfer
     /*
-        
+        TODO: - should the user interact directly with aptos_token.move?
     */
 
     /*

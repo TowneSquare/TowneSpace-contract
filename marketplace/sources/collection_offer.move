@@ -1,4 +1,4 @@
-address marketplace {
+address townesquare {
 /// Provides the ability to make collection offers to both Tokenv1 and Tokenv2 collections.
 /// A collection offer allows an entity to buy up to N assets within a collection at their
 /// specified amount. The amount offered is extracted from their account and stored at an
@@ -22,9 +22,9 @@ module collection_offer {
     use aptos_token_objects::royalty;
     use aptos_token_objects::token::{Self as tokenv2, Token as TokenV2};
 
-    use marketplace::events;
-    use marketplace::fee_schedule::{Self, FeeSchedule};
-    use marketplace::listing::{Self, TokenV1Container};
+    use townesquare::markerplace_events;
+    use townesquare::fee_schedule::{Self, FeeSchedule};
+    use townesquare::listing::{Self, TokenV1Container};
     use aptos_framework::aptos_account;
 
     /// No collection offer defined.

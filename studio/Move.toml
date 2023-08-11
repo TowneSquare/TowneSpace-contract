@@ -18,6 +18,5 @@ rev = 'main'
 subdir = 'aptos-move/framework/aptos-token'
 
 [addresses]
-marketplace = '0x07ff0308d16a5041ace8e7e306a60b2946b6a4aee0e7e923b8f20e49bf3508ce'
-studio = '0x07ff0308d16a5041ace8e7e306a60b2946b6a4aee0e7e923b8f20e49bf3508ce'
+townesquare = '0x07ff0308d16a5041ace8e7e306a60b2946b6a4aee0e7e923b8f20e49bf3508ce'
 admin = '0x07ff0308d16a5041ace8e7e306a60b2946b6a4aee0e7e923b8f20e49bf3508ce'

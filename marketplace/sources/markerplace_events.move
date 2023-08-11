@@ -1,5 +1,5 @@
 /// Defines all the events associated with a marketplace. Note: this is attached to a FeeSchedule.
-module marketplace::events {
+module townesquare::markerplace_events {
     use std::error;
     use std::option::{Self, Option};
     use std::string::String;
@@ -11,11 +11,11 @@ module marketplace::events {
     use aptos_token_objects::collection as collectionv2;
     use aptos_token_objects::token as tokenv2;
 
-    friend marketplace::coin_listing;
-    friend marketplace::collection_offer;
-    friend marketplace::fee_schedule;
-    friend marketplace::listing;
-    friend marketplace::token_offer;
+    friend townesquare::coin_listing;
+    friend townesquare::collection_offer;
+    friend townesquare::fee_schedule;
+    friend townesquare::listing;
+    friend townesquare::token_offer;
 
     /// Marketplace does not have EventsV1
     const ENO_EVENTS_V1: u64 = 1;

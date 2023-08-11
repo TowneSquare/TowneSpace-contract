@@ -5,7 +5,7 @@
 /// * Owner or the person that can end the sale or auction
 /// * Starting time
 /// * Logic for cleanup
-module marketplace::listing {
+module townesquare::listing {
     use std::error;
     use std::option;
     use std::signer;
@@ -20,10 +20,10 @@ module marketplace::listing {
     use aptos_token_objects::token as tokenv2;
     use aptos_token_objects::royalty;
 
-    use marketplace::events;
-    use marketplace::fee_schedule::FeeSchedule;
+    use townesquare::markerplace_events;
+    use townesquare::fee_schedule::FeeSchedule;
 
-    friend marketplace::coin_listing;
+    friend townesquare::coin_listing;
 
     /// There exists no listing.
     const ENO_LISTING: u64 = 1;

@@ -1,4 +1,4 @@
-address marketplace {
+address townesquare {
 /// Provides the ability to make token offers to both Tokenv1 and Tokenv2 tokens.
 /// A token offer allows an entity to place a bid on a token at any time. The amount
 /// offered is extracted from their account and stored at an escrow. A seller can then
@@ -20,9 +20,9 @@ module token_offer {
     use aptos_token_objects::royalty;
     use aptos_token_objects::token::{Self as tokenv2, Token as TokenV2};
 
-    use marketplace::events;
-    use marketplace::fee_schedule::{Self, FeeSchedule};
-    use marketplace::listing::{Self, TokenV1Container};
+    use townesquare::markerplace_events;
+    use townesquare::fee_schedule::{Self, FeeSchedule};
+    use townesquare::listing::{Self, TokenV1Container};
     use aptos_token::token::TokenId;
     use aptos_framework::aptos_account;
 

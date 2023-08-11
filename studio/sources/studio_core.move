@@ -17,7 +17,7 @@
     TODO: enforce #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     TODO: add function that transforms a dynamic nft into a plain token
 */
-module studio::core {
+module townesquare::studio_core {
 
     use aptos_framework::object::{Self, ConstructorRef, Object};
     use aptos_framework::timestamp;

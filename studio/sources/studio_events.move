@@ -1,6 +1,6 @@
-module studio::studio_events {
+module townesquare::studio_events {
     use std::string::String;
-    use studio::core;
+    use townesquare::studio_core;
 
     struct CreateTokenCollectionEvent has store, drop {
         name: String,

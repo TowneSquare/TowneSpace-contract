@@ -2,7 +2,7 @@
 /// * Listing rate, the units charged for creating a listing.
 /// * Bidding rate, the units per bid made by a potential buyer.
 /// * Commission, the units transferred to the marketplace upon sale.
-module marketplace::fee_schedule {
+module townesquare::fee_schedule {
     use std::error;
     use std::signer;
     use std::string::{Self, String};
@@ -12,7 +12,7 @@ module marketplace::fee_schedule {
     use aptos_framework::event::{Self, EventHandle};
     use aptos_framework::object::{Self, ConstructorRef, ExtendRef, Object};
 
-    use marketplace::events;
+    use townesquare::markerplace_events;
 
     /// FeeSchedule does not exist.
     const ENO_FEE_SCHEDULE: u64 = 1;

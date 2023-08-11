@@ -1,4 +1,4 @@
-address marketplace {
+address townesquare {
 /// Defines a single listing or an item for sale or auction. This is an escrow service that
 /// enables two parties to exchange one asset for another.
 /// Each listing has the following properties:
@@ -18,13 +18,13 @@ module coin_listing {
     use aptos_framework::object::{Self, ConstructorRef, Object, ObjectCore};
     use aptos_framework::timestamp;
 
-    use marketplace::events;
-    use marketplace::fee_schedule::{Self, FeeSchedule};
-    use marketplace::listing::{Self, Listing};
+    use townesquare::markerplace_events;
+    use townesquare::fee_schedule::{Self, FeeSchedule};
+    use townesquare::listing::{Self, Listing};
     use aptos_framework::aptos_account;
 
     #[test_only]
-    friend marketplace::listing_tests;
+    friend townesquare::listing_tests;
 
     /// There exists no listing.
     const ENO_LISTING: u64 = 1;

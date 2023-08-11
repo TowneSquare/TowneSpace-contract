@@ -74,8 +74,9 @@ functionalities:
 gantt
     title Schedule Plan
     dateFormat  DD-MM-YYYY
+    
     section Contracts
-    marketplaceV2  :17-07-2023, 3d
+    marketplaceV2  :done, 17-07-2023, 3d
     studio   :active, 04-08-2023  , 18d
     audit   :26-09-2023 , 14d
     section UI 

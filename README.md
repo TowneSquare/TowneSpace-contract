@@ -76,12 +76,15 @@ gantt
     dateFormat  DD-MM-YYYY
     section Contracts
     marketplaceV2  :17-07-2023, 3d
-    studio   :04-08-2023  , 9d
-    audit   :14-09-2023 , 14d
+    studio   :active, 04-08-2023  , 18d
+    audit   :26-09-2023 , 14d
     section UI 
-    web  :11-08-2023 , 21d
+    web  phase 1:18-08-2023 , 26d
+    web  phase 2:13-09-2023 , 27d
     section Deploy 
-    testnet      :01-09-2023  , 27d
-    mainnet      :01-10-2023 ,
+    testnet      : milestone, crit, 13-09-2023 ,
+    mainnet      : milestone, crit, 10-10-2023 ,
+    section Events
+    Hack Singapore : crit, 11-09-2023, 2d
 ```
 

@@ -73,7 +73,7 @@ functionalities:
 |---|---|---|
 |tNFT|trait non-fungible token| A token V2 that is based on the object model|
 |cNFT|Composable non-fungible token|A token V2 that can hold tNFTs inside|
-|[tbd]|[tbd]|A token V2 that can hold tNFTs and fungible assets|
+|[tbd]|[tbd]|A token V2 that can hold tNFTs, cNFTs, and fungible assets|
 
 ## Schedule
 

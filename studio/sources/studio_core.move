@@ -1,23 +1,20 @@
 /*
-    OUTDATED DESCRIPTION:
-    TODO: update description
-    - This contract is the core of the studio.
-    - It allows to create studio, and correspondingly tokens and collections.
-    - tokens logics is built on top of aptos_token.move.
-    - A user can mint the following:
-        - Plain token: a token V2.
-        - Dynamic token: composed of two or more plain tokens.
-        - Composed token: TBA.
+    - This contract represents the core of the studio.
+    - It allows to initialze studio, and correspondingly create collections and tokens.
+    - tokens logic is built on top of aptos_token.move.
+    - A user can create the following:
         - Collections.
+        - Trait token (tNFT): A token V2 that represents a specific trait.
+        - Composable token (cNFT): A token V2 that can hold tNFTs inside.
+        - <name-token>: A token V2 that can hold tNFTs, cNFTs, and fungible assets.
 
     TODO: add reference to aptos_token.move
     TODO: add events.
     TODO: add asserts.
     TODO: organise functions
     TODO: add init_module
-    TODO: create collection for dynamic tokens.
     TODO: enforce #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    TODO: add function to transform a dynamic nft into a plain token. (compress?)
+    TODO: add function to transform a Composable nft into a plain token. (compress?)
     TODO: add function to add properties to a token.
 */
 module townesquare::studio_core {
@@ -97,23 +94,23 @@ module townesquare::studio_core {
         // TODO: add events
     }
 
-    // Storage state for managing Dynamic token
+    // Storage state for managing Composable token
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    struct DynamicToken has key {
+    struct ComposableToken has key {
         collection: String,
         description: String,
         name: String,
         uri: String,
         // TODO: is there specific attributes that should be standardised?
-        // The trait_tokens of the dynamic token.
+        // The trait_tokens of the Composable token.
         trait_tokens: vector<Object<TraitToken>>, // vector of trait_tokens
-        // Allows to burn the dynamic token.
+        // Allows to burn the Composable token.
         burn_ref: Option<token::BurnRef>,
-        // Controls the transfer of the dynamic token.
+        // Controls the transfer of the Composable token.
         transfer_ref: Option<object::TransferRef>,
-        // Allows to mutate fields of the dynamic token.
+        // Allows to mutate fields of the Composable token.
         mutator_ref: Option<token::MutatorRef>,
-        // Allows to mutate properties of the dynamic token.
+        // Allows to mutate properties of the Composable token.
         property_mutator_ref: property_map::MutatorRef,
         // TODO: Timestamp
         // TODO: add events
@@ -272,16 +269,16 @@ module townesquare::studio_core {
         // TODO: event plain token minted
     }
 
-    // Mint a dynamic token
+    // Mint a composable token
     /*
         The user have two or more plain tokens and wants to combine them,
         to do so, the user has to use this function.
-        This will mint a new dynamic token and combine the trait_tokens.
-        - The user has to specify the dynamic token's attributes.
+        This will mint a new composable token and combine the trait_tokens.
+        - The user has to specify the composable token's attributes.
         - The user has to specify which trait_tokens to combine.
         - params:
     */
-    fun mint_dynamic_token(
+    fun mint_composable_token(
         creator: &signer,
         collection: String,
         description: String,
@@ -291,8 +288,8 @@ module townesquare::studio_core {
         property_keys: vector<String>,
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
-    ): Object<DynamicToken> acquires TokenCollection, DynamicToken, AptosCollection {
-        let constructor_ref = mint_dynamic_token_internal(
+    ): Object<ComposableToken> acquires TokenCollection, ComposableToken, AptosCollection {
+        let constructor_ref = mint_composable_token_internal(
             creator,
             collection,
             description,
@@ -311,18 +308,18 @@ module townesquare::studio_core {
         // If tokens are freezable, add a transfer ref to be able to freeze transfers
         let freezable_by_creator = aptos_token::are_collection_tokens_freezable(collection);
         if (freezable_by_creator) {
-            let dynamic_token_address = object::address_from_constructor_ref(&constructor_ref);
-            let dynamic_token = borrow_global_mut<DynamicToken>(dynamic_token_address);
+            let composable_token_address = object::address_from_constructor_ref(&constructor_ref);
+            let composable_token = borrow_global_mut<ComposableToken>(composable_token_address);
             let transfer_ref = object::generate_transfer_ref(&constructor_ref);
-            option::fill(&mut dynamic_token.transfer_ref, transfer_ref);
+            option::fill(&mut composable_token.transfer_ref, transfer_ref);
         };
 
         object::object_from_constructor_ref(&constructor_ref)
 
-        // TODO: event dynamic token minted
+        // TODO: event composable token minted
     }
 
-    fun mint_dynamic_token_internal(
+    fun mint_composable_token_internal(
         creator: &signer,
         collection: String,
         description: String,
@@ -381,7 +378,7 @@ module townesquare::studio_core {
 
         // TODO: initialze it with trait_tokens vector if it exists. Empty otherwise.
         if (vector::length(&trait_tokens) == 0) {
-            let new_dynamic_token = DynamicToken {
+            let new_composable_token = ComposableToken {
             collection: collection_name,
             description: description,
             name: name,
@@ -392,9 +389,9 @@ module townesquare::studio_core {
             mutator_ref,
             property_mutator_ref: property_map::generate_mutator_ref(&constructor_ref),
         };
-        move_to(&object_signer, new_dynamic_token);
+        move_to(&object_signer, new_composable_token);
         } else {
-            let new_dynamic_token = DynamicToken {
+            let new_composable_token = ComposableToken {
             collection: collection_name,
             description: description,
             name: name,
@@ -405,7 +402,7 @@ module townesquare::studio_core {
             mutator_ref,
             property_mutator_ref: property_map::generate_mutator_ref(&constructor_ref),
         };
-        move_to(&object_signer, new_dynamic_token);
+        move_to(&object_signer, new_composable_token);
         };
 
         let properties = property_map::prepare_input(property_keys, property_types, property_values);
@@ -415,67 +412,67 @@ module townesquare::studio_core {
     }
 
     // Combine object.
-    // TODO: this should be used in both dynamic and composite tokens?
+    // TODO: this should be used in both composable and composite tokens?
     public entry fun combine_object(
         creator: &signer, 
-        dynamic_token: Object<DynamicToken>,
+        composable_token: Object<ComposableToken>,
         object: Object<TraitToken>
-    ) acquires DynamicToken {    
-        combine_object_internal(creator, dynamic_token, object);
+    ) acquires ComposableToken {    
+        combine_object_internal(creator, composable_token, object);
     }
 
     fun combine_object_internal(
         creator: &signer, 
-        dynamic_token: Object<DynamicToken>,
+        composable_token: Object<ComposableToken>,
         object: Object<TraitToken>
-    ) acquires DynamicToken {
+    ) acquires ComposableToken {
         // TODO assert token exists
         let creator_address = signer::address_of(creator);
-        let dynamic_token_object = borrow_global_mut<DynamicToken>(object::object_address(&dynamic_token)); 
+        let composable_token_object = borrow_global_mut<ComposableToken>(object::object_address(&composable_token)); 
         
         // index = vector length
-        let index = vector::length(&dynamic_token_object.trait_tokens);
-        // TODO: Assert transfer is not freezed (object not equiped to dynamic nft)
+        let index = vector::length(&composable_token_object.trait_tokens);
+        // TODO: Assert transfer is not freezed (object not equiped to composable nft)
         // TODO: Assert the signer is the owner 
-        // TODO: Assert the object does not exist in the dynamic token
+        // TODO: Assert the object does not exist in the composable token
 
         
         // TODO: add the object to the vector
-        vector::insert<Object<TraitToken>>(&mut dynamic_token_object.trait_tokens, index, object);
-        // TODO: Transfer the object to the dynamic token
-        object::transfer_to_object(creator, object, dynamic_token);
+        vector::insert<Object<TraitToken>>(&mut composable_token_object.trait_tokens, index, object);
+        // TODO: Transfer the object to the composable token
+        object::transfer_to_object(creator, object, composable_token);
         // Freeze transfer
         aptos_token::freeze_transfer(creator, object);
         // TODO: event here (overall events here, explicit ones in internal) 
     }
 
     // Uncombine tokens
-    // TODO: this should be used in both dynamic and composite tokens?
+    // TODO: this should be used in both composable and composite tokens?
     public entry fun uncombine_object(
         owner: &signer, 
-        dynamic_token: Object<DynamicToken>,
+        composable_token: Object<ComposableToken>,
         object: Object<TraitToken>
-    ) acquires DynamicToken {  
-        uncombine_object_internal(owner, dynamic_token, object);
+    ) acquires ComposableToken {  
+        uncombine_object_internal(owner, composable_token, object);
         // TODO: event here (overal events here, explicit ones in internal)
     }
 
     fun uncombine_object_internal(
         owner: &signer,
-        dynamic_token: Object<DynamicToken>,
+        composable_token: Object<ComposableToken>,
         object: Object<TraitToken>
-    ) acquires DynamicToken {
+    ) acquires ComposableToken {
         // TODO assert token exists
-        let dynamic_token_object = borrow_global_mut<DynamicToken>(object::object_address(&dynamic_token)); 
+        let composable_token_object = borrow_global_mut<ComposableToken>(object::object_address(&composable_token)); 
         // TODO: get the index "i" of the object. Prob use borrow and inline funcs
         // TODO: store it in i
         // pattern matching
-        let (_, index) = vector::index_of(&dynamic_token_object.trait_tokens, &object);
-        // TODO: assert the object exists in the dynamic token
+        let (_, index) = vector::index_of(&composable_token_object.trait_tokens, &object);
+        // TODO: assert the object exists in the composable token
         // Unfreeze transfer
         aptos_token::unfreeze_transfer(owner, object);
         // Remove the object from the vector
-        vector::remove<Object<TraitToken>>(&mut dynamic_token_object.trait_tokens, index);
+        vector::remove<Object<TraitToken>>(&mut composable_token_object.trait_tokens, index);
         // Transfer
         object::transfer(owner, object, signer::address_of(owner));
         // TODO: events
@@ -484,21 +481,21 @@ module townesquare::studio_core {
     // Fast combine function
     /*
         The user can choose two or more trait_tokens to combine,
-        this will mint a dynamic token and transfer the trait_tokens to it.
-        The user can later set the properties of the dynamic token.
+        this will mint a composable token and transfer the trait_tokens to it.
+        The user can later set the properties of the composable token.
     */
     public entry fun fast_combine(
         creator: &signer,
         collection_name: String,
         token_name: String,
         trait_tokens_to_combine: vector<Object<TraitToken>>
-    ) acquires TokenCollection, DynamicToken, AptosCollection {
+    ) acquires TokenCollection, ComposableToken, AptosCollection {
         let property_keys = vector::empty<String>();
         let property_types = vector::empty<String>();
         let property_values = vector::empty<vector<u8>>();
 
-        // TODO: Mint a dynamic token with constant properties.
-        mint_dynamic_token(
+        // TODO: Mint a composable token with constant properties.
+        mint_composable_token(
         creator,
         collection_name,
         string::utf8(b"Fast Combined"), // description
@@ -518,13 +515,13 @@ module townesquare::studio_core {
         }
     }
         
-    // TODO: Delete a dynamic token
+    // TODO: Delete a composable token
     /*
         steps:
-        - Uncombines the dynamic token
-        - Burns the dynamic token
+        - Uncombines the composable token
+        - Burns the composable token
     */
-    public entry fun burn_dynamic_token(
+    public entry fun burn_composable_token(
 
     ) {
         // TODO assert token exists
@@ -542,7 +539,7 @@ module townesquare::studio_core {
         object_address: address,
     ) {
         // TODO assert token exists
-        // TODO: Assert transfer is unfreezed (object not equiped to dynamic nft)
+        // TODO: Assert transfer is unfreezed (object not equiped to composable nft)
         // TODO: Assert the signer is the object owner
         let owner_address = signer::address_of(owner);
         // Transfer
@@ -557,7 +554,7 @@ module townesquare::studio_core {
         object_address: address,
     ) {
         // TODO assert token exists
-        // TODO: Assert transfer is unfreezed (object not equiped to dynamic nft)
+        // TODO: Assert transfer is unfreezed (object not equiped to composable nft)
         // TODO: Assert the signer is the object owner
         let owner_address = signer::address_of(owner);
         // TODO: Include a small fee

@@ -1,7 +1,16 @@
-module townesquare::studio_events {
-    use std::string::String;
-    use townesquare::studio_core;
+/*
+    Module for creating events for the studio.
+*/
 
+module townespace::events {
+    use std::string::String;
+    use townespace::core;
+
+
+    /// ----------
+    /// Structures
+    /// ----------
+    
     struct CreateTokenCollectionEvent has store, drop {
         name: String,
         symbol: String,
@@ -21,6 +30,8 @@ module townesquare::studio_events {
         description: String,
         name: String,
         uri: String,
+        token_supply: u64,
+        // TODO: Add trait vector
         timestamp: u64,
     }
 
@@ -40,6 +51,14 @@ module townesquare::studio_events {
         timestamp: u64,
     }
 
+    /// TODO: Add delete/burn tokens events
+
+    /// ---------
+    /// Functions 
+    /// ---------
+    
+    /// Collection
+
     public fun new_create_token_collection_event(
         name: String,
         symbol: String,
@@ -51,6 +70,8 @@ module townesquare::studio_events {
             timestamp: timestamp,
         }
     }
+
+    /// Tokens
 
     public fun new_create_trait_token_event(
         collection: String,
@@ -68,11 +89,12 @@ module townesquare::studio_events {
         }
     }
 
-    public fun new_create_dynamic_token_event(
+    public fun new_create_composable_token_event(
         collection: String,
         description: String,
         name: String,
         uri: String,
+        token_supply: u64,
         timestamp: u64,
     ): CreateComposableTokenEvent {
         CreateComposableTokenEvent {
@@ -80,6 +102,7 @@ module townesquare::studio_events {
             description: description,
             name: name,
             uri: uri,
+            token_supply: token_supply,
             timestamp: timestamp,
         }
     }

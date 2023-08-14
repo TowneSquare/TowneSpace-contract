@@ -10,15 +10,22 @@
 
     TODO: add reference to aptos_token.move
     TODO: add events.
-    TODO: add asserts.
+    TODO: add asserts. (one of the asserts: assert the inputed data is not empty - Input Sanitization:)
     TODO: organise functions
     TODO: add init_module
     TODO: enforce #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    TODO: add function to transform a Composable nft into a plain token. (compress?)
-    TODO: add function to add properties to a token.
+    TODO: add function to transform a Composable nft into a trait token. (compress?)
+    TODO: add functions to add/remove properties to a token.
+    TODO: add tokens accessors.
+    TODO: add tokens mutators.
+    TODO: add tokens view functions.
+    TODO: add rarity concept to composable tokens.
+    TODO: complete fast compose function.
+    TODO: in function description, mention whether it's customer or creator specific.
 */
-module townesquare::studio_core {
+module townespace::core {
 
+    use aptos_framework::event::{Self, EventHandle};
     use aptos_framework::object::{Self, ConstructorRef, Object};
     use aptos_framework::timestamp;
     use aptos_std::simple_map::{Self, SimpleMap};
@@ -33,6 +40,13 @@ module townesquare::studio_core {
     use std::signer;
     use std::string::{Self, String};
     use std::vector;
+    use townespace::events::{
+        CreateTokenCollectionEvent,
+        CreateTraitTokenEvent,
+        CreateComposableTokenEvent,
+        ComposeTokenEvent,
+        DecomposeTokenEvent
+    };
 
     /// ------
     /// Errors
@@ -43,9 +57,9 @@ module townesquare::studio_core {
     /// ---------
     // TODO: constants for fast compose function
 
-    // -------
-    // Structs
-    // -------
+    /// -------
+    /// Structs
+    /// -------
     
     // Duplicated from https://github.com/aptos-labs/aptos-core/blob/3791dc07ec457496c96e5069c494d46c1ff49b41/aptos-move/framework/aptos-token-objects/sources/aptos_token.move#L36C1-L36C1
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -83,27 +97,31 @@ module townesquare::studio_core {
         // TODO: add events
     }
 
-    // Storage state for managing Plain Token
+    // Storage state for managing trait Token
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     struct TraitToken has key {
         collection: String,
         description: String,
         name: String,
         uri: String,
+        // token_supply: u64, // Correlated with composable token supply but not the collection supply.
+        // TODO: rarity: u64,
         // TODO: Timestamp
         // TODO: add events
     }
 
     // Storage state for managing Composable token
+    // TODO: is property map needed?
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     struct ComposableToken has key {
         collection: String,
         description: String,
         name: String,
         uri: String,
-        // TODO: is there specific attributes that should be standardised?
+        // Token supply: Represents the number of composable tokens in circulation.
+        token_supply: u64,
         // The trait tokens to store in the composable token.
-        trait_tokens: vector<Object<TraitToken>>,
+        trait_tokens: vector<Object<TraitToken>>, // TODO: this must be extended to each trait type.
         // TODO: Timestamp
         // TODO: add events
         // Allows to burn the Composable token.
@@ -117,9 +135,20 @@ module townesquare::studio_core {
         
     }
 
-    // ---------------
-    // Entry Functions
-    // ---------------
+    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
+    // Storage state for tracking composable token supply.
+    struct TokenSupplyTracker has key {
+        // supply -> max_supply
+        supply: u64,
+        remaining_supply: u64,
+        total_minted: u64,
+        // burn_events: ,
+        mint_events: EventHandle<CreateTraitTokenEvent>
+    }
+
+    /// ---------------
+    /// Entry Functions
+    /// ---------------
 
     // Create a new collection
     public entry fun create_collection(
@@ -141,6 +170,8 @@ module townesquare::studio_core {
         royalty_numerator: u64,
         royalty_denominator: u64,
     ) acquires TokenCollection {
+        // TODO: asserts here (to reduce gas fees)
+        // TODO assert the signer is the creator.
         create_collection_internal(
             creator,
             description,
@@ -181,7 +212,6 @@ module townesquare::studio_core {
         royalty_numerator: u64,
         royalty_denominator: u64,
     ) acquires TokenCollection {
-        // TODO assert the signer is the creator.
         aptos_token::create_collection(
             creator,
             description,
@@ -215,8 +245,8 @@ module townesquare::studio_core {
         // TODO Add events
     }
 
-    // Mint a plain token
-    public entry fun mint_plain_token(
+    // Mint a trait token
+    public entry fun mint_trait_token(
         creator: &signer,
         collection: String,
         description: String,
@@ -226,8 +256,9 @@ module townesquare::studio_core {
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
     ) {
-        // TODO assert the token collection exists.
-        mint_plain_token_internal(
+        // TODO: assert the token collection exists.
+        // TODO: assert the token supply <= remaining supply
+        mint_trait_token_internal(
             creator,
             collection,
             description,
@@ -239,7 +270,7 @@ module townesquare::studio_core {
         )
     }
 
-    fun mint_plain_token_internal(
+    fun mint_trait_token_internal(
         creator: &signer,
         collection: String,
         description: String,
@@ -259,25 +290,26 @@ module townesquare::studio_core {
             property_types,
             property_values,
         );
-        // TODO move to plain token resource
-        let new_plain_token = TraitToken {
+        // TODO move to trait token resource
+        let new_trait_token = TraitToken {
             collection: collection,
             description: description,
             name: name,
             uri: uri,
         };
-        move_to(creator, new_plain_token);
-        // TODO: event plain token minted
+        move_to(creator, new_trait_token);
+        // TODO: event trait token minted
     }
 
     // Mint a composable token
     /*
-        The user have two or more plain tokens and wants to compose them,
+        The user have two or more trait tokens and wants to compose them,
         to do so, the user has to use this function.
         This will mint a new composable token and compose the trait_tokens.
         - The user has to specify the composable token's attributes.
         - The user has to specify which trait_tokens to compose.
         - params:
+        
     */
     fun mint_composable_token(
         creator: &signer,
@@ -285,17 +317,19 @@ module townesquare::studio_core {
         description: String,
         name: String,
         uri: String,
+        token_supply: u64,
         trait_tokens: vector<Object<TraitToken>>,
         property_keys: vector<String>,
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
-    ): Object<ComposableToken> acquires TokenCollection, ComposableToken, AptosCollection {
+    ): Object<ComposableToken> acquires TokenCollection, ComposableToken, AptosCollection {  
         let constructor_ref = mint_composable_token_internal(
             creator,
             collection,
             description,
             name,
             uri,
+            token_supply,
             trait_tokens,
             property_keys,
             property_types,
@@ -326,6 +360,7 @@ module townesquare::studio_core {
         description: String,
         name: String,
         uri: String,
+        token_supply: u64,
         trait_tokens: vector<Object<TraitToken>>,
         property_keys: vector<String>,
         property_types: vector<String>,
@@ -377,13 +412,23 @@ module townesquare::studio_core {
 
         let collection_name = collection.name;
 
-        // TODO: initialze it with trait_tokens vector if it exists. Empty otherwise.
+        // create send supply tracker to resource account
+        let new_token_supply_tracker = TokenSupplyTracker {
+            supply: token_supply,
+            remaining_supply: token_supply,
+            total_minted: 0,
+            mint_events: object::new_event_handle(&object_signer),
+        };
+        move_to(&object_signer, new_token_supply_tracker);
+
+        // Initialze it with trait_tokens vector if it exists. Empty otherwise.
         if (vector::length(&trait_tokens) == 0) {
             let new_composable_token = ComposableToken {
             collection: collection_name,
             description: description,
             name: name,
-            uri: uri,  
+            uri: uri, 
+            token_supply: token_supply, 
             trait_tokens: vector::empty(),
             burn_ref,
             transfer_ref: option::none(),
@@ -396,7 +441,8 @@ module townesquare::studio_core {
             collection: collection_name,
             description: description,
             name: name,
-            uri: uri,  
+            uri: uri,
+            token_supply: token_supply,  
             trait_tokens: trait_tokens,
             burn_ref,
             transfer_ref: option::none(),
@@ -419,6 +465,7 @@ module townesquare::studio_core {
         composable_token: Object<ComposableToken>,
         object: Object<TraitToken>
     ) acquires ComposableToken {    
+        // TODO asserts here.
         compose_trait_internal(creator, composable_token, object);
     }
 
@@ -502,6 +549,7 @@ module townesquare::studio_core {
         string::utf8(b"Fast composed"), // description
         token_name,
         string::utf8(b"uri"), 
+        10000,  // token supply
         trait_tokens_to_compose,
         property_keys,
         property_types,
@@ -565,19 +613,42 @@ module townesquare::studio_core {
         // TODO: event
     }
 
-    // --------------
-    // View Functions
-    // --------------
+    /// ------------------
+    /// Internal Functions
+    /// ------------------
+     
+    /// Decrement the remaining supply on each trait token minted.
+    fun decrement_supply(
+        composable_token: &Object<ComposableToken>,
+        trait_token: address
+    ): u64 acquires TokenSupplyTracker {
+        // TODO: assert the composable token exists.
+        // TODO: assert the trait token exists.
+        let composable_token_address = object::object_address(composable_token);
+        let composable_token_supply_tracker = borrow_global_mut<TokenSupplyTracker>(composable_token_address);
+        let remaining_supply = composable_token_supply_tracker.remaining_supply;
+        // TODO: assert the remaining supply > 0.
+        let new_remaining_supply = remaining_supply - 1;
+        composable_token_supply_tracker.remaining_supply = new_remaining_supply;
 
-    // --------
-    // Mutators
-    // --------
+        new_remaining_supply
+    }
 
-    // ---------
-    // Accessors
-    // ---------
+    /// TODO: Increment the remaining supply on each trait token burned.
 
-    // Collection
+    /// --------------
+    /// View Functions
+    /// --------------
+
+    /// --------
+    /// Mutators
+    /// --------
+
+    /// ---------
+    /// Accessors
+    /// ---------
+
+    /// Collection
     inline fun collection_object(creator: &signer, name: &String): Object<aptos_token::AptosCollection> {
         let collection_addr = collection::create_collection_address(&signer::address_of(creator), name);
         object::address_to_object<aptos_token::AptosCollection>(collection_addr)
@@ -587,7 +658,7 @@ module townesquare::studio_core {
         let collection_address = object::object_address(token);
         assert!(
             exists<AptosCollection>(collection_address),
-            error::not_found(1), //ECOLLECTION_DOES_NOT_EXIST
+            error::not_found(1), // ECOLLECTION_DOES_NOT_EXIST
         );
         borrow_global<AptosCollection>(collection_address)
     }

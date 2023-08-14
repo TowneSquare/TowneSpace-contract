@@ -71,7 +71,7 @@ functionalities:
 
 |Abbreviation|Term|Definition|
 |---|---|---|
-|tNFT|trait non-fungible token| A token V2 that is based on the object model|
+|tNFT|trait non-fungible token| A token V2 that represents a specific trait|
 |cNFT|Composable non-fungible token|A token V2 that can hold tNFTs inside|
 |[tbd]|[tbd]|A token V2 that can hold tNFTs, cNFTs, and fungible assets|
 

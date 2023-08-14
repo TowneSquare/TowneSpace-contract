@@ -1,4 +1,6 @@
 /*
+    OUTDATED DESCRIPTION:
+    TODO: update description
     - This contract is the core of the studio.
     - It allows to create studio, and correspondingly tokens and collections.
     - tokens logics is built on top of aptos_token.move.
@@ -15,7 +17,8 @@
     TODO: add init_module
     TODO: create collection for dynamic tokens.
     TODO: enforce #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    TODO: add function that transforms a dynamic nft into a plain token
+    TODO: add function to transform a dynamic nft into a plain token. (compress?)
+    TODO: add function to add properties to a token.
 */
 module townesquare::studio_core {
 
@@ -34,14 +37,20 @@ module townesquare::studio_core {
     use std::string::{Self, String};
     use std::vector;
 
-    /*
-    Errors
-    */
+    /// ------
+    /// Errors
+    /// ------
+    
+    /// ---------
+    /// Constants
+    /// ---------
+    // TODO: constants for fast combine function
 
-    /*
-    Structs
-    */ 
-
+    // -------
+    // Structs
+    // -------
+    
+    // Replicated from https://github.com/aptos-labs/aptos-core/blob/3791dc07ec457496c96e5069c494d46c1ff49b41/aptos-move/framework/aptos-token-objects/sources/aptos_token.move#L36C1-L36C1
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     /// Storage state for managing the no-code Collection.
     struct AptosCollection has key {
@@ -79,7 +88,7 @@ module townesquare::studio_core {
 
     // Storage state for managing Plain Token
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    struct PlainToken has key {
+    struct TraitToken has key {
         collection: String,
         description: String,
         name: String,
@@ -96,8 +105,8 @@ module townesquare::studio_core {
         name: String,
         uri: String,
         // TODO: is there specific attributes that should be standardised?
-        // The objects of the dynamic token.
-        objects: vector<Object<PlainToken>>, // vector of objects
+        // The trait_tokens of the dynamic token.
+        trait_tokens: vector<Object<TraitToken>>, // vector of trait_tokens
         // Allows to burn the dynamic token.
         burn_ref: Option<token::BurnRef>,
         // Controls the transfer of the dynamic token.
@@ -110,17 +119,9 @@ module townesquare::studio_core {
         // TODO: add events
     }
 
-    // Composed token
-    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    struct ComposedToken has key {
-        // TODO: Timestamp
-        // TODO: add events
-    }
-
-    /*
-    Entry Functions
-    */
-    // TODO: is init needed?
+    // ---------------
+    // Entry Functions
+    // ---------------
 
     // Create a new collection
     public entry fun create_collection(
@@ -261,7 +262,7 @@ module townesquare::studio_core {
             property_values,
         );
         // TODO move to plain token resource
-        let new_plain_token = PlainToken {
+        let new_plain_token = TraitToken {
             collection: collection,
             description: description,
             name: name,
@@ -275,9 +276,9 @@ module townesquare::studio_core {
     /*
         The user have two or more plain tokens and wants to combine them,
         to do so, the user has to use this function.
-        This will mint a new dynamic token and combine the objects.
+        This will mint a new dynamic token and combine the trait_tokens.
         - The user has to specify the dynamic token's attributes.
-        - The user has to specify which objects to combine.
+        - The user has to specify which trait_tokens to combine.
         - params:
     */
     fun mint_dynamic_token(
@@ -286,24 +287,26 @@ module townesquare::studio_core {
         description: String,
         name: String,
         uri: String,
-        objects: vector<Object<PlainToken>>,
+        trait_tokens: vector<Object<TraitToken>>,
         property_keys: vector<String>,
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
-    ): Object<DynamicToken> acquires TokenCollection {
+    ): Object<DynamicToken> acquires TokenCollection, DynamicToken, AptosCollection {
         let constructor_ref = mint_dynamic_token_internal(
             creator,
             collection,
             description,
             name,
             uri,
-            objects,
+            trait_tokens,
             property_keys,
             property_types,
             property_values,
         );
 
         let collection = collection_object(creator, &collection);
+        // TODO: check if this function is not written.
+        // Asserts the creator is the owner of the collection.
         
         // If tokens are freezable, add a transfer ref to be able to freeze transfers
         let freezable_by_creator = aptos_token::are_collection_tokens_freezable(collection);
@@ -325,7 +328,7 @@ module townesquare::studio_core {
         description: String,
         name: String,
         uri: String,
-        objects: vector<Object<PlainToken>>,
+        trait_tokens: vector<Object<TraitToken>>,
         property_keys: vector<String>,
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
@@ -376,18 +379,34 @@ module townesquare::studio_core {
 
         let collection_name = collection.name;
 
-        let dynamic_token = DynamicToken {
+        // TODO: initialze it with trait_tokens vector if it exists. Empty otherwise.
+        if (vector::length(&trait_tokens) == 0) {
+            let new_dynamic_token = DynamicToken {
             collection: collection_name,
             description: description,
             name: name,
             uri: uri,  
-            objects: vector::empty(),
+            trait_tokens: vector::empty(),
             burn_ref,
             transfer_ref: option::none(),
             mutator_ref,
             property_mutator_ref: property_map::generate_mutator_ref(&constructor_ref),
         };
-        move_to(&object_signer, dynamic_token);
+        move_to(&object_signer, new_dynamic_token);
+        } else {
+            let new_dynamic_token = DynamicToken {
+            collection: collection_name,
+            description: description,
+            name: name,
+            uri: uri,  
+            trait_tokens: trait_tokens,
+            burn_ref,
+            transfer_ref: option::none(),
+            mutator_ref,
+            property_mutator_ref: property_map::generate_mutator_ref(&constructor_ref),
+        };
+        move_to(&object_signer, new_dynamic_token);
+        };
 
         let properties = property_map::prepare_input(property_keys, property_types, property_values);
         property_map::init(&constructor_ref, properties);
@@ -400,7 +419,7 @@ module townesquare::studio_core {
     public entry fun combine_object(
         creator: &signer, 
         dynamic_token: Object<DynamicToken>,
-        object: Object<PlainToken>
+        object: Object<TraitToken>
     ) acquires DynamicToken {    
         combine_object_internal(creator, dynamic_token, object);
     }
@@ -408,18 +427,21 @@ module townesquare::studio_core {
     fun combine_object_internal(
         creator: &signer, 
         dynamic_token: Object<DynamicToken>,
-        object: Object<PlainToken>
+        object: Object<TraitToken>
     ) acquires DynamicToken {
-        let dynamic_token_obj = borrow_global_mut<DynamicToken>(object::object_address(&dynamic_token)); 
+        // TODO assert token exists
+        let creator_address = signer::address_of(creator);
+        let dynamic_token_object = borrow_global_mut<DynamicToken>(object::object_address(&dynamic_token)); 
+        
         // index = vector length
-        let index = vector::length(&dynamic_token.objects);
+        let index = vector::length(&dynamic_token_object.trait_tokens);
         // TODO: Assert transfer is not freezed (object not equiped to dynamic nft)
         // TODO: Assert the signer is the owner 
         // TODO: Assert the object does not exist in the dynamic token
 
         
         // TODO: add the object to the vector
-        vector::insert<Object<PlainToken>>(&mut dynamic_token_obj.objects, index, object);
+        vector::insert<Object<TraitToken>>(&mut dynamic_token_object.trait_tokens, index, object);
         // TODO: Transfer the object to the dynamic token
         object::transfer_to_object(creator, object, dynamic_token);
         // Freeze transfer
@@ -430,49 +452,72 @@ module townesquare::studio_core {
     // Uncombine tokens
     // TODO: this should be used in both dynamic and composite tokens?
     public entry fun uncombine_object(
-        creator: &signer, 
+        owner: &signer, 
         dynamic_token: Object<DynamicToken>,
-        object: Object<PlainToken>
+        object: Object<TraitToken>
     ) acquires DynamicToken {  
-        uncombine_object_internal(creator, dynamic_token, object);
+        uncombine_object_internal(owner, dynamic_token, object);
         // TODO: event here (overal events here, explicit ones in internal)
     }
 
     fun uncombine_object_internal(
-        creator: &signer,
+        owner: &signer,
         dynamic_token: Object<DynamicToken>,
-        object: Object<PlainToken>
+        object: Object<TraitToken>
     ) acquires DynamicToken {
-        // TODO: Assert the signer is the owner 
-        // TODO: Assert the object is in the dynamic token 
-        let dynamic_token_obj = borrow_global_mut<DynamicToken>(object::object_address(&dynamic_token)); 
+        // TODO assert token exists
+        let dynamic_token_object = borrow_global_mut<DynamicToken>(object::object_address(&dynamic_token)); 
         // TODO: get the index "i" of the object. Prob use borrow and inline funcs
         // TODO: store it in i
         // pattern matching
-        let (_, index) = vector::index_of(&dynamic_token_obj.objects, &object);
+        let (_, index) = vector::index_of(&dynamic_token_object.trait_tokens, &object);
         // TODO: assert the object exists in the dynamic token
         // Unfreeze transfer
-        aptos_token::unfreeze_transfer(creator, object);
+        aptos_token::unfreeze_transfer(owner, object);
         // Remove the object from the vector
-        vector::remove<Object<PlainToken>>(&mut dynamic_token_obj.objects, index);
+        vector::remove<Object<TraitToken>>(&mut dynamic_token_object.trait_tokens, index);
         // Transfer
-        object::transfer(creator, object, signer::address_of(creator));
+        object::transfer(owner, object, signer::address_of(owner));
         // TODO: events
     }
 
-    // TODO: Transfer function
-    public entry fun raw_transfer(
-        creator: &signer, 
-        object: Object<PlainToken>
-    ) {
-        // TODO: Assert transfer is unfreezed (object not equiped to dynamic nft)
-        // TODO: Assert the signer is the object owner
-        // TODO: Include a small fee
-        // Transfer
-        object::transfer(creator, object, signer::address_of(creator));
-        // TODO: event?
-    }
+    // Fast combine function
+    /*
+        The user can choose two or more trait_tokens to combine,
+        this will mint a dynamic token and transfer the trait_tokens to it.
+        The user can later set the properties of the dynamic token.
+    */
+    public entry fun fast_combine(
+        creator: &signer,
+        collection_name: String,
+        token_name: String,
+        trait_tokens_to_combine: vector<Object<TraitToken>>
+    ) acquires TokenCollection, DynamicToken, AptosCollection {
+        let property_keys = vector::empty<String>();
+        let property_types = vector::empty<String>();
+        let property_values = vector::empty<vector<u8>>();
 
+        // TODO: Mint a dynamic token with constant properties.
+        mint_dynamic_token(
+        creator,
+        collection_name,
+        string::utf8(b"Fast Combined"), // description
+        token_name,
+        string::utf8(b"uri"), 
+        trait_tokens_to_combine,
+        property_keys,
+        property_types,
+        property_values,
+        );
+        let i = 0;
+        while (i < vector::length(&trait_tokens_to_combine)) {
+            let object = vector::borrow(&trait_tokens_to_combine, i);
+            // TODO assert token exists
+            // TODO: Freeze transfer.
+            i = i + 1;
+        }
+    }
+        
     // TODO: Delete a dynamic token
     /*
         steps:
@@ -482,6 +527,7 @@ module townesquare::studio_core {
     public entry fun burn_dynamic_token(
 
     ) {
+        // TODO assert token exists
 
     }
 
@@ -490,16 +536,50 @@ module townesquare::studio_core {
         TODO: - should the user interact directly with aptos_token.move?
     */
 
-    /*
-    View Functions
-    */
+    // Transfer function
+    public entry fun raw_transfer(
+        owner: &signer, 
+        object_address: address,
+    ) {
+        // TODO assert token exists
+        // TODO: Assert transfer is unfreezed (object not equiped to dynamic nft)
+        // TODO: Assert the signer is the object owner
+        let owner_address = signer::address_of(owner);
+        // Transfer
+        let object = object::address_to_object<TraitToken>(object_address);
+        object::transfer(owner, object, owner_address);
+        // TODO: event
+    }
 
-    /*
-    Mutators
-    */
+    // Transfer with a fee function
+    public entry fun transfer_with_fee(
+        owner: &signer, 
+        object_address: address,
+    ) {
+        // TODO assert token exists
+        // TODO: Assert transfer is unfreezed (object not equiped to dynamic nft)
+        // TODO: Assert the signer is the object owner
+        let owner_address = signer::address_of(owner);
+        // TODO: Include a small fee
+        // Transfer
+        let object = object::address_to_object<TraitToken>(object_address);
+        object::transfer(owner, object, owner_address);
+        // TODO: event
+    }
 
-    // Collection accessors
+    // --------------
+    // View Functions
+    // --------------
 
+    // --------
+    // Mutators
+    // --------
+
+    // ---------
+    // Accessors
+    // ---------
+
+    // Collection
     inline fun collection_object(creator: &signer, name: &String): Object<aptos_token::AptosCollection> {
         let collection_addr = collection::create_collection_address(&signer::address_of(creator), name);
         object::address_to_object<aptos_token::AptosCollection>(collection_addr)
@@ -509,7 +589,7 @@ module townesquare::studio_core {
         let collection_address = object::object_address(token);
         assert!(
             exists<AptosCollection>(collection_address),
-            error::not_found(ECOLLECTION_DOES_NOT_EXIST),
+            error::not_found(1), //ECOLLECTION_DOES_NOT_EXIST
         );
         borrow_global<AptosCollection>(collection_address)
     }

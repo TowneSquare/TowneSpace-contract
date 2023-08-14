@@ -88,12 +88,6 @@ module townesquare::studio_events {
         }
     }
 
-    public fun new_create_composed_token_event(
-        // TODO: 
-    ): CreateComposedTokenEvent {
-
-    }
-
     public fun new_combine_token_event(
         owner: address,
         collection: String,

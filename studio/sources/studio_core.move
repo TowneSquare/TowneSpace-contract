@@ -41,13 +41,13 @@ module townesquare::studio_core {
     /// ---------
     /// Constants
     /// ---------
-    // TODO: constants for fast combine function
+    // TODO: constants for fast compose function
 
     // -------
     // Structs
     // -------
     
-    // Replicated from https://github.com/aptos-labs/aptos-core/blob/3791dc07ec457496c96e5069c494d46c1ff49b41/aptos-move/framework/aptos-token-objects/sources/aptos_token.move#L36C1-L36C1
+    // Duplicated from https://github.com/aptos-labs/aptos-core/blob/3791dc07ec457496c96e5069c494d46c1ff49b41/aptos-move/framework/aptos-token-objects/sources/aptos_token.move#L36C1-L36C1
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     /// Storage state for managing the no-code Collection.
     struct AptosCollection has key {
@@ -102,8 +102,10 @@ module townesquare::studio_core {
         name: String,
         uri: String,
         // TODO: is there specific attributes that should be standardised?
-        // The trait_tokens of the Composable token.
-        trait_tokens: vector<Object<TraitToken>>, // vector of trait_tokens
+        // The trait tokens to store in the composable token.
+        trait_tokens: vector<Object<TraitToken>>,
+        // TODO: Timestamp
+        // TODO: add events
         // Allows to burn the Composable token.
         burn_ref: Option<token::BurnRef>,
         // Controls the transfer of the Composable token.
@@ -112,8 +114,7 @@ module townesquare::studio_core {
         mutator_ref: Option<token::MutatorRef>,
         // Allows to mutate properties of the Composable token.
         property_mutator_ref: property_map::MutatorRef,
-        // TODO: Timestamp
-        // TODO: add events
+        
     }
 
     // ---------------
@@ -271,11 +272,11 @@ module townesquare::studio_core {
 
     // Mint a composable token
     /*
-        The user have two or more plain tokens and wants to combine them,
+        The user have two or more plain tokens and wants to compose them,
         to do so, the user has to use this function.
-        This will mint a new composable token and combine the trait_tokens.
+        This will mint a new composable token and compose the trait_tokens.
         - The user has to specify the composable token's attributes.
-        - The user has to specify which trait_tokens to combine.
+        - The user has to specify which trait_tokens to compose.
         - params:
     */
     fun mint_composable_token(
@@ -411,34 +412,34 @@ module townesquare::studio_core {
         constructor_ref
     }
 
-    // Combine object.
+    // Compose trait.
     // TODO: this should be used in both composable and composite tokens?
-    public entry fun combine_object(
+    public entry fun compose_trait(
         creator: &signer, 
         composable_token: Object<ComposableToken>,
         object: Object<TraitToken>
     ) acquires ComposableToken {    
-        combine_object_internal(creator, composable_token, object);
+        compose_trait_internal(creator, composable_token, object);
     }
 
-    fun combine_object_internal(
+    fun compose_trait_internal(
         creator: &signer, 
         composable_token: Object<ComposableToken>,
         object: Object<TraitToken>
     ) acquires ComposableToken {
         // TODO assert token exists
         let creator_address = signer::address_of(creator);
-        let composable_token_object = borrow_global_mut<ComposableToken>(object::object_address(&composable_token)); 
+        let composable_token_trait = borrow_global_mut<ComposableToken>(object::object_address(&composable_token)); 
         
         // index = vector length
-        let index = vector::length(&composable_token_object.trait_tokens);
+        let index = vector::length(&composable_token_trait.trait_tokens);
         // TODO: Assert transfer is not freezed (object not equiped to composable nft)
         // TODO: Assert the signer is the owner 
         // TODO: Assert the object does not exist in the composable token
 
         
         // TODO: add the object to the vector
-        vector::insert<Object<TraitToken>>(&mut composable_token_object.trait_tokens, index, object);
+        vector::insert<Object<TraitToken>>(&mut composable_token_trait.trait_tokens, index, object);
         // TODO: Transfer the object to the composable token
         object::transfer_to_object(creator, object, composable_token);
         // Freeze transfer
@@ -446,49 +447,49 @@ module townesquare::studio_core {
         // TODO: event here (overall events here, explicit ones in internal) 
     }
 
-    // Uncombine tokens
+    // Decompose tokens
     // TODO: this should be used in both composable and composite tokens?
-    public entry fun uncombine_object(
+    public entry fun decompose_trait(
         owner: &signer, 
         composable_token: Object<ComposableToken>,
-        object: Object<TraitToken>
+        trait: Object<TraitToken>
     ) acquires ComposableToken {  
-        uncombine_object_internal(owner, composable_token, object);
+        decompose_trait_internal(owner, composable_token, trait);
         // TODO: event here (overal events here, explicit ones in internal)
     }
 
-    fun uncombine_object_internal(
+    fun decompose_trait_internal(
         owner: &signer,
         composable_token: Object<ComposableToken>,
-        object: Object<TraitToken>
+        trait: Object<TraitToken>
     ) acquires ComposableToken {
         // TODO assert token exists
-        let composable_token_object = borrow_global_mut<ComposableToken>(object::object_address(&composable_token)); 
+        let composable_token_trait = borrow_global_mut<ComposableToken>(object::object_address(&composable_token)); 
         // TODO: get the index "i" of the object. Prob use borrow and inline funcs
         // TODO: store it in i
         // pattern matching
-        let (_, index) = vector::index_of(&composable_token_object.trait_tokens, &object);
+        let (_, index) = vector::index_of(&composable_token_trait.trait_tokens, &trait);
         // TODO: assert the object exists in the composable token
         // Unfreeze transfer
-        aptos_token::unfreeze_transfer(owner, object);
+        aptos_token::unfreeze_transfer(owner, trait);
         // Remove the object from the vector
-        vector::remove<Object<TraitToken>>(&mut composable_token_object.trait_tokens, index);
+        vector::remove<Object<TraitToken>>(&mut composable_token_trait.trait_tokens, index);
         // Transfer
-        object::transfer(owner, object, signer::address_of(owner));
+        object::transfer(owner, trait, signer::address_of(owner));
         // TODO: events
     }
 
-    // Fast combine function
+    // Fast compose function
     /*
-        The user can choose two or more trait_tokens to combine,
+        The user can choose two or more trait_tokens to compose,
         this will mint a composable token and transfer the trait_tokens to it.
         The user can later set the properties of the composable token.
     */
-    public entry fun fast_combine(
+    public entry fun fast_compose(
         creator: &signer,
         collection_name: String,
         token_name: String,
-        trait_tokens_to_combine: vector<Object<TraitToken>>
+        trait_tokens_to_compose: vector<Object<TraitToken>>
     ) acquires TokenCollection, ComposableToken, AptosCollection {
         let property_keys = vector::empty<String>();
         let property_types = vector::empty<String>();
@@ -498,17 +499,17 @@ module townesquare::studio_core {
         mint_composable_token(
         creator,
         collection_name,
-        string::utf8(b"Fast Combined"), // description
+        string::utf8(b"Fast composed"), // description
         token_name,
         string::utf8(b"uri"), 
-        trait_tokens_to_combine,
+        trait_tokens_to_compose,
         property_keys,
         property_types,
         property_values,
         );
         let i = 0;
-        while (i < vector::length(&trait_tokens_to_combine)) {
-            let object = vector::borrow(&trait_tokens_to_combine, i);
+        while (i < vector::length(&trait_tokens_to_compose)) {
+            let object = vector::borrow(&trait_tokens_to_compose, i);
             // TODO assert token exists
             // TODO: Freeze transfer.
             i = i + 1;
@@ -518,7 +519,7 @@ module townesquare::studio_core {
     // TODO: Delete a composable token
     /*
         steps:
-        - Uncombines the composable token
+        - Decomposes the composable token
         - Burns the composable token
     */
     public entry fun burn_composable_token(
@@ -536,22 +537,22 @@ module townesquare::studio_core {
     // Transfer function
     public entry fun raw_transfer(
         owner: &signer, 
-        object_address: address,
+        trait_address: address,
     ) {
         // TODO assert token exists
-        // TODO: Assert transfer is unfreezed (object not equiped to composable nft)
-        // TODO: Assert the signer is the object owner
+        // TODO: Assert transfer is unfreezed (trait not equiped to composable nft)
+        // TODO: Assert the signer is the trait owner
         let owner_address = signer::address_of(owner);
         // Transfer
-        let object = object::address_to_object<TraitToken>(object_address);
-        object::transfer(owner, object, owner_address);
+        let trait = object::address_to_object<TraitToken>(trait_address);
+        object::transfer(owner, trait, owner_address);
         // TODO: event
     }
 
     // Transfer with a fee function
     public entry fun transfer_with_fee(
         owner: &signer, 
-        object_address: address,
+        trait_address: address,
     ) {
         // TODO assert token exists
         // TODO: Assert transfer is unfreezed (object not equiped to composable nft)
@@ -559,8 +560,8 @@ module townesquare::studio_core {
         let owner_address = signer::address_of(owner);
         // TODO: Include a small fee
         // Transfer
-        let object = object::address_to_object<TraitToken>(object_address);
-        object::transfer(owner, object, owner_address);
+        let trait_token = object::address_to_object<TraitToken>(trait_address);
+        object::transfer(owner, trait_token, owner_address);
         // TODO: event
     }
 

@@ -8,7 +8,7 @@ module townesquare::studio_events {
         timestamp: u64,
     }
 
-    struct CreatePlainTokenEvent has store, drop {
+    struct CreateTraitTokenEvent has store, drop {
         collection: String,
         description: String,
         name: String,
@@ -16,7 +16,7 @@ module townesquare::studio_events {
         timestamp: u64,
     }
 
-    struct CreateDynamicTokenEvent has store, drop {
+    struct CreateComposableTokenEvent has store, drop {
         collection: String,
         description: String,
         name: String,
@@ -24,23 +24,19 @@ module townesquare::studio_events {
         timestamp: u64,
     }
 
-    struct CreateComposedTokenEvent has store, drop {
-        // TODO
-    }
-
-    struct CombineTokenEvent has store, drop {
+    struct ComposeTokenEvent has store, drop {
         owner: address,
         collection: String,
         token_name: String,
-        object_name: String,
+        trait_name: String,
         timestamp: u64,
     }
 
-    struct UncombineTokenEvent has store, drop {
+    struct DecomposeTokenEvent has store, drop {
         owner: address,
         collection: String,
         token_name: String,
-        object_name: String,
+        trait_name: String,
         timestamp: u64,
     }
 
@@ -56,14 +52,14 @@ module townesquare::studio_events {
         }
     }
 
-    public fun new_create_plain_token_event(
+    public fun new_create_trait_token_event(
         collection: String,
         description: String,
         name: String,
         uri: String,
         timestamp: u64,
-    ): CreatePlainTokenEvent {
-        CreatePlainTokenEvent {
+    ): CreateTraitTokenEvent {
+        CreateTraitTokenEvent {
             collection: collection,
             description: description,
             name: name,
@@ -78,8 +74,8 @@ module townesquare::studio_events {
         name: String,
         uri: String,
         timestamp: u64,
-    ): CreateDynamicTokenEvent {
-        CreateDynamicTokenEvent {
+    ): CreateComposableTokenEvent {
+        CreateComposableTokenEvent {
             collection: collection,
             description: description,
             name: name,
@@ -88,34 +84,34 @@ module townesquare::studio_events {
         }
     }
 
-    public fun new_combine_token_event(
+    public fun new_compose_token_event(
         owner: address,
         collection: String,
         token_name: String,
-        object_name: String,
+        trait_name: String,
         timestamp: u64,
-    ): CombineTokenEvent {
-        CombineTokenEvent {
+    ): ComposeTokenEvent {
+        ComposeTokenEvent {
             owner: owner,
             collection: collection,
             token_name: token_name,
-            object_name: object_name,
+            trait_name: trait_name,
             timestamp: timestamp,
         }
     }
 
-    public fun new_uncombine_token_event(
+    public fun new_decompose_token_event(
         owner: address,
         collection: String,
         token_name: String,
-        object_name: String,
+        trait_name: String,
         timestamp: u64,
-    ): UncombineTokenEvent {
-        UncombineTokenEvent {
+    ): DecomposeTokenEvent {
+        DecomposeTokenEvent {
             owner: owner,
             collection: collection,
             token_name: token_name,
-            object_name: object_name,
+            trait_name: trait_name,
             timestamp: timestamp,
         }
     }

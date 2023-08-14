@@ -64,9 +64,16 @@ classDiagram
 built on top of aptos_token.move
 functionalities:
 - Create tokenV2 and collections.
-- Create Dynamic NFTs.
-- Create Composed NFTs.
+- Create Composable NFTs.
 > Class Diagrams will be added soon.
+
+##### Glossary
+
+|Abbreviation|Term|Definition|
+|---|---|---|
+|tNFT|trait non-fungible token| A token V2 that is based on the object model|
+|cNFT|Composable non-fungible token|A token V2 that can hold tNFTs inside|
+|[tbd]|[tbd]|A token V2 that can hold tNFTs and fungible assets|
 
 ## Schedule
 

@@ -10,7 +10,7 @@
 
     TODO: add reference to aptos_token.move
     TODO: add events.
-    TODO: add asserts. (one of the asserts: assert the inputed data is not empty - Input Sanitization:)
+    TODO: add asserts module. (one of the asserts: assert the inputed data is not empty - Input Sanitization:)
     TODO: organise functions
     TODO: add init_module
     TODO: enforce #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -20,7 +20,7 @@
     TODO: add tokens mutators.
     TODO: add tokens view functions.
     TODO: add rarity concept to composable tokens.
-    TODO: complete fast compose function.
+    TODO: complete fast compose function. (does this have to be implemented onchain?)
     TODO: in function description, mention whether it's customer or creator specific.
 */
 module townespace::core {
@@ -63,7 +63,7 @@ module townespace::core {
     
     // Duplicated from https://github.com/aptos-labs/aptos-core/blob/3791dc07ec457496c96e5069c494d46c1ff49b41/aptos-move/framework/aptos-token-objects/sources/aptos_token.move#L36C1-L36C1
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    /// Storage state for managing the no-code Collection.
+    // Storage state for managing the no-code Collection.
     struct AptosCollection has key {
         /// Used to mutate collection fields
         mutator_ref: Option<collection::MutatorRef>,
@@ -92,9 +92,9 @@ module townespace::core {
     struct TokenCollection has key {
         name: String,
         symbol: String,
-        // TODO: Timestamp
-        // TODO: add more data?
-        // TODO: add events
+        // TODO: Timestamp?
+        // TODO: mint_events
+        // TODO: burn_events
     }
 
     // Storage state for managing trait Token
@@ -104,7 +104,6 @@ module townespace::core {
         description: String,
         name: String,
         uri: String,
-        // token_supply: u64, // Correlated with composable token supply but not the collection supply.
         // TODO: rarity: u64,
         // TODO: Timestamp
         // TODO: add events
@@ -138,7 +137,7 @@ module townespace::core {
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     // Storage state for tracking composable token supply.
     struct TokenSupplyTracker has key {
-        // supply -> max_supply
+        // TODO: supply -> max_supply || total_supply
         supply: u64,
         remaining_supply: u64,
         total_minted: u64,
@@ -193,57 +192,7 @@ module townespace::core {
         );
     }
 
-    fun create_collection_internal(
-        creator: &signer,
-        description: String,
-        max_supply: u64,
-        name: String,
-        symbol: String,
-        uri: String,
-        mutable_description: bool,
-        mutable_royalty: bool,
-        mutable_uri: bool,
-        mutable_token_description: bool,
-        mutable_token_name: bool,
-        mutable_token_properties: bool,
-        mutable_token_uri: bool,
-        tokens_burnable_by_creator: bool,
-        tokens_freezable_by_creator: bool,
-        royalty_numerator: u64,
-        royalty_denominator: u64,
-    ) acquires TokenCollection {
-        aptos_token::create_collection(
-            creator,
-            description,
-            max_supply,
-            name,
-            uri,
-            mutable_description,
-            mutable_royalty,
-            mutable_uri,
-            mutable_token_description,
-            mutable_token_name,
-            mutable_token_properties,
-            mutable_token_uri,
-            tokens_burnable_by_creator,
-            tokens_freezable_by_creator,
-            royalty_numerator,
-            royalty_denominator,
-        );
-        let creator_address = signer::address_of(creator);
-        let collection = borrow_global_mut<TokenCollection>(creator_address);
-
-        let collection_name = collection.name;
-        // Move to resource account.
-        let new_token_collection = TokenCollection {
-            name: collection_name,
-            symbol: symbol,
-            // TODO: see what other attributes to include
-        };
-        move_to(creator, new_token_collection);
-
-        // TODO Add events
-    }
+    
 
     // Mint a trait token
     public entry fun mint_trait_token(
@@ -268,37 +217,6 @@ module townespace::core {
             property_types,
             property_values,
         )
-    }
-
-    fun mint_trait_token_internal(
-        creator: &signer,
-        collection: String,
-        description: String,
-        name: String,
-        uri: String,
-        property_keys: vector<String>,
-        property_types: vector<String>,
-        property_values: vector<vector<u8>>,
-    ) {
-        aptos_token::mint(
-            creator,
-            collection,
-            description,
-            name,
-            uri,
-            property_keys,
-            property_types,
-            property_values,
-        );
-        // TODO move to trait token resource
-        let new_trait_token = TraitToken {
-            collection: collection,
-            description: description,
-            name: name,
-            uri: uri,
-        };
-        move_to(creator, new_trait_token);
-        // TODO: event trait token minted
     }
 
     // Mint a composable token
@@ -354,6 +272,207 @@ module townespace::core {
         // TODO: event composable token minted
     }
 
+    // Compose trait.
+    // TODO: this should be used in both composable and composite tokens?
+    public entry fun compose_trait(
+        creator: &signer, 
+        composable_token: Object<ComposableToken>,
+        object: Object<TraitToken>
+    ) acquires ComposableToken {    
+        // TODO asserts here.
+        compose_trait_internal(creator, composable_token, object);
+    }
+
+    // Decompose tokens
+    // TODO: this should be used in both composable and composite tokens?
+    public entry fun decompose_trait(
+        owner: &signer, 
+        composable_token: Object<ComposableToken>,
+        trait: Object<TraitToken>
+    ) acquires ComposableToken {  
+        decompose_trait_internal(owner, composable_token, trait);
+        // TODO: event here (overal events here, explicit ones in internal)
+    }
+
+    // Fast compose function
+    /*
+        The user can choose two or more trait_tokens to compose,
+        this will mint a composable token and transfer the trait_tokens to it.
+        The user can later set the properties of the composable token.
+    */
+    public entry fun fast_compose(
+        creator: &signer,
+        collection_name: String,
+        token_name: String,
+        trait_tokens_to_compose: vector<Object<TraitToken>>
+    ) acquires TokenCollection, ComposableToken, AptosCollection {
+        let property_keys = vector::empty<String>();
+        let property_types = vector::empty<String>();
+        let property_values = vector::empty<vector<u8>>();
+
+        // TODO: Mint a composable token with constant properties.
+        mint_composable_token(
+        creator,
+        collection_name,
+        string::utf8(b"Fast composed"), // description
+        token_name,
+        string::utf8(b"uri"), 
+        10000,  // token supply
+        trait_tokens_to_compose,
+        property_keys,
+        property_types,
+        property_values,
+        );
+        let i = 0;
+        while (i < vector::length(&trait_tokens_to_compose)) {
+            let object = vector::borrow(&trait_tokens_to_compose, i);
+            // TODO assert token exists
+            // TODO: Freeze transfer.
+            i = i + 1;
+        }
+    }
+        
+    // TODO: Delete a composable token
+    /*
+        steps:
+        - Decomposes the composable token
+        - Burns the composable token
+
+        params:
+    */
+    public entry fun burn_composable_token(
+
+    ) {
+        // TODO assert token exists
+
+    }
+
+    // TODO: freeze transfer
+    /*
+        TODO: - should the user interact directly with aptos_token.move?
+    */
+
+    // Transfer function
+    public entry fun raw_transfer(
+        owner: &signer, 
+        trait_address: address,
+    ) {
+        // TODO assert token exists
+        // TODO: Assert transfer is unfreezed (trait not equiped to composable nft)
+        // TODO: Assert the signer is the trait owner
+        let owner_address = signer::address_of(owner);
+        // Transfer
+        let trait = object::address_to_object<TraitToken>(trait_address);
+        object::transfer(owner, trait, owner_address);
+        // TODO: event
+    }
+
+    // Transfer with a fee function
+    public entry fun transfer_with_fee(
+        owner: &signer, 
+        trait_address: address,
+    ) {
+        // TODO assert token exists
+        // TODO: Assert transfer is unfreezed (object not equiped to composable nft)
+        // TODO: Assert the signer is the object owner
+        let owner_address = signer::address_of(owner);
+        // TODO: Include a small fee
+        // Transfer
+        let trait_token = object::address_to_object<TraitToken>(trait_address);
+        object::transfer(owner, trait_token, owner_address);
+        // TODO: event
+    }
+
+    /// ------------------
+    /// Internal Functions
+    /// ------------------
+    
+    // Collection 
+    fun create_collection_internal(
+        creator: &signer,
+        description: String,
+        max_supply: u64,
+        name: String,
+        symbol: String,
+        uri: String,
+        mutable_description: bool,
+        mutable_royalty: bool,
+        mutable_uri: bool,
+        mutable_token_description: bool,
+        mutable_token_name: bool,
+        mutable_token_properties: bool,
+        mutable_token_uri: bool,
+        tokens_burnable_by_creator: bool,
+        tokens_freezable_by_creator: bool,
+        royalty_numerator: u64,
+        royalty_denominator: u64,
+    ) acquires TokenCollection {
+        aptos_token::create_collection(
+            creator,
+            description,
+            max_supply,
+            name,
+            uri,
+            mutable_description,
+            mutable_royalty,
+            mutable_uri,
+            mutable_token_description,
+            mutable_token_name,
+            mutable_token_properties,
+            mutable_token_uri,
+            tokens_burnable_by_creator,
+            tokens_freezable_by_creator,
+            royalty_numerator,
+            royalty_denominator,
+        );
+        let creator_address = signer::address_of(creator);
+        let collection = borrow_global_mut<TokenCollection>(creator_address);
+
+        let collection_name = collection.name;
+        // Move to resource account.
+        let new_token_collection = TokenCollection {
+            name: collection_name,
+            symbol: symbol,
+            // TODO: see what other attributes to include
+        };
+        move_to(creator, new_token_collection);
+
+        // TODO Add events
+    }
+
+    // Trait token
+    fun mint_trait_token_internal(
+        creator: &signer,
+        collection: String,
+        description: String,
+        name: String,
+        uri: String,
+        property_keys: vector<String>,
+        property_types: vector<String>,
+        property_values: vector<vector<u8>>,
+    ) {
+        aptos_token::mint(
+            creator,
+            collection,
+            description,
+            name,
+            uri,
+            property_keys,
+            property_types,
+            property_values,
+        );
+        // TODO move to trait token resource
+        let new_trait_token = TraitToken {
+            collection: collection,
+            description: description,
+            name: name,
+            uri: uri,
+        };
+        move_to(creator, new_trait_token);
+        // TODO: event trait token minted
+    }
+
+    // Composable token
     fun mint_composable_token_internal(
         creator: &signer,
         collection: String,
@@ -458,17 +577,7 @@ module townespace::core {
         constructor_ref
     }
 
-    // Compose trait.
-    // TODO: this should be used in both composable and composite tokens?
-    public entry fun compose_trait(
-        creator: &signer, 
-        composable_token: Object<ComposableToken>,
-        object: Object<TraitToken>
-    ) acquires ComposableToken {    
-        // TODO asserts here.
-        compose_trait_internal(creator, composable_token, object);
-    }
-
+    // Compose trait
     fun compose_trait_internal(
         creator: &signer, 
         composable_token: Object<ComposableToken>,
@@ -494,17 +603,7 @@ module townespace::core {
         // TODO: event here (overall events here, explicit ones in internal) 
     }
 
-    // Decompose tokens
-    // TODO: this should be used in both composable and composite tokens?
-    public entry fun decompose_trait(
-        owner: &signer, 
-        composable_token: Object<ComposableToken>,
-        trait: Object<TraitToken>
-    ) acquires ComposableToken {  
-        decompose_trait_internal(owner, composable_token, trait);
-        // TODO: event here (overal events here, explicit ones in internal)
-    }
-
+    // Decompose trait
     fun decompose_trait_internal(
         owner: &signer,
         composable_token: Object<ComposableToken>,
@@ -525,97 +624,8 @@ module townespace::core {
         object::transfer(owner, trait, signer::address_of(owner));
         // TODO: events
     }
+    
 
-    // Fast compose function
-    /*
-        The user can choose two or more trait_tokens to compose,
-        this will mint a composable token and transfer the trait_tokens to it.
-        The user can later set the properties of the composable token.
-    */
-    public entry fun fast_compose(
-        creator: &signer,
-        collection_name: String,
-        token_name: String,
-        trait_tokens_to_compose: vector<Object<TraitToken>>
-    ) acquires TokenCollection, ComposableToken, AptosCollection {
-        let property_keys = vector::empty<String>();
-        let property_types = vector::empty<String>();
-        let property_values = vector::empty<vector<u8>>();
-
-        // TODO: Mint a composable token with constant properties.
-        mint_composable_token(
-        creator,
-        collection_name,
-        string::utf8(b"Fast composed"), // description
-        token_name,
-        string::utf8(b"uri"), 
-        10000,  // token supply
-        trait_tokens_to_compose,
-        property_keys,
-        property_types,
-        property_values,
-        );
-        let i = 0;
-        while (i < vector::length(&trait_tokens_to_compose)) {
-            let object = vector::borrow(&trait_tokens_to_compose, i);
-            // TODO assert token exists
-            // TODO: Freeze transfer.
-            i = i + 1;
-        }
-    }
-        
-    // TODO: Delete a composable token
-    /*
-        steps:
-        - Decomposes the composable token
-        - Burns the composable token
-    */
-    public entry fun burn_composable_token(
-
-    ) {
-        // TODO assert token exists
-
-    }
-
-    // TODO: freeze transfer
-    /*
-        TODO: - should the user interact directly with aptos_token.move?
-    */
-
-    // Transfer function
-    public entry fun raw_transfer(
-        owner: &signer, 
-        trait_address: address,
-    ) {
-        // TODO assert token exists
-        // TODO: Assert transfer is unfreezed (trait not equiped to composable nft)
-        // TODO: Assert the signer is the trait owner
-        let owner_address = signer::address_of(owner);
-        // Transfer
-        let trait = object::address_to_object<TraitToken>(trait_address);
-        object::transfer(owner, trait, owner_address);
-        // TODO: event
-    }
-
-    // Transfer with a fee function
-    public entry fun transfer_with_fee(
-        owner: &signer, 
-        trait_address: address,
-    ) {
-        // TODO assert token exists
-        // TODO: Assert transfer is unfreezed (object not equiped to composable nft)
-        // TODO: Assert the signer is the object owner
-        let owner_address = signer::address_of(owner);
-        // TODO: Include a small fee
-        // Transfer
-        let trait_token = object::address_to_object<TraitToken>(trait_address);
-        object::transfer(owner, trait_token, owner_address);
-        // TODO: event
-    }
-
-    /// ------------------
-    /// Internal Functions
-    /// ------------------
      
     /// Decrement the remaining supply on each trait token minted.
     fun decrement_supply(

@@ -8,30 +8,20 @@
         - Composable token (cNFT): A token V2 that can hold oNFTs inside.
         - <name-token>: A token V2 that can hold oNFTs, cNFTs, and fungible assets.
 
-    TODO: add reference to aptos_token.move
     TODO: add events.
-    TODO: add asserts module. (one of the asserts: assert the inputed data is not empty - Input Sanitization?)
+    TODO: add asserts functions. (one of the asserts: assert the inputed data is not empty - Input Sanitization?)
     TODO: add init_module? (to initialize the studio with example tokens)
-    TODO: enforce #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    TODO: add function to transform a Composable nft into a object token. (compress?)
-    TODO: add functions to add/remove properties to a token.
-    TODO: add tokens accessors.
-    TODO: add tokens mutators.
+    TODO: add function to transform a Composable token into an object token. (compress?)
     TODO: add tokens view functions.
     TODO: add rarity concept to object tokens.
     TODO: complete fast compose function. (does this have to be implemented onchain?)
     TODO: in function description, mention whether it's customer or creator specific.
-    TODO: REFARCTOR trait token -> object token.
-    TODO: re-write create_composable_token_internal, check collection_object inline function.
-    TODO: mint_object_token_internal and mint_composable_token_internal can be done in one function.
-    TODO: Update fast compose function with to_use flag.
-    TOOD: Update decompose function with to_use flag.
+    TODO: mint_object_token_internal and mint_composable_token_internal can be done in one function?
 */
 module townespace::core {
     //use aptos_framework::event::{Self, EventHandle};
     use aptos_framework::object::{Self, Object};
     use aptos_token_objects::aptos_token::{Self, AptosCollection, AptosToken};
-    //use aptos_token_objects::collection;
     //use std::error;
     use std::features;
     use std::signer;
@@ -564,8 +554,6 @@ module townespace::core {
     // Accessors
     // ---------
     
-    
-
     // --------
     // Mutators
     // --------

@@ -4,7 +4,7 @@
 
 module townespace::events {
     use std::string::String;
-    use townespace::core;
+
 
 
     /// ----------

@@ -1,5 +1,5 @@
 #[test_only]
-module townespace::unit_tests {
+module townespace::test_utils {
     use aptos_framework::account;
     use aptos_framework::object::{Object};
     use aptos_token_objects::aptos_token::{AptosCollection, AptosToken};

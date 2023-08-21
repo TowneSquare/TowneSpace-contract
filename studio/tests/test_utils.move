@@ -17,7 +17,7 @@ module townespace::test_utils {
         let object_token_name = string::utf8(b"object token name");
         let object_token_seed = b"object token seed";
         create_token_collection_helper(creator, collection_name, collection_symbol, true);
-        let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name);
+        let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name, 100);
         mint_object_token_helper(creator, collection_name, object_token_name, composable_token_object, object_token_seed);
     }
 
@@ -30,7 +30,7 @@ module townespace::test_utils {
         let object_token_name = string::utf8(b"object token name");
         let object_token_seed = b"object token seed";
         create_token_collection_helper(creator, collection_name, collection_symbol, true);
-        let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name);
+        let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name, 100);
         let (object_token_object, _) = mint_object_token_helper(creator, collection_name, object_token_name, composable_token_object, object_token_seed);
         core::compose_object(creator, composable_token_object, object_token_object);
     }
@@ -43,7 +43,7 @@ module townespace::test_utils {
         let object_token_name = string::utf8(b"object token name");
         let object_token_seed = b"object token seed";
         create_token_collection_helper(creator, collection_name, collection_symbol, true);
-        let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name);
+        let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name, 100);
         let (object_token_object, _) = mint_object_token_helper(creator, collection_name, object_token_name, composable_token_object, object_token_seed);
         core::compose_object(creator, composable_token_object, object_token_object);
         // TODO: asserts
@@ -52,7 +52,6 @@ module townespace::test_utils {
         // TODO: asserts
     }
 
-    // TODO: test decompose entire token
     #[test(creator = @0x123)]
     fun d_decompose_entire_token(creator: &signer) {
         let collection_name = string::utf8(b"collection name");
@@ -65,7 +64,7 @@ module townespace::test_utils {
         let object_token_two_seed = b"object token two seed";
         let object_token_three_seed = b"object token three seed";
         create_token_collection_helper(creator, collection_name, collection_symbol, true);
-        let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name);
+        let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name, 100);
         let (object_token_object_one, _) = mint_object_token_helper(creator, collection_name, object_token_name_one, composable_token_object, object_token_one_seed);
         let (object_token_object_two, _) = mint_object_token_helper(creator, collection_name, object_token_name_two, composable_token_object, object_token_two_seed);
         let (object_token_object_three, _) = mint_object_token_helper(creator, collection_name, object_token_name_three, composable_token_object, object_token_three_seed);
@@ -77,7 +76,23 @@ module townespace::test_utils {
         core::decompose_entire_token(creator, composable_token_object, new_uri);
     }
 
-    // TODO: test token supply
+    #[test(creator = @0x123)]
+    #[expected_failure(abort_code = 1000, location = core)]
+    fun e_supply_token(creator: &signer) {
+        let collection_name = string::utf8(b"collection name");
+        let collection_symbol = string::utf8(b"collection symbol");
+        let composable_token_name = string::utf8(b"composable token name");
+        let object_token_name_one = string::utf8(b"object token name one");
+        let object_token_name_two = string::utf8(b"object token name two");
+        let object_token_seed_one = b"object token seed one";
+        let object_token_seed_two = b"object token seed two";
+        create_token_collection_helper(creator, collection_name, collection_symbol, true);
+        let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name, 1);
+        let (object_token_object_one, _) = mint_object_token_helper(creator, collection_name, object_token_name_one, composable_token_object, object_token_seed_one);
+        let (object_token_object_two, _) = mint_object_token_helper(creator, collection_name, object_token_name_two, composable_token_object, object_token_seed_two);
+        core::compose_object(creator, composable_token_object, object_token_object_one);
+        core::compose_object(creator, composable_token_object, object_token_object_two);
+    }
 
     // TODO: test transfer function
 
@@ -115,6 +130,7 @@ module townespace::test_utils {
         creator: &signer,
         collection_name: String,
         token_name: String,
+        token_supply: u64,
     ): (Object<ComposableToken>, Object<AptosToken>) {
 
         core::mint_composable_token_internal(
@@ -123,7 +139,7 @@ module townespace::test_utils {
             string::utf8(b"composable token description"),
             token_name,
             string::utf8(b"composable token uri"),
-            100,
+            token_supply,
             vector::empty(),
             vector[string::utf8(b"bool")],
             vector[string::utf8(b"bool")],

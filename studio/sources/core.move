@@ -192,7 +192,6 @@ module townespace::core {
     ) acquires TokenSupply {
         // TODO: assert the token collection exists.
         // TODO: assert the composable token exists.
-        // TODO: assert the token supply <= remaining supply
         mint_object_token_internal(
             creator,
             collection,
@@ -584,7 +583,8 @@ module townespace::core {
         // Get the composable token address
         let composable_token_address = object::object_address(composable_token_object);
         let token_supply = borrow_global_mut<TokenSupply>(composable_token_address);
-        // TODO: assert total supply > 1
+        // TODO: assert total supply >= 1
+        assert!(token_supply.total_supply > 0, 1000);
         token_supply.total_supply = token_supply.total_supply - 1;
         // TODO: assert the remaining supply > 0.
         token_supply.remaining_supply = token_supply.remaining_supply - 1;

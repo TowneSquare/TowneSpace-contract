@@ -94,6 +94,7 @@ module townespace::test_utils {
         core::compose_object(creator, composable_token_object, object_token_object_two);
     }
 
+    // TODO: test transferring frozen object, expect failure
     // TODO: test transfer function
 
     fun create_token_collection_helper(

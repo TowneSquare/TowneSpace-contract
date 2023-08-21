@@ -17,6 +17,7 @@
     TODO: complete fast compose function. (does this have to be implemented onchain?)
     TODO: in function description, mention whether it's customer or creator specific.
     TODO: mint_object_token_internal and mint_composable_token_internal can be done in one function?
+    TODO: add burn functions.
 */
 module townespace::core {
     //use aptos_framework::event::{Self, EventHandle};
@@ -25,7 +26,7 @@ module townespace::core {
     //use std::error;
     use std::features;
     use std::signer;
-    use std::string::{String};
+    use std::string::{Self, String};
     use std::vector;
   //use townespace::events::{
   //    CreateTokenCollectionEvent,
@@ -203,8 +204,44 @@ module townespace::core {
             property_values,
             composable_token_object,
             seed
-        );
-        
+        );   
+    }
+
+    // TODO: delete collection
+
+    // Burn composable token
+    /*
+        This will involve decomposing the composable token, 
+        and then burning the aptos token.
+    */
+    public entry fun burn_composable_token(
+        owner: &signer,
+        composable_token_object: Object<ComposableToken>
+    ) acquires ComposableToken, ObjectToken {
+        // TODO: asserts
+        // decompose the composable token
+        decompose_entire_token(owner, composable_token_object, string::utf8(b"decomposed"));
+        // burn the aptos token
+        let composable_token = borrow_global_mut<ComposableToken>(object::object_address(&composable_token_object));
+        aptos_token::burn(owner, composable_token.token);
+        // TODO: remove the token supply object from global storage
+        // TODO: remove the composable token object from global storage
+    }
+
+    // TODO: burn object token
+    public entry fun burn_object_token(
+        owner: &signer,
+        composable_token_object: Object<ComposableToken>,
+        object_token_object: Object<ObjectToken>
+    ) acquires ObjectToken, TokenSupply {
+        // TODO: assert the signer is the owner
+        // TODO: other asserts
+        let object_token = borrow_global_mut<ObjectToken>(object::object_address(&object_token_object));
+        // burn the aptos token
+        aptos_token::burn(owner, object_token.token);
+        // increment the token supply
+        increment_token_supply(&composable_token_object);
+        // TODO: remove the object token object from global storage
     }
 
     // Compose one object; should not have internal
@@ -319,8 +356,7 @@ module townespace::core {
             // TODO: event decompose token
         };
         // Update uri
-        set_uri(owner, composable_token, new_uri);
-        
+        set_uri(owner, composable_token, new_uri);    
     }
 
     // Directly transfer a token to a user.
@@ -583,33 +619,27 @@ module townespace::core {
         // Get the composable token address
         let composable_token_address = object::object_address(composable_token_object);
         let token_supply = borrow_global_mut<TokenSupply>(composable_token_address);
-        // TODO: assert total supply >= 1
-        assert!(token_supply.total_supply > 0, 1000);
-        token_supply.total_supply = token_supply.total_supply - 1;
-        // TODO: assert the remaining supply > 0.
+        // assert the remaining supply > 0.
+        assert!(token_supply.remaining_supply > 0, 1000);
         token_supply.remaining_supply = token_supply.remaining_supply - 1;
         token_supply.total_minted = token_supply.total_minted + 1;
         // TODO: event supply updated (store new values with the minted token)
     }
 
-    // Increment the remaining supply on each object token minted.
+    // Increment the remaining supply on each object token burned.
     inline fun increment_token_supply(
-        composable_token_address: address,
-        token_supply: &mut TokenSupply,
-        object_token: address
-    ): (u64, u64, u64) acquires TokenSupply {
+        composable_token_object: &Object<ComposableToken>,
+        //minted_token: address
+    ) acquires TokenSupply {
         // TODO: assert the composable token exists.
         // TODO: assert the object token exists.
+        // Get the composable token address
+        let composable_token_address = object::object_address(composable_token_object);
         let token_supply = borrow_global_mut<TokenSupply>(composable_token_address);
-        let remaining_supply = token_supply.remaining_supply;
-        let total_minted = token_supply.total_minted;
-        // TODO: assert the remaining supply > 0.
-        let total_supply = token_supply.total_supply;
-        let remaining_supply = remaining_supply + 1;
-        let total_minted = total_minted - 1;
-
-        // TODO: event supply updated (store new values)
-        (total_supply, remaining_supply, total_minted)
+        // assert total supply >= remaining supply
+        assert!(token_supply.total_supply >= token_supply.remaining_supply, 1001);
+        token_supply.remaining_supply = token_supply.remaining_supply + 1;
+        // TODO: event supply updated (store new values with the burned token)
     }
  
 }

@@ -17,7 +17,7 @@
     TODO: complete fast compose function. (does this have to be implemented onchain?)
     TODO: in function description, mention whether it's customer or creator specific.
     TODO: mint_object_token_internal and mint_composable_token_internal can be done in one function?
-    TODO: add burn functions.
+    TODO: add fungible assets support.
 */
 module townespace::core {
     //use aptos_framework::event::{Self, EventHandle};
@@ -64,9 +64,6 @@ module townespace::core {
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     struct ComposableToken has key {
         token: Object<aptos_token::AptosToken>,
-        // Token supply: Represents the number of composable tokens in circulation. 
-        // Same as total_supply
-        //token_supply: TokenSupply, // TODO: replicate collection supply
         // The object tokens to store in the composable token.
         object_tokens: vector<Object<ObjectToken>>, // TODO: this must be extended to each object type.
         // TODO: transfer event
@@ -78,8 +75,6 @@ module townespace::core {
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     struct ObjectToken has key {
         token: Object<aptos_token::AptosToken>,
-        // rarity: u64, to be calulated offchain?
-        // TODO: Timestamp
         // TODO: add events
         // TODO: transfer event
         // burn_events: ,
@@ -115,9 +110,9 @@ module townespace::core {
         mutable_token_description: bool,
         mutable_token_name: bool,
         mutable_token_properties: bool,
-        mutable_token_uri: bool,
+        mutable_token_uri: bool,    // this have to be enforced to `True`
         tokens_burnable_by_creator: bool,
-        tokens_freezable_by_creator: bool,
+        tokens_freezable_by_creator: bool,  // TODO: is this creator specific or also owner
         royalty_numerator: u64,
         royalty_denominator: u64,
         seed: vector<u8> // used when auid is disabled.
@@ -185,7 +180,7 @@ module townespace::core {
         description: String,
         name: String,
         uri: String,
-        property_keys: vector<String>,
+        property_keys: vector<String>,  // e.g: store categories
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
         composable_token_object: Object<ComposableToken>, // needed for token supply
@@ -228,7 +223,7 @@ module townespace::core {
         // TODO: remove the composable token object from global storage
     }
 
-    // TODO: burn object token
+    // burn object token
     public entry fun burn_object_token(
         owner: &signer,
         composable_token_object: Object<ComposableToken>,
@@ -249,6 +244,7 @@ module townespace::core {
         owner: &signer,
         composable_token: Object<ComposableToken>,
         object: Object<ObjectToken>
+        // TODO: update uri
     ) acquires ComposableToken, ObjectToken {
         // TODO: assert the signer is the owner
         // TODO: assert both tokens exist
@@ -265,7 +261,7 @@ module townespace::core {
         //let composable_aptos_token = composable_token_address.token;
         let object_token_address = borrow_global_mut<ObjectToken>(object::object_address(&object));
         let object_aptos_token = object_token_address.token;
-        aptos_token::freeze_transfer(owner, object_aptos_token);
+        aptos_token::freeze_transfer(owner, object_aptos_token);    // more explaination in docs
         // Add the object to the vector
         vector::insert<Object<ObjectToken>>(&mut composable_token_address.object_tokens, index, object);
         // object::transfer(owner, composable_aptos_token, @townespace); TODO: add this to unit testing, we send object token to the composable token, and we freeze transfer for the object token, we send the composable token to another address, and the object token is transfered with it.

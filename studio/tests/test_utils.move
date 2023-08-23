@@ -19,6 +19,7 @@ module townespace::test_utils {
         create_token_collection_helper(creator, collection_name, collection_symbol, true);
         let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name, 100);
         mint_object_token_helper(creator, collection_name, object_token_name, composable_token_object, object_token_seed);
+        // TODO: asserts
     }
 
 
@@ -33,6 +34,7 @@ module townespace::test_utils {
         let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name, 100);
         let (object_token_object, _) = mint_object_token_helper(creator, collection_name, object_token_name, composable_token_object, object_token_seed);
         core::compose_object(creator, composable_token_object, object_token_object);
+        // TODO: asserts
     }
 
     #[test(creator = @0x123)]
@@ -74,6 +76,7 @@ module townespace::test_utils {
         // TODO: asserts
         let new_uri = string::utf8(b"new uri"); // User should not prompt this/ In most cases
         core::decompose_entire_token(creator, composable_token_object, new_uri);
+        // TODO: asserts
     }
 
     #[test(creator = @0x123)]
@@ -88,14 +91,25 @@ module townespace::test_utils {
         let object_token_seed_two = b"object token seed two";
         create_token_collection_helper(creator, collection_name, collection_symbol, true);
         let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name, 1);
-        let (object_token_object_one, _) = mint_object_token_helper(creator, collection_name, object_token_name_one, composable_token_object, object_token_seed_one);
-        let (object_token_object_two, _) = mint_object_token_helper(creator, collection_name, object_token_name_two, composable_token_object, object_token_seed_two);
-        core::compose_object(creator, composable_token_object, object_token_object_one);
-        core::compose_object(creator, composable_token_object, object_token_object_two);
+        mint_object_token_helper(creator, collection_name, object_token_name_one, composable_token_object, object_token_seed_one);
+        mint_object_token_helper(creator, collection_name, object_token_name_two, composable_token_object, object_token_seed_two);
+        // TODO: asserts
     }
 
-    // TODO: test transferring frozen object, expect failure
     // TODO: test transfer function
+    #[test(creator = @0x123)]
+    fun f_transfer_composable_token() {}
+
+    // TODO: test transferring an object token, expect failure
+    #[test(creator = @0x123)]
+    fun g_transfer_object_token() {}
+
+    // TODO: test transferring frozen object token, expect failure
+    #[test(creator = @0x123)]
+    fun h_transfer_frozen_object_token() {}
+
+    // TODO: burnability tests
+
 
     fun create_token_collection_helper(
         creator: &signer,

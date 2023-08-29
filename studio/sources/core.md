@@ -32,18 +32,17 @@ struct ComposableToken has key {
         // The object tokens to store in the composable token.
         object_tokens: vector<Object<ObjectToken>>, // TODO: this must be extended to each object type.
         // TODO: transfer event
-        // burn_events: ,
-        // mint_events: EventHandle<CreateTraitTokenEvent> // TODO: refactor to CreateObjectTokenEvent
+        // TODO: burn_events: ,
+        // TODO: mint_events: EventHandle<CreateTraitTokenEvent> // TODO: refactor to CreateObjectTokenEvent
     }
 ```
 
 ``` rust
 struct ObjectToken has key {
         token: Object<aptos_token::AptosToken>,
-        // TODO: add events
         // TODO: transfer event
-        // burn_events: ,
-        // mint_events: EventHandle<CreateTraitTokenEvent> // TODO: refactor to CreateObjectTokenEvent
+        // TODO: burn_events: ,
+        // TODO: mint_events: EventHandle<CreateTraitTokenEvent> // TODO: refactor to CreateObjectTokenEvent
     }
 ```
 

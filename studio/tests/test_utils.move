@@ -108,6 +108,14 @@ module townespace::test_utils {
     #[test(creator = @0x123)]
     fun h_transfer_frozen_object_token() {}
 
+    // TODO: test b_ when uri_immutable is set to false, expect an error.
+    #[test(creator = @0x123)]
+    fun i_set_uri_immutable() {}
+    
+    // TODO: test b_ when other fields that need to be forced to true are set to false, expect an error.
+    #[test(creator = @0x123)]
+    fun j_set_other_fields() {}
+    
     // TODO: burnability tests
 
 

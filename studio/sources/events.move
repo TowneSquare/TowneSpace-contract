@@ -49,7 +49,7 @@ module townespace::events {
         symbol: String
     }
 
-    public(friend) fun token_collection_metadata(
+    public fun token_collection_metadata(
         token_collection_object: Object<TokenCollection>
         ): TokenCollectionMetadata {
             let collection_object = core::get_collection(token_collection_object);
@@ -80,7 +80,7 @@ module townespace::events {
     }
 
     
-    public(friend) fun composable_token_metadata(
+    public fun composable_token_metadata(
         composable_token_object: Object<ComposableToken>
         ): ComposableTokenMetadata {
             let token_object = core::get_composable_token(composable_token_object);
@@ -138,8 +138,8 @@ module townespace::events {
 
     // Collection 
 
-    // Token Collection Created Event
     #[event]
+    // Token Collection Created Event
     struct TokenCollectionCreated has drop, store {
         token_collection: address,
         token_collection_metadata: TokenCollectionMetadata
@@ -152,16 +152,16 @@ module townespace::events {
     ) {
         event::emit<TokenCollectionCreated>(
             TokenCollectionCreated {
-            token_collection: token_collection_address,
-            token_collection_metadata: token_collection_metadata
+                token_collection: token_collection_address,
+                token_collection_metadata: token_collection_metadata
             }
         );
     }
     // TODO: Token Collection Metadata Updated Event
     // TODO: Token Collection Deleted Event
 
-    // Composable Token 
     #[event]
+    // Composable Token 
     struct ComposableTokenMinted has drop, store {
         composable_token: address,
         composable_token_metadata: ComposableTokenMetadata
@@ -172,37 +172,127 @@ module townespace::events {
         composable_token_address: address,
         composable_token_metadata: ComposableTokenMetadata
     ) {
-        event::emit<ComposableTokenMinted>(ComposableTokenMinted {
-            composable_token: composable_token_address,
-            composable_token_metadata: composable_token_metadata
-        });
+        event::emit<ComposableTokenMinted>(
+            ComposableTokenMinted {
+                composable_token: composable_token_address,
+                composable_token_metadata: composable_token_metadata
+            }
+        );
     }
-    // TODO: Composable Token Metadata Updated Event
-    // TODO: Composable Token Burned Event
-    // TODO: Composable Token Transferred Event
-    
 
-    // Object Token 
     #[event]
+    // Object Token 
     struct ObjectTokenMinted has drop, store {
         object_token_address: address,
         object_token_metadata: ObjectTokenMetadata
     }
     
-     
     public(friend) fun emit_object_token_minted_event(
         object_token_address: address,
         object_token_metadata: ObjectTokenMetadata
     ) {
-        event::emit<ObjectTokenMinted>(ObjectTokenMinted {
-            object_token_address: object_token_address,
-            object_token_metadata: object_token_metadata
-        });
+        event::emit<ObjectTokenMinted>(
+            ObjectTokenMinted {
+                object_token_address: object_token_address,
+                object_token_metadata: object_token_metadata
+            }
+        );
     }
-    // TODO: Object Token Metadata Updated Event
-    // TODO: Object Token Burned Event
-    // TODO: Object Token Transferred Event
-    // TODO: Object Token Composed Event
-    // TODO: Object Token Decomposed Event
+
+    #[event]
+    // Object Token Composed Event
+    struct CompostionEvent has drop, store {
+        composable_token_metadata: ComposableTokenMetadata,
+        object_token_to_compose_metadata: ObjectTokenMetadata,
+        previous_uri: String,
+        new_uri: String
+    }
+
+    public(friend) fun emit_composition_event(
+        composable_token_metadata: ComposableTokenMetadata,
+        object_token_to_compose_metadata: ObjectTokenMetadata,
+        previous_uri: String,
+        new_uri: String
+    ) {
+        event::emit<CompostionEvent>(
+            CompostionEvent {
+                composable_token_metadata: composable_token_metadata,
+                object_token_to_compose_metadata: object_token_to_compose_metadata,
+                previous_uri: previous_uri,
+                new_uri: new_uri
+            }
+        );
+    }
+
+    #[event]
+    // Object Token Decomposed Event
+    struct DecompositionEvent has drop, store {
+        composable_token_metadata: ComposableTokenMetadata,
+        object_token_to_decompose_metadata: ObjectTokenMetadata,
+        previous_uri: String,
+        new_uri: String
+    }
+
+    public(friend) fun emit_decomposition_event(
+        composable_token_metadata: ComposableTokenMetadata,
+        object_token_to_decompose_metadata: ObjectTokenMetadata,
+        previous_uri: String,
+        new_uri: String
+    ) {
+        event::emit<DecompositionEvent>(
+            DecompositionEvent {
+                composable_token_metadata: composable_token_metadata,
+                object_token_to_decompose_metadata: object_token_to_decompose_metadata,
+                previous_uri: previous_uri,
+                new_uri: new_uri
+            }
+        );
+    }
     
+    #[event]
+    // Composable Token Transferred Event
+    struct ComposableTokenTransferredEvent has drop, store {
+        token_metadata: ComposableTokenMetadata,
+        from: address,
+        to: address
+    }
+
+    public(friend) fun emit_composable_token_transferred_event(
+        token_metadata: ComposableTokenMetadata,
+        from: address,
+        to: address
+    ) {
+        event::emit<ComposableTokenTransferredEvent>(
+            ComposableTokenTransferredEvent {
+                token_metadata: token_metadata,
+                from: from,
+                to: to
+            }
+        );
+    }
+
+    #[event]
+    // Object Token Transferred Event
+    struct ObjectTokenTransferredEvent has drop, store {
+        token_metadata: ObjectTokenMetadata,
+        from: address,
+        to: address
+    }
+
+    public(friend) fun emit_object_token_transferred_event(
+        token_metadata: ObjectTokenMetadata,
+        from: address,
+        to: address
+    ) {
+        event::emit<ObjectTokenTransferredEvent>(
+            ObjectTokenTransferredEvent {
+                token_metadata: token_metadata,
+                from: from,
+                to: to
+            }
+        );
+    }
+
+    // TODO: Composable Token Burned Event
+    // TODO: Object Token Burned Event
 }

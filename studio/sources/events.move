@@ -7,7 +7,7 @@ module townespace::events {
     use aptos_framework::object::{Object};
     use aptos_token_objects::aptos_token;
     use aptos_token_objects::collection;
-    use aptos_token_objects::royalty;
+    //use aptos_token_objects::royalty;
     use aptos_token_objects::token;
     
     use townespace::core::{
@@ -19,7 +19,7 @@ module townespace::events {
     
     //use std::error;
     //use std::features;
-    use std::option;
+    //use std::option;
     use std::string::{String};
 
     friend townespace::studio;
@@ -49,7 +49,7 @@ module townespace::events {
         symbol: String
     }
 
-    public fun token_collection_metadata(
+    public(friend) fun token_collection_metadata(
         token_collection_object: Object<TokenCollection>
         ): TokenCollectionMetadata {
             let collection_object = core::get_collection(token_collection_object);
@@ -79,7 +79,8 @@ module townespace::events {
         object_tokens: vector<Object<ObjectToken>>,
     }
 
-    public fun composable_token_metadata(
+    
+    public(friend) fun composable_token_metadata(
         composable_token_object: Object<ComposableToken>
         ): ComposableTokenMetadata {
             let token_object = core::get_composable_token(composable_token_object);
@@ -111,6 +112,7 @@ module townespace::events {
         uri: String
     }
 
+     
     public fun object_token_metadata(
         object_token_object: Object<ObjectToken>
         ): ObjectTokenMetadata {
@@ -137,29 +139,35 @@ module townespace::events {
     // Collection 
 
     // Token Collection Created Event
+    #[event]
     struct TokenCollectionCreated has drop, store {
         token_collection: address,
         token_collection_metadata: TokenCollectionMetadata
     }
 
+     
     public(friend) fun emit_token_collection_created_event(
         token_collection_address: address,
         token_collection_metadata: TokenCollectionMetadata
     ) {
-        event::emit<TokenCollectionCreated>(TokenCollectionCreated {
+        event::emit<TokenCollectionCreated>(
+            TokenCollectionCreated {
             token_collection: token_collection_address,
             token_collection_metadata: token_collection_metadata
-        });
+            }
+        );
     }
     // TODO: Token Collection Metadata Updated Event
     // TODO: Token Collection Deleted Event
 
     // Composable Token 
+    #[event]
     struct ComposableTokenMinted has drop, store {
         composable_token: address,
         composable_token_metadata: ComposableTokenMetadata
     }
 
+     
     public(friend) fun emit_composable_token_minted_event(
         composable_token_address: address,
         composable_token_metadata: ComposableTokenMetadata
@@ -175,11 +183,13 @@ module townespace::events {
     
 
     // Object Token 
+    #[event]
     struct ObjectTokenMinted has drop, store {
         object_token_address: address,
         object_token_metadata: ObjectTokenMetadata
     }
     
+     
     public(friend) fun emit_object_token_minted_event(
         object_token_address: address,
         object_token_metadata: ObjectTokenMetadata

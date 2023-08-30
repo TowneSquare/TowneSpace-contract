@@ -71,9 +71,9 @@ functionalities:
 
 |Abbreviation|Term|Definition|
 |---|---|---|
-|tNFT|trait non-fungible token| A token V2 that represents a specific trait|
-|cNFT|Composable non-fungible token|A token V2 that can hold tNFTs inside|
-|[tbd]|[tbd]|A token V2 that can hold tNFTs, cNFTs, and fungible assets|
+|oNFT|object non-fungible token| A token V2 that represents a specific trait|
+|cNFT|Composable non-fungible token|A token V2 that can hold oNFTs inside|
+|[tbd]|[tbd]|A token V2 that can hold oNFTs, cNFTs, and fungible assets|
 
 ## Schedule
 
@@ -87,7 +87,7 @@ gantt
     studio   :active, 04-08-2023  , 18d
     audit   :26-09-2023 , 14d
     section UI 
-    web  phase 1:18-08-2023 , 26d
+    web  phase 1:active, 18-08-2023 , 26d
     web  phase 2:13-09-2023 , 27d
     section Deploy 
     testnet      : milestone, crit, 13-09-2023 ,

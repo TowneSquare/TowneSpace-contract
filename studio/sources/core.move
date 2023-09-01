@@ -1,6 +1,6 @@
 /*
     - This contract represents the core of the studio.
-    - It allows to initialze studio, and correspondingly create collections and tokens.
+    - It allows to create collections and mint tokens.
     - tokens logic is built on top of aptos_token.move.
     - A user can create the following:
         - Collections.
@@ -8,11 +8,8 @@
         - Composable token (cNFT): A token V2 that can hold oNFTs inside.
         - <name-token>: A token V2 that can hold oNFTs, cNFTs, and fungible assets.
 
-    TODO: add events.
     TODO: add asserts functions. (one of the asserts: assert the inputed data is not empty - Input Sanitization?)
-    TODO: add init_module? (to initialize the studio with example tokens)
-    TODO: add function to transform a Composable token into an object token. (compress?)
-    TODO: in function description, mention whether it's customer or creator specific.
+    TODO: add function to transform a Composable token into an object token.
     TODO: add fungible assets support.
     TODO: add wrap tokenV1 function.
 */
@@ -23,7 +20,7 @@ module townespace::core {
     use std::error;
     use std::features;
     use std::signer;
-    use std::string::{String};
+    use std::string::{Self, String};
     use std::vector;
 
     friend townespace::studio;
@@ -31,11 +28,6 @@ module townespace::core {
     // ------
     // Errors
     // ------
-    
-    // ---------
-    // Constants
-    // ---------
-    // TODO: constants for fast compose function
 
     // ---------
     // Resources
@@ -69,16 +61,7 @@ module townespace::core {
         total_supply: u64,
         remaining_supply: u64,
         total_minted: u64,
-    }
-
-
-    // --------------------
-    // Initializer Function
-    // --------------------
-    // TODO: needed to initialize events.
-    // TODO: if certain addresses are in Move.toml, they will recieve collections and tokens.
-
-    
+    }    
 
     // ------------------
     // Internal Functions
@@ -86,7 +69,7 @@ module townespace::core {
     
     // Collection
     public fun create_token_collection_internal(
-        creator: &signer,
+        creator_signer: &signer,
         description: String,
         max_supply: u64,
         name: String,
@@ -105,25 +88,24 @@ module townespace::core {
         royalty_denominator: u64,
         seed: vector<u8> // used when auid is disabled.
     ): (Object<TokenCollection>, Object<AptosCollection>) {
-        // TODO: assert max supply is not 0
-        // TODO: assert royalty numerator is not 0
-        // TODO: assert royalty denominator is not 0
-        // TODO: assert royalty numerator is not greater than royalty denominator because it's a percentage and it must be between 0 and 1.
-        // TODO: assert collection exists 
+        let creator_address = signer::address_of(creator_signer);
+        assert!(!string::is_empty(&name), 0);
+        assert!(!string::is_empty(&symbol), 1);
+        assert!(!string::is_empty(&name), 2);
+        // TODO: assert name/symbol are not used.
         // Create composable token object.
-        let creator_address = signer::address_of(creator);
         // If auid is enabled, create the object with the creator address.
         // Otherwise, create it with the creator address and the seed.
         let constructor_ref = if (features::auids_enabled()) {
             object::create_object(creator_address)
         } else {
-            object::create_named_object(creator, seed)
+            object::create_named_object(creator_signer, seed)
         };
         // Generate the object signer, used to publish a resource under the token object address.
         let object_signer = object::generate_signer(&constructor_ref);
         // Create aptos collection object.
         let aptos_collection_object = aptos_token::create_collection_object(
-            creator,
+            creator_signer,
             description,
             max_supply,
             name,
@@ -141,8 +123,6 @@ module townespace::core {
             royalty_denominator,
         );
 
-        // Initialize token supply and publish it in the composable token object account.
-        // Initialize it with object_tokens vector if it exists. Empty otherwise.
         move_to(&object_signer, 
                 TokenCollection {
                     collection: aptos_collection_object,
@@ -150,7 +130,6 @@ module townespace::core {
                     symbol: symbol
                     }
                 );
-        // TODO Add events
 
         // Return both objects.
         let token_collection_object = object::object_from_constructor_ref(&constructor_ref);
@@ -159,7 +138,7 @@ module townespace::core {
 
     // Composable token
     public fun mint_composable_token_internal(
-        creator: &signer,
+        creator_signer: &signer,
         collection: String,
         description: String,
         name: String,
@@ -171,21 +150,26 @@ module townespace::core {
         property_values: vector<vector<u8>>,
         seed: vector<u8> // used when auid is disabled.
     ): (Object<ComposableToken>, Object<AptosToken>) {
+        let creator_address = signer::address_of(creator_signer);
+        assert!(total_supply > 0, 4);
+        assert!(!string::is_empty(&name), 5);
+        assert!(!string::is_empty(&uri), 6);
+        // Assert property vectors have the same length.
+        assert!(vector::length(&property_keys) == vector::length(&property_types), 7);
         // Create composable token object.
-        let creator_address = signer::address_of(creator);
         // If auid is enabled, create the object with the creator address.
         // Otherwise, create it with the creator address and the seed.
         let constructor_ref = if (features::auids_enabled()) {
             object::create_object(creator_address)
         } else {
-            object::create_named_object(creator, seed)
+            object::create_named_object(creator_signer, seed)
         };
         
         // Generate the object signer, used to publish a resource under the token object address.
         let object_signer = object::generate_signer(&constructor_ref);
         // Create aptos token object.
         let aptos_token_object = aptos_token::mint_token_object(
-            creator,
+            creator_signer,
             collection,
             description,
             name,
@@ -224,7 +208,7 @@ module townespace::core {
 
     // Object token
     public fun mint_object_token_internal(
-        creator: &signer,
+        creator_signer: &signer,
         collection: String,
         description: String,
         name: String,
@@ -235,20 +219,26 @@ module townespace::core {
         composable_token_object: Object<ComposableToken>, // to use for tracking supply
         seed: vector<u8> // used only when auid is disabled
     ): (Object<ObjectToken>, Object<AptosToken>) acquires TokenSupply {
+        assert!(!string::is_empty(&name), 5);
+        assert!(!string::is_empty(&uri), 6);
+        assert!(
+            vector::length(&property_keys) == vector::length(&property_types), 7);
+        // Assert the composable token exists.
+        assert!(exists<ComposableToken>(object::object_address(&composable_token_object)), 8);
         // Create composable token object.
-        let creator_address = signer::address_of(creator);
+        let creator_address = signer::address_of(creator_signer);
         // If auid is enabled, create the object with the creator address.
         // Otherwise, create it with the creator address and the seed.
         let constructor_ref = if (features::auids_enabled()) {
             object::create_object(creator_address)
         } else {
-            object::create_named_object(creator, seed)
+            object::create_named_object(creator_signer, seed)
         };
         // Generate the object signer, used to publish a resource under the token object address.
         let object_signer = object::generate_signer(&constructor_ref);
         // create object for aptos token
         let aptos_token_object = aptos_token::mint_token_object(
-            creator,
+            creator_signer,
             collection,
             description,
             name,
@@ -276,29 +266,28 @@ module townespace::core {
         (object_token_object, aptos_token_object)
     }
 
-    public fun compose_object_internal(
+    public(friend) fun compose_object_internal(
         owner: &signer,
-        composable_token: Object<ComposableToken>,
+        composable_token_object: Object<ComposableToken>,
         object: Object<ObjectToken>
     ) acquires ComposableToken, ObjectToken {
-        // TODO: assert the signer is the owner
-        // TODO: assert the composable token exists
-        // TODO: assert both tokens exist
-        let composable_token_address = borrow_global_mut<ComposableToken>(object::object_address(&composable_token)); 
+        let composable_token = borrow_global_mut<ComposableToken>(object::object_address(&composable_token_object)); 
+        let object_token = borrow_global_mut<ObjectToken>(object::object_address(&object));
+        let aptos_token_object = object_token.token;
         // index = vector length
-        let index = vector::length(&composable_token_address.object_tokens);
-        // TODO: Assert transfer is not freezed (object not equiped to composable nft)
-        // TODO: Assert the signer is the owner 
-        // TODO: Assert the object does not exist in the composable token
+        let index = vector::length(&composable_token.object_tokens);
+        // Assert ungated transfer enabled for the object token.
+        assert!(object::ungated_transfer_allowed(object) == true, 10);
+        assert!(object::ungated_transfer_allowed(aptos_token_object) == true, 10);
         // Transfer the object to the composable token
-        object::transfer_to_object(owner, object, composable_token);
+        object::transfer_to_object(owner, object, composable_token_object);
+        // object::transfer_to_object(owner, aptos_token_object, composable_token_object);
         // Freeze transfer for both objects
-        //let composable_aptos_token = composable_token_address.token;
-        let object_token_address = borrow_global_mut<ObjectToken>(object::object_address(&object));
-        let object_aptos_token = object_token_address.token;
-        aptos_token::freeze_transfer(owner, object_aptos_token);    // more explaination in docs
+        // aptos_token::freeze_transfer(owner, object); 
+        aptos_token::freeze_transfer(owner, aptos_token_object);    // TODO: more explanation in docs
+        // TODO: Disable ungated transfer for the object token.
         // Add the object to the vector
-        vector::insert<Object<ObjectToken>>(&mut composable_token_address.object_tokens, index, object);
+        vector::insert<Object<ObjectToken>>(&mut composable_token.object_tokens, index, object);
         // object::transfer(owner, composable_aptos_token, @townespace); TODO: add this to unit testing, we send object token to the composable token, and we freeze transfer for the object token, we send the composable token to another address, and the object token is transfered with it.
     }
 
@@ -328,44 +317,39 @@ module townespace::core {
     //        vector::empty(),
     //        vector::empty()
     //    );
-    //    // TODO: event fast compose
     //}
 
     public(friend) fun decompose_object_internal(
-        owner: &signer,
+        owner_signer: &signer,
         composable_token_object: Object<ComposableToken>,
         object_token_object: Object<ObjectToken>
     ) acquires ComposableToken, ObjectToken {
-        // TODO: move these asserts to entry function
-        // TODO: assert the signer is the owner
-        // TODO: assert both tokens exist
-        let composable_token = borrow_global_mut<ComposableToken>(object::object_address(&composable_token_object));
+        let owner_address = signer::address_of(owner_signer);
+        let composable_token_address = object::object_address(&composable_token_object);
+        let composable_token = borrow_global_mut<ComposableToken>(composable_token_address);
+        let object_token_address = object::object_address(&object_token_object);
         // get the index "i" of the object. Needed for removing object from vector.
         // pattern matching
         let (_, index) = vector::index_of(&composable_token.object_tokens, &object_token_object);
-        // TODO: assert the object exists in the composable token
+        // assert the object exists in the composable token address
+        assert!(object::is_owner(object_token_object, composable_token_address), 8);
         // Transfer both objects
-        let object_token = borrow_global_mut<ObjectToken>(object::object_address(&object_token_object));
-        let object_aptos_token = object_token.token;
+        let object_token = borrow_global_mut<ObjectToken>(object_token_address);
+        let aptos_token_object = object_token.token;
         // Unfreeze transfer
-        aptos_token::unfreeze_transfer(owner, object_token.token);
-        object::transfer(owner, object_aptos_token, signer::address_of(owner));
-        object::transfer(owner, object_token_object, signer::address_of(owner));
+        aptos_token::unfreeze_transfer(owner_signer, aptos_token_object);
+        object::transfer(owner_signer, object_token_object, owner_address);
         // Remove the object from the vector
         vector::remove<Object<ObjectToken>>(&mut composable_token.object_tokens, index);
-        
-        // TODO: event decompose token
     }
 
     public(friend) fun decompose_entire_token_internal(
-        owner: &signer,
+        owner_signer: &signer,
         composable_token_object: Object<ComposableToken>
     ) acquires ComposableToken, ObjectToken {
-        // TODO: move these asserts to entry function
-        // TODO: assert the signer is the owner
-        // TODO: assert both tokens exist
-        // TODO: assert the composable token is not empty
         let composable_token = borrow_global_mut<ComposableToken>(object::object_address(&composable_token_object)); 
+        // assert composable token is not empty
+        assert!(vector::length(&composable_token.object_tokens) > 0, 9);
         // Iterate through the vector
         let i = 0;
         while (i < vector::length(&composable_token.object_tokens)) {
@@ -374,8 +358,8 @@ module townespace::core {
             let object_token_address = object::object_address(&object);
             let object_token = borrow_global_mut<ObjectToken>(object_token_address);
             let object_aptos_token = object_token.token;
-            aptos_token::unfreeze_transfer(owner, object_aptos_token);
-            object::transfer(owner, object_aptos_token, signer::address_of(owner));
+            aptos_token::unfreeze_transfer(owner_signer, object_aptos_token);
+            object::transfer(owner_signer, object_aptos_token, signer::address_of(owner_signer));
             vector::remove<Object<ObjectToken>>(&mut composable_token.object_tokens, i);
         };  
     }
@@ -389,9 +373,6 @@ module townespace::core {
         owner: &signer,
         composable_token_object: Object<ComposableToken>
     ) acquires ComposableToken, ObjectToken {
-        // TODO: assert the composable token exists
-        // TODO: assert signer is the owner
-
         // decompose the composable token
         decompose_entire_token_internal(owner, composable_token_object);
         // burn the aptos token
@@ -407,9 +388,6 @@ module townespace::core {
         composable_token_object: Object<ComposableToken>,
         object_token_object: Object<ObjectToken>
     ) acquires ObjectToken, TokenSupply {
-        // TODO: assert the signer is the owner
-        // TODO: assert the composable token exists
-        // TODO: assert the object token exists
         let object_token = borrow_global_mut<ObjectToken>(object::object_address(&object_token_object));
         // burn the aptos token
         aptos_token::burn(owner, object_token.token);
@@ -424,14 +402,10 @@ module townespace::core {
         token_address: address,
         new_owner_address: address,
     ) {
-        // TODO assert token exists
         // TODO: If token is object_token, assert transfer is unfreezed (object not equiped to composable nft)
-        // TODO: Assert the signer is the token owner
-        
         // Transfer
         let token = object::address_to_object<T>(token_address);
         object::transfer(owner, token, new_owner_address);
-        // TODO: event
     }
 
     // Transfer with a fee function
@@ -440,15 +414,12 @@ module townespace::core {
         token_address: address,
         new_owner_address: address,
     ) {
-        // TODO assert token exists
         // TODO: If token is object_token, assert transfer is unfreezed (object not equiped to composable nft)
-        // TODO: Assert the signer is the token owner
         
         // Transfer
         let token = object::address_to_object<T>(token_address);
         // TODO: Charge a small fee that will be sent to studio address.
         object::transfer(owner, token, new_owner_address);
-        // TODO: event
     }
     
     // ---------
@@ -466,7 +437,7 @@ module townespace::core {
                 error::not_found(1),
             );
             borrow_global<T>(object_address)
-        }
+    }
 
     #[view]
     public fun get_collection(
@@ -525,7 +496,6 @@ module townespace::core {
         token: Object<ComposableToken>,
         new_uri: String
     ) acquires ComposableToken {
-        // TODO: Asserts 
         let token_address = object::object_address(&token);
         let composable_token_object = borrow_global_mut<ComposableToken>(token_address);
         let aptos_token = composable_token_object.token;
@@ -535,14 +505,10 @@ module townespace::core {
     // Decrement the remaining supply on each object token minted.
     inline fun decrement_token_supply(
         composable_token_object: &Object<ComposableToken>,
-        //minted_token: address
     ) acquires TokenSupply {
-        // TODO: assert the composable token exists.
-        // TODO: assert the object token exists.
         // Get the composable token address
         let composable_token_address = object::object_address(composable_token_object);
         let token_supply = borrow_global_mut<TokenSupply>(composable_token_address);
-        // assert the remaining supply > 0.
         assert!(token_supply.remaining_supply > 0, 1000);
         token_supply.remaining_supply = token_supply.remaining_supply - 1;
         token_supply.total_minted = token_supply.total_minted + 1;
@@ -554,8 +520,6 @@ module townespace::core {
         composable_token_object: &Object<ComposableToken>,
         //minted_token: address
     ) acquires ComposableToken, TokenSupply {
-        // TODO: assert the composable token exists.
-        // TODO: assert the object token exists.
         // Get the composable token address
         let composable_token_address = object::object_address(composable_token_object);
         let token_supply = borrow_global_mut<TokenSupply>(composable_token_address);
@@ -564,5 +528,4 @@ module townespace::core {
         token_supply.remaining_supply = token_supply.remaining_supply + 1;
         // TODO: event supply updated (store new values with the burned token)
     }
- 
 }

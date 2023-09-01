@@ -112,7 +112,6 @@ module townespace::events {
         uri: String
     }
 
-     
     public fun object_token_metadata(
         object_token_object: Object<ObjectToken>
         ): ObjectTokenMetadata {
@@ -144,7 +143,6 @@ module townespace::events {
         token_collection: address,
         token_collection_metadata: TokenCollectionMetadata
     }
-
      
     public(friend) fun emit_token_collection_created_event(
         token_collection_address: address,
@@ -167,7 +165,6 @@ module townespace::events {
         composable_token_metadata: ComposableTokenMetadata
     }
 
-     
     public(friend) fun emit_composable_token_minted_event(
         composable_token_address: address,
         composable_token_metadata: ComposableTokenMetadata

@@ -8,7 +8,7 @@
 
 A studio is a place where Users can create a collection of composable NFTs (cNFTs) and object NFTs (oNFTs). A cNFT is a NFT that can be composed of other NFTs. An oNFT is a NFT that can be composed into a cNFT. A cNFT can be composed of multiple oNFTs. An oNFT can only be composed into one cNFT. A cNFT can be decomposed into its oNFTs. An oNFT cannot be decomposed.
 
-### `core.move`
+### `studio.move`
 
 #### Resources
 
@@ -21,39 +21,27 @@ struct TokenCollection has key {
         collection: Object<aptos_token::AptosCollection>,
         name: String,
         symbol: String,
-        // TODO: create_collection_events
-        // TODO: delete_collection_events
     }
 ```
 
 ``` rust
 struct ComposableToken has key {
         token: Object<aptos_token::AptosToken>,
-        // The object tokens to store in the composable token.
-        object_tokens: vector<Object<ObjectToken>>, // TODO: this must be extended to each object type.
-        // TODO: transfer event
-        // TODO: burn_events: ,
-        // TODO: mint_events: EventHandle<CreateTraitTokenEvent> // TODO: refactor to CreateObjectTokenEvent
+        object_tokens: vector<Object<ObjectToken>>,
     }
 ```
 
 ``` rust
 struct ObjectToken has key {
         token: Object<aptos_token::AptosToken>,
-        // TODO: transfer event
-        // TODO: burn_events: ,
-        // TODO: mint_events: EventHandle<CreateTraitTokenEvent> // TODO: refactor to CreateObjectTokenEvent
     }
 ```
 
 ``` rust
 struct TokenSupply has key {
-        // TODO: supply -> max_supply || total_supply
         total_supply: u64,
         remaining_supply: u64,
         total_minted: u64,
-        // burn_events: ,
-        // mint_events: ,
     }
 ```
 

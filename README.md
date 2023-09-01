@@ -84,7 +84,7 @@ gantt
     
     section Contracts
     marketplaceV2  :done, 17-07-2023, 3d
-    studio   :active, 04-08-2023  , 18d
+    studio   :done, 04-08-2023  , 18d
     audit   :26-09-2023 , 14d
     section UI 
     web  phase 1:active, 18-08-2023 , 26d

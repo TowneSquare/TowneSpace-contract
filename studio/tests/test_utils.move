@@ -34,7 +34,8 @@ module townespace::test_utils {
         create_token_collection_helper(creator, collection_name, collection_symbol, true);
         let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name, 100);
         let (object_token_object, _) = mint_object_token_helper(creator, collection_name, object_token_name, composable_token_object, object_token_seed);
-        studio::compose_object(creator, composable_token_object, object_token_object);
+        let new_uri = string::utf8(b"new uri");
+        studio::compose_object(creator, composable_token_object, object_token_object, new_uri);
         // TODO: asserts
     }
 
@@ -48,10 +49,11 @@ module townespace::test_utils {
         create_token_collection_helper(creator, collection_name, collection_symbol, true);
         let (composable_token_object, _) = mint_composable_token_helper(creator, collection_name, composable_token_name, 100);
         let (object_token_object, _) = mint_object_token_helper(creator, collection_name, object_token_name, composable_token_object, object_token_seed);
-        studio::compose_object(creator, composable_token_object, object_token_object);
+        let composition_uri = string::utf8(b"uri after composition");
+        studio::compose_object(creator, composable_token_object, object_token_object, composition_uri);
         // TODO: asserts
-        let new_uri = string::utf8(b"new uri"); // User should not prompt this/ In most cases
-        studio::decompose_object(creator, composable_token_object, object_token_object, new_uri);
+        let decomposition_uri = string::utf8(b"uri after decomposition");
+        studio::decompose_object(creator, composable_token_object, object_token_object, decomposition_uri);
         // TODO: asserts
     }
 
@@ -71,9 +73,12 @@ module townespace::test_utils {
         let (object_token_object_one, _) = mint_object_token_helper(creator, collection_name, object_token_name_one, composable_token_object, object_token_one_seed);
         let (object_token_object_two, _) = mint_object_token_helper(creator, collection_name, object_token_name_two, composable_token_object, object_token_two_seed);
         let (object_token_object_three, _) = mint_object_token_helper(creator, collection_name, object_token_name_three, composable_token_object, object_token_three_seed);
-        studio::compose_object(creator, composable_token_object, object_token_object_one);
-        studio::compose_object(creator, composable_token_object, object_token_object_two);
-        studio::compose_object(creator, composable_token_object, object_token_object_three);
+        let compose_uri_1 = string::utf8(b"compose uri 1");
+        let compose_uri_2 = string::utf8(b"compose uri 2");
+        let compose_uri_3 = string::utf8(b"compose uri 3");
+        studio::compose_object(creator, composable_token_object, object_token_object_one, compose_uri_1);
+        studio::compose_object(creator, composable_token_object, object_token_object_two, compose_uri_2);
+        studio::compose_object(creator, composable_token_object, object_token_object_three, compose_uri_3);
         // TODO: asserts
         let new_uri = string::utf8(b"new uri"); // User should not prompt this/ In most cases
         studio::decompose_entire_token(creator, composable_token_object, new_uri);

@@ -198,24 +198,21 @@ module townespace::events {
 
     #[event]
     // Object Token Composed Event
-    struct CompostionEvent has drop, store {
+    struct CompositionEvent has drop, store {
         composable_token_metadata: ComposableTokenMetadata,
         object_token_to_compose_metadata: ObjectTokenMetadata,
-        previous_uri: String,
         new_uri: String
     }
 
     public(friend) fun emit_composition_event(
         composable_token_metadata: ComposableTokenMetadata,
         object_token_to_compose_metadata: ObjectTokenMetadata,
-        previous_uri: String,
         new_uri: String
     ) {
-        event::emit<CompostionEvent>(
-            CompostionEvent {
+        event::emit<CompositionEvent>(
+            CompositionEvent {
                 composable_token_metadata: composable_token_metadata,
                 object_token_to_compose_metadata: object_token_to_compose_metadata,
-                previous_uri: previous_uri,
                 new_uri: new_uri
             }
         );
@@ -226,21 +223,18 @@ module townespace::events {
     struct DecompositionEvent has drop, store {
         composable_token_metadata: ComposableTokenMetadata,
         object_token_to_decompose_metadata: ObjectTokenMetadata,
-        previous_uri: String,
         new_uri: String
     }
 
     public(friend) fun emit_decomposition_event(
         composable_token_metadata: ComposableTokenMetadata,
         object_token_to_decompose_metadata: ObjectTokenMetadata,
-        previous_uri: String,
         new_uri: String
     ) {
         event::emit<DecompositionEvent>(
             DecompositionEvent {
                 composable_token_metadata: composable_token_metadata,
                 object_token_to_decompose_metadata: object_token_to_decompose_metadata,
-                previous_uri: previous_uri,
                 new_uri: new_uri
             }
         );

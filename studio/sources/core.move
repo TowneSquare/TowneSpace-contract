@@ -269,26 +269,28 @@ module townespace::core {
     public(friend) fun compose_object_internal(
         owner: &signer,
         composable_token_object: Object<ComposableToken>,
-        object: Object<ObjectToken>
+        object_token_object: Object<ObjectToken>
     ) acquires ComposableToken, ObjectToken {
-        let composable_token = borrow_global_mut<ComposableToken>(object::object_address(&composable_token_object)); 
-        let object_token = borrow_global_mut<ObjectToken>(object::object_address(&object));
-        let aptos_token_object = object_token.token;
+        // Composable 
+        let composable_token = borrow_global_mut<ComposableToken>(object::object_address(&composable_token_object));
+        let composable_aptos_token_object = composable_token.token; 
+        // Object
+        let object_token = borrow_global_mut<ObjectToken>(object::object_address(&object_token_object));
+        let object_aptos_token_object = object_token.token;
         // index = vector length
         let index = vector::length(&composable_token.object_tokens);
         // Assert ungated transfer enabled for the object token.
-        assert!(object::ungated_transfer_allowed(object) == true, 10);
-        assert!(object::ungated_transfer_allowed(aptos_token_object) == true, 10);
-        // Transfer the object to the composable token
-        object::transfer_to_object(owner, object, composable_token_object);
-        // object::transfer_to_object(owner, aptos_token_object, composable_token_object);
-        // Freeze transfer for both objects
-        // aptos_token::freeze_transfer(owner, object); 
-        aptos_token::freeze_transfer(owner, aptos_token_object);    // TODO: more explanation in docs
-        // TODO: Disable ungated transfer for the object token.
+        assert!(object::ungated_transfer_allowed(object_token_object) == true, 10);
+        assert!(object::ungated_transfer_allowed(object_aptos_token_object) == true, 10);
+        // Transfer the objects: object -> composable  && object_aptos_token -> composable_aptos_token
+        object::transfer_to_object(owner, object_aptos_token_object, composable_aptos_token_object);
+        object::transfer_to_object(owner, object_token_object, composable_token_object);
+        // Freeze transfer objects
+        // aptos_token::freeze_transfer(owner, object_token_object); 
+        aptos_token::freeze_transfer(owner, object_aptos_token_object);
         // Add the object to the vector
-        vector::insert<Object<ObjectToken>>(&mut composable_token.object_tokens, index, object);
-        // object::transfer(owner, composable_aptos_token, @townespace); TODO: add this to unit testing, we send object token to the composable token, and we freeze transfer for the object token, we send the composable token to another address, and the object token is transfered with it.
+        vector::insert<Object<ObjectToken>>(&mut composable_token.object_tokens, index, object_token_object);
+        // object::transfer(owner, composable_aptos_token_object, @townespace); TODO: add this to unit testing, we send object token to the composable token, and we freeze transfer for the object token, we send the composable token to another address, and the object token is transfered with it.
     }
 
     // TODO: Fast compose function
@@ -325,24 +327,32 @@ module townespace::core {
         object_token_object: Object<ObjectToken>
     ) acquires ComposableToken, ObjectToken {
         let owner_address = signer::address_of(owner_signer);
+        // composable token
         let composable_token_address = object::object_address(&composable_token_object);
         let composable_token = borrow_global_mut<ComposableToken>(composable_token_address);
+        let composable_aptos_token_object = composable_token.token;
+        let composable_aptos_token_address = object::object_address(&composable_aptos_token_object);
+        // object token
         let object_token_address = object::object_address(&object_token_object);
+        let object_token = borrow_global_mut<ObjectToken>(object_token_address);
+        let object_aptos_token_object = object_token.token;
         // get the index "i" of the object. Needed for removing object from vector.
         // pattern matching
         let (_, index) = vector::index_of(&composable_token.object_tokens, &object_token_object);
         // assert the object exists in the composable token address
         assert!(object::is_owner(object_token_object, composable_token_address), 8);
-        // Transfer both objects
-        let object_token = borrow_global_mut<ObjectToken>(object_token_address);
-        let aptos_token_object = object_token.token;
+        // assert the object aptos token exists in the composable aptos token address
+        assert!(object::is_owner(object_aptos_token_object, composable_aptos_token_address), 9);
         // Unfreeze transfer
-        aptos_token::unfreeze_transfer(owner_signer, aptos_token_object);
+        aptos_token::unfreeze_transfer(owner_signer, object_aptos_token_object);
+        // Transfer both objects
         object::transfer(owner_signer, object_token_object, owner_address);
+        object::transfer(owner_signer, object_aptos_token_object, owner_address);
         // Remove the object from the vector
         vector::remove<Object<ObjectToken>>(&mut composable_token.object_tokens, index);
     }
 
+    // TODO: update
     public(friend) fun decompose_entire_token_internal(
         owner_signer: &signer,
         composable_token_object: Object<ComposableToken>
@@ -425,8 +435,6 @@ module townespace::core {
     // ---------
     // Accessors
     // ---------
-
-    // inline fun assert_x(){}
 
     inline fun borrow<T: key>(
         object: Object<T>

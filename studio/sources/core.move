@@ -8,6 +8,7 @@
         - colection mutators: royalty mutator.
         - add comments.
         - work on the fungible assets.
+        - work on the functions visibility.
 */
 
 module townespace::core {
@@ -28,7 +29,8 @@ module townespace::core {
     use std::string::{Self, String};
     use std::vector;
 
-    friend townespace::studio;
+    // friend townespace::studio;
+    // friend townespace::unit_tests;
 
     // ------
     // errors
@@ -52,8 +54,8 @@ module townespace::core {
     // Storage state for composables; aka, the atoms/primaries of the token
     struct Composable has key {
         name: String,
-        traits: Option<vector<Object<Trait>>>,
-        coins: Option<Object<FungibleStore>>
+        traits: vector<Object<Trait>>,
+        coins: vector<Object<FungibleStore>>
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -78,7 +80,7 @@ module townespace::core {
     // ------------------
 
     // Create a collection
-    public(friend) fun create_collection_internal<T>(
+    public fun create_collection_internal<T>(
         creator_signer: &signer,
         description: String,
         max_supply: Option<u64>, // if the collection is set to haved a fixed supply.
@@ -131,7 +133,7 @@ module townespace::core {
     }
 
     // Create token
-    public(friend) fun mint_token_internal<T>(
+    public fun mint_token_internal<T>(
         creator_signer: &signer,
         collection_name: String,
         description: String,
@@ -173,12 +175,13 @@ module townespace::core {
         );
 
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
+            // if there are no traits or coins.
             move_to(
                 &token_signer,
                 Composable {
                     name: token_name,
-                    traits: option::none(),
-                    coins: option::none(),
+                    traits: vector::empty(),
+                    coins: vector::empty(),
                 }
             ); 
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
@@ -197,7 +200,7 @@ module townespace::core {
     }   
 
     // Compose trait to a composable token
-    public(friend) fun equip_trait_internal(
+    public fun equip_trait_internal(
         owner_signer: &signer,
         composable_object: Object<Composable>,
         trait_object: Object<Trait>
@@ -207,7 +210,7 @@ module townespace::core {
         // Trait
         let trait_references = borrow_global_mut<References>(object::object_address(&trait_object));
         // index = vector length
-        let traits = option::extract(&mut composable.traits);
+        let traits = composable.traits;
         let index = vector::length(&traits);
         // Assert ungated transfer enabled for the object token.
         assert!(object::ungated_transfer_allowed(trait_object) == true, 10);
@@ -220,7 +223,7 @@ module townespace::core {
     }
 
     // TODO: Decompose a trait from a composable token
-    public(friend) fun unequip_trait_internal(
+    public fun unequip_trait_internal(
         owner_signer: &signer,
         composable_object: Object<Composable>,
         trait_object: Object<Trait>
@@ -231,17 +234,17 @@ module townespace::core {
         // Trait
         let trait_address = object::object_address(&trait_object);
         let trait_references = borrow_global_mut<References>(trait_address);
-        let traits = option::extract(&mut composable.traits);
-        // get the index "i" of the object. Needed for removing the trait from vector. (pattern matching)
+        let traits = composable.traits;
+        // get the index of the object. Needed for removing the trait from vector. (pattern matching)
         let (_, index) = vector::index_of(&traits, &trait_object);
         // assert the object exists in the composable token address
         assert!(object::is_owner(trait_object, composable_address), 8);
+        // Remove the object to the vector
+        vector::remove<Object<Trait>>(&mut traits, index);
         // Enable ungated transfer for trait object
         object::enable_ungated_transfer(&trait_references.transfer_ref);
         // Transfer
         object::transfer(owner_signer, trait_object, signer::address_of(owner_signer));
-        // Add the object to the vector
-        vector::remove<Object<Trait>>(&mut traits, index);
     }
     
     // TODO: Transfer
@@ -261,7 +264,7 @@ module townespace::core {
     // --------
 
     // Change uri
-    public(friend) fun update_uri_internal(
+    public fun update_uri_internal(
         composable_object_address: address,
         new_uri: String
     ) acquires References {

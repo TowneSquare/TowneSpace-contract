@@ -2,7 +2,6 @@
 build
 .coverage_map.mvcov
 .trace
-dynamic_toads.move
 old_events.move
 old_core.move
 old_studio.move

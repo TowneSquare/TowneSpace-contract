@@ -31,7 +31,7 @@ module townespace::studio {
     // ---------------
     
     // Create a new collection
-    public entry fun create_token_collection<T: key>(
+    public entry fun create_collection<T: key>(
         creator_signer: &signer,
         description: String,
         max_supply: Option<u64>, // if the collection is set to haved a fixed supply.

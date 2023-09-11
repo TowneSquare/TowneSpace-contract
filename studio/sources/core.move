@@ -7,10 +7,11 @@
         - set uri function.
         - colection mutators: royalty mutator.
         - add comments.
+        - work on the fungible assets.
 */
 
 module townespace::core {
-    use aptos_framework::fungible_asset::{FungibleAsset}; 
+    use aptos_framework::fungible_asset::{FungibleStore}; 
     use aptos_framework::object::{
         Self, 
         Object, 
@@ -47,6 +48,7 @@ module townespace::core {
     // Storage state for collections
     struct Collection has key {
         name: String,
+        // Collection symbol.
         symbol: String,
         type: String
     }
@@ -56,7 +58,7 @@ module townespace::core {
     struct Composable has key {
         name: String,
         traits: Option<vector<Object<Trait>>>,
-        coins: Option<Object<FungibleAsset>>
+        coins: Option<Object<FungibleStore>>
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -224,7 +226,7 @@ module townespace::core {
         vector::insert<Object<Trait>>(&mut traits, index, trait_object);
     }
 
-    // TODO: Decompose
+    // TODO: Decompose a trait from a composable token
     public(friend) fun unequip_trait(
         owner_signer: &signer,
         composable_object: Object<Composable>,
@@ -237,20 +239,19 @@ module townespace::core {
         let trait_address = object::object_address(&trait_object);
         let trait = borrow_global_mut<Trait>(trait_address);
         let trait_references = borrow_global_mut<References>(trait_address);
+        let traits = option::extract(&mut composable.traits);
         // get the index "i" of the object. Needed for removing the trait from vector. (pattern matching)
-        let (_, index) = vector::index_of(&composable_token.object_tokens, &object_token_object);
+        let (_, index) = vector::index_of(&traits, &trait_object);
         // assert the object exists in the composable token address
-        assert!(object::is_owner(object_token_object, composable_address), 8);
-        // assert the object aptos token exists in the composable aptos token address
-        assert!(object::is_owner(object_aptos_token_object, composable_aptos_token_address), 9);
+        assert!(object::is_owner(trait_object, composable_address), 8);
         // Enable ungated transfer for trait object
         object::enable_ungated_transfer(&trait_references.transfer_ref);
         // Transfer
         object::transfer(owner_signer, trait_object, signer::address_of(owner_signer));
         // Add the object to the vector
-        vector::remove<Object<Trait>>(&mut traits, index, index);
+        vector::remove<Object<Trait>>(&mut traits, index);
     }
-
+    
     // TODO: Transfer
 
     // TODO: Burn

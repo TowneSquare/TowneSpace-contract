@@ -15,25 +15,20 @@ module townespace::core {
     use aptos_framework::object::{
         Self, 
         Object, 
-        ConstructorRef, 
-        DeleteRef, 
-        ExtendRef,
-        TransferRef
+        ConstructorRef
         };
-    use aptos_std::string_utils;
     use aptos_std::type_info;
     use aptos_token_objects::collection;
     use aptos_token_objects::royalty::{Royalty};
     use aptos_token_objects::token;
     use aptos_token_objects::property_map;
-   
 
-    use std::error;
-    use std::features;
     use std::option::{Self, Option};
     use std::signer;
     use std::string::{Self, String};
     use std::vector;
+
+    friend townespace::studio;
 
     // ------
     // errors
@@ -83,10 +78,9 @@ module townespace::core {
     // ------------------
 
     // Create a collection
-    fun create_collection<T>(
+    public(friend) fun create_collection_internal<T>(
         creator_signer: &signer,
         description: String,
-        supply_type: String,
         max_supply: Option<u64>, // if the collection is set to haved a fixed supply.
         name: String,
         symbol: String,
@@ -137,7 +131,7 @@ module townespace::core {
     }
 
     // Create token
-    fun create_token<T>(
+    public(friend) fun mint_token_internal<T>(
         creator_signer: &signer,
         collection_name: String,
         description: String,
@@ -145,7 +139,7 @@ module townespace::core {
         name: String,
         num_type: u64,
         uri: String
-    ): ConstructorRef acquires Collection {
+    ): ConstructorRef {
         let token_name = type;
         string::append_utf8(&mut token_name, b" #");
         string::append_utf8(&mut token_name, *string::bytes(&u64_to_string(num_type)));
@@ -203,15 +197,14 @@ module townespace::core {
     }   
 
     // Compose trait to a composable token
-    public(friend) fun equip_trait(
+    public(friend) fun equip_trait_internal(
         owner_signer: &signer,
         composable_object: Object<Composable>,
         trait_object: Object<Trait>
-    ) acquires Composable, Trait, References {
+    ) acquires Composable, References {
         // Composable 
         let composable = borrow_global_mut<Composable>(object::object_address(&composable_object));
         // Trait
-        let trait = borrow_global_mut<Trait>(object::object_address(&trait_object));
         let trait_references = borrow_global_mut<References>(object::object_address(&trait_object));
         // index = vector length
         let traits = option::extract(&mut composable.traits);
@@ -227,17 +220,16 @@ module townespace::core {
     }
 
     // TODO: Decompose a trait from a composable token
-    public(friend) fun unequip_trait(
+    public(friend) fun unequip_trait_internal(
         owner_signer: &signer,
         composable_object: Object<Composable>,
         trait_object: Object<Trait>
-    ) acquires Composable, Trait, References {
+    ) acquires Composable, References {
         // Composable 
         let composable_address = object::object_address(&composable_object);
         let composable = borrow_global_mut<Composable>(composable_address);
         // Trait
         let trait_address = object::object_address(&trait_object);
-        let trait = borrow_global_mut<Trait>(trait_address);
         let trait_references = borrow_global_mut<References>(trait_address);
         let traits = option::extract(&mut composable.traits);
         // get the index "i" of the object. Needed for removing the trait from vector. (pattern matching)
@@ -267,6 +259,22 @@ module townespace::core {
     // --------
     // Mutators
     // --------
+
+    // Change uri
+    public(friend) fun update_uri_internal(
+        owner_signer: &signer,
+        collection_name: String,
+        composable_object_address: address,
+        new_uri: String
+    ) acquires References {
+        let owner_address = signer::address_of(owner_signer);
+        let collection_address = collection::create_collection_address(&owner_address, &collection_name);
+        let references = borrow_global_mut<References>(composable_object_address);
+        let mutator_reference = &references.mutator_ref;
+        token::set_uri(mutator_reference, new_uri);
+    }
+
+    // type casting
     fun u64_to_string(value: u64): String {
       if (value == 0) {
          return string::utf8(b"0")

@@ -262,13 +262,9 @@ module townespace::core {
 
     // Change uri
     public(friend) fun update_uri_internal(
-        owner_signer: &signer,
-        collection_name: String,
         composable_object_address: address,
         new_uri: String
     ) acquires References {
-        let owner_address = signer::address_of(owner_signer);
-        let collection_address = collection::create_collection_address(&owner_address, &collection_name);
         let references = borrow_global_mut<References>(composable_object_address);
         let mutator_reference = &references.mutator_ref;
         token::set_uri(mutator_reference, new_uri);

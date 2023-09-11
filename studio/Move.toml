@@ -1,6 +1,6 @@
 [package]
 name = 'studio'
-version = '0.0.1'
+version = '0.0.2'
 
 [dependencies.AptosFramework]
 git = 'https://github.com/aptos-labs/aptos-core.git'
@@ -11,11 +11,6 @@ subdir = 'aptos-move/framework/aptos-framework'
 git = 'https://github.com/aptos-labs/aptos-core.git'
 rev = 'main'
 subdir = 'aptos-move/framework/aptos-token-objects'
-
-[dependencies.AptosToken]
-git = 'https://github.com/aptos-labs/aptos-core.git'
-rev = 'main'
-subdir = 'aptos-move/framework/aptos-token'
 
 [addresses]
 townespace = '0x07ff0308d16a5041ace8e7e306a60b2946b6a4aee0e7e923b8f20e49bf3508ce'

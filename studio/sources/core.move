@@ -1,12 +1,24 @@
 /*
-    TODO: Add a description of the module here.
+    - This contract represents the core of the studio.
+    - Allows to create collections and mint tokens.
+    - Leverages aptos_token_objects.
+    - All functions are internals and has limited visibility (check NOTES).
+    - A user can create the following:
+        - Collections using aptos_token_objects/collection.move
+        - Trait token: A token V2 that represents a trait.
+        - Composable token (cNFT): A token V2 that can hold Trait tokens.
+        - Fungible assets: future work :)
     TODOs:
-        - functions to create/mint.
-        - add property map to token (maybe use aptos_token as a reference).
-        - set uri function.
-        - colection mutators: royalty mutator.
+        - fix unequip_trait_internal.
+        - optimise the code: add inline functions (accessors).
+        - add transfer functions.
+        - add burn functions.
+        - add mutators.
         - work on the fungible assets.
-        - work on the functions visibility.
+
+    NOTES:
+    - for the sake of testing, all functions are set to be public.
+    They should be set to internal once the testing is done (public(friend)).
 */
 
 module townespace::core {
@@ -33,12 +45,12 @@ module townespace::core {
     // ------
     // errors
     // ------
-    const E_TYPE_NOT_RECOCNIZED: u64 = 1;
+    const E_TYPE_NOT_RECOGNIZED: u64 = 1;
+    const E_UNGATED_TRANSFER_DISABLED: u64 = 2;
 
     // ---------
     // Resources
     // ---------
-
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     // Storage state for collections
     struct Collection has key {
@@ -98,8 +110,8 @@ module townespace::core {
                 uri
             );
 
-            // create resource and move it to the resource account.
-            // Needed for indexing later.
+            // create collection resource and move it to the resource account.
+            // Also needed later for indexing.
             let collection_signer = object::generate_signer(&constructor_ref);
             let new_collection = Collection {
                 name: name,
@@ -118,6 +130,8 @@ module townespace::core {
                 uri
             );
 
+            // create collection resource and move it to the resource account.
+            // Also needed later for indexing.
             let collection_signer = object::generate_signer(&constructor_ref);
             let new_collection = Collection {
                 name: name,
@@ -164,6 +178,7 @@ module townespace::core {
 
         let token_signer = object::generate_signer(&constructor_ref);
 
+        // create refs resource and move it to the resource account.
         let new_references = References {
             burn_ref: burn_ref,
             extend_ref: extend_ref,
@@ -211,7 +226,8 @@ module townespace::core {
                     property_map::init(&constructor_ref, properties);
                 }
         } else {
-            assert!(false, E_TYPE_NOT_RECOCNIZED);
+            // if type is neither composable nor trait.
+            assert!(false, E_TYPE_NOT_RECOGNIZED);
         }; 
         constructor_ref
     }   
@@ -232,14 +248,14 @@ module townespace::core {
         // Add the object to the vector
         vector::insert<Object<Trait>>(&mut traits, index, trait_object);
         // Assert ungated transfer enabled for the object token.
-        assert!(object::ungated_transfer_allowed(trait_object) == true, 10);
+        assert!(object::ungated_transfer_allowed(trait_object) == true, E_UNGATED_TRANSFER_DISABLED);
         // Transfer
         object::transfer_to_object(owner_signer, trait_object, composable_object);
         // Disable ungated transfer for trait object
         object::disable_ungated_transfer(&trait_references.transfer_ref);
     }
 
-    // Decompose a trait from a composable token
+    // Decompose a trait from a composable token. Tests panic.
     public fun unequip_trait_internal(
         owner_signer: &signer,
         composable_object: Object<Composable>,
@@ -259,10 +275,6 @@ module townespace::core {
         // Remove the object from the vector
         vector::remove(&mut traits_vector, index);
     }
-    
-    // TODO: Transfer
-
-    // TODO: Burn
 
     // ---------
     // Accessors
@@ -299,7 +311,5 @@ module townespace::core {
       vector::reverse(&mut buffer);
       string::utf8(buffer)
    }
-
-    // TODO: add properties to property map
 
 }

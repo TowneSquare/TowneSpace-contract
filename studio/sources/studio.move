@@ -1,5 +1,8 @@
 /*
-    TODO: description
+    - This module is the main entry point for the studio.
+    - It is responsible for creating collections, minting tokens,
+    and composing and decomposing tokens.
+    - It is also responsible for transferring tokens.
 */
 
 module townespace::studio {
@@ -40,7 +43,6 @@ module townespace::studio {
         royalty: Option<Royalty>,   // TODO get the same in core.move
         uri: String
     ) {
-        // TODO assert the signer is the creator.
         core::create_collection_internal<T>(
             creator_signer,
             description,

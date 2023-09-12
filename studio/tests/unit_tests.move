@@ -217,12 +217,7 @@ module townespace::unit_tests {
             decomposed_uri
         );
     }
-
-    // #[test(creator = @0x123)]
-    // fun c_decompose_token(creator: &signer) {
-        
-    // }
-
+    
     // -------
     // Helpers
     // -------

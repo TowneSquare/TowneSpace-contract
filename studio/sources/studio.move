@@ -61,7 +61,8 @@ module townespace::studio {
         type: String,
         name: String,
         num_type: u64,
-        uri: String
+        uri: String, 
+        traits: vector<Object<Trait>>   // TODO: wrap it in option
     ) {
         core::mint_token_internal<T>(
             creator_signer,
@@ -70,7 +71,8 @@ module townespace::studio {
             type,
             name,
             num_type,
-            uri
+            uri, 
+            traits
         );
         
         // TODO: emit composable token minted event

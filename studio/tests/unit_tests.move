@@ -1,11 +1,12 @@
 #[test_only]
 module townespace::unit_tests {
-    use aptos_framework::object::{Self, ConstructorRef};
+    use aptos_framework::object::{Self, ConstructorRef, Object};
     use aptos_token_objects::collection::{UnlimitedSupply};
     use aptos_token_objects::royalty::{Royalty};
     // use std::error;
     use std::option::{Self, Option};
     use std::string::{Self, String};
+    use std::vector;
     use townespace::core::{Self, Composable, Trait};
     use townespace::studio;
     
@@ -35,7 +36,7 @@ module townespace::unit_tests {
     // TODO: test create a collection with a fixed supply
 
     #[test(creator = @0x123)]
-    fun b_mint_empty_composable_token(creator: &signer) {
+    fun b_mint_composable_token(creator: &signer) {
         let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NFTs");
         let collection_name = string::utf8(b"Hack Singapore 2023 Collection");
         let collection_symbol = string::utf8(b"HSGP23");
@@ -53,13 +54,14 @@ module townespace::unit_tests {
         let token_name = string::utf8(b"Composable Token");
         let token_description = string::utf8(b"Composable Token");
         let token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/composable-token");
-        mint_empty_composable_token_helper(
+        mint_composable_token_helper(
             creator, 
             collection_name,
             token_description,
             token_name,
             1,
-            token_uri
+            token_uri, 
+            vector::empty()
             );
     }
 
@@ -113,13 +115,14 @@ module townespace::unit_tests {
         let composable_token_name = string::utf8(b"Composable Token");
         let composable_token_description = string::utf8(b"Composable Token");
         let composable_token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/composable-token");
-        let composable_constructor_ref = mint_empty_composable_token_helper(
+        let composable_constructor_ref = mint_composable_token_helper(
             creator, 
             collection_name,
             composable_token_description,
             composable_token_name,
             1,
-            composable_token_uri
+            composable_token_uri,
+            vector::empty()
             );
         let composable_object = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
 
@@ -145,6 +148,8 @@ module townespace::unit_tests {
             trait_object,
             updated_uri
         );
+        // assert trait object is in the composable token
+        // assert trait is added to the vector
     }
 
     #[test(creator = @0x123)]
@@ -166,13 +171,14 @@ let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NF
         let composable_token_name = string::utf8(b"Composable Token");
         let composable_token_description = string::utf8(b"Composable Token");
         let composable_token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/composable-token");
-        let composable_constructor_ref = mint_empty_composable_token_helper(
+        let composable_constructor_ref = mint_composable_token_helper(
             creator, 
             collection_name,
             composable_token_description,
             composable_token_name,
             1,
-            composable_token_uri
+            composable_token_uri,
+            vector::empty<Object<Trait>>()
             );
         let composable_object = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
 
@@ -236,13 +242,14 @@ let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NF
             )
     }
 
-    fun mint_empty_composable_token_helper(
+    fun mint_composable_token_helper(
         creator_signer: &signer,
         collection_name: String,
         description: String,
         name: String,
         num_type: u64,
-        uri: String
+        uri: String, 
+        traits: vector<Object<Trait>>
     ): ConstructorRef {
         let type = string::utf8(b"");   // Composable token does not have a type
         core::mint_token_internal<Composable>(
@@ -252,7 +259,8 @@ let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NF
             type,
             name,
             num_type,
-            uri
+            uri,
+            traits
             )
     }
 
@@ -263,7 +271,7 @@ let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NF
         type: String,
         name: String,
         num_type: u64,
-        uri: String
+        uri: String,
     ): ConstructorRef {
         core::mint_token_internal<Trait>(
             creator_signer,
@@ -272,7 +280,8 @@ let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NF
             type,
             name,
             num_type,
-            uri
+            uri, 
+            vector::empty()
             )
     }
 }

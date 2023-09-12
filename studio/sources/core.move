@@ -87,7 +87,7 @@ module townespace::core {
         name: String,
         symbol: String,
         royalty: Option<Royalty>,   // TODO get the same in core.move
-        uri: String
+        uri: String, 
     ): ConstructorRef {
         if (type_info::type_of<T>() == type_info::type_of<collection::FixedSupply>()) {
             let constructor_ref = collection::create_fixed_collection(
@@ -140,7 +140,8 @@ module townespace::core {
         type: String,
         name: String,
         num_type: u64,
-        uri: String
+        uri: String,
+        traits: vector<Object<Trait>> // if compoosable being minted
     ): ConstructorRef {
         let token_name = type;
         string::append_utf8(&mut token_name, b" #");
@@ -180,8 +181,8 @@ module townespace::core {
                 &token_signer,
                 Composable {
                     name: token_name,
-                    traits: vector::empty(),
-                    coins: vector::empty(),
+                    traits: traits,
+                    coins: vector::empty(), // TODO: should not be empty
                 }
             ); 
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
@@ -212,14 +213,16 @@ module townespace::core {
         // index = vector length
         let traits = composable.traits;
         let index = vector::length(&traits);
+        // Add the object to the vector
+        vector::insert(&mut traits, index, trait_object);
         // Assert ungated transfer enabled for the object token.
         assert!(object::ungated_transfer_allowed(trait_object) == true, 10);
         // Transfer
         object::transfer_to_object(owner_signer, trait_object, composable_object);
         // Disable ungated transfer for trait object
         object::disable_ungated_transfer(&trait_references.transfer_ref);
-        // Add the object to the vector
-        vector::insert<Object<Trait>>(&mut traits, index, trait_object);
+        // assert the object successfully added to traits
+        assert!(vector::contains(&traits, &trait_object) == true, 4234);
     }
 
     // TODO: Decompose a trait from a composable token
@@ -235,6 +238,11 @@ module townespace::core {
         let trait_address = object::object_address(&trait_object);
         let trait_references = borrow_global_mut<References>(trait_address);
         let traits = composable.traits;
+        // assert the object exists in traits
+        assert!(vector::contains(&traits, &trait_object) == true, 4234);
+        // assert traits is not empty
+        assert!(vector::is_empty(&traits) == false, 132);
+        
         // get the index of the object. Needed for removing the trait from vector. (pattern matching)
         let (_, index) = vector::index_of(&traits, &trait_object);
         // assert the object exists in the composable token address

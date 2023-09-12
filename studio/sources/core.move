@@ -1,12 +1,10 @@
 /*
-    TODO: Forked from: 
     TODO: Add a description of the module here.
     TODOs:
         - functions to create/mint.
         - add property map to token (maybe use aptos_token as a reference).
         - set uri function.
         - colection mutators: royalty mutator.
-        - add comments.
         - work on the fungible assets.
         - work on the functions visibility.
 */
@@ -55,7 +53,7 @@ module townespace::core {
     struct Composable has key {
         name: String,
         traits: vector<Object<Trait>>,
-        coins: vector<Object<FungibleStore>>
+        coins: vector<Object<FungibleStore>>    // tbd
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -72,7 +70,7 @@ module townespace::core {
         extend_ref: object::ExtendRef,
         mutator_ref: token::MutatorRef, // TODO: should be optional
         property_mutator_ref: property_map::MutatorRef, 
-        transfer_ref: object::TransferRef,
+        transfer_ref: object::TransferRef
     }
 
     // ------------------   
@@ -90,6 +88,7 @@ module townespace::core {
         uri: String, 
     ): ConstructorRef {
         if (type_info::type_of<T>() == type_info::type_of<collection::FixedSupply>()) {
+            // constructor reference, needed to generate the other references.
             let constructor_ref = collection::create_fixed_collection(
                 creator_signer,
                 description,
@@ -99,15 +98,15 @@ module townespace::core {
                 uri
             );
 
+            // create resource and move it to the resource account.
+            // Needed for indexing later.
             let collection_signer = object::generate_signer(&constructor_ref);
-            move_to(
-                &collection_signer,
-                Collection {
-                    name: name,
-                    symbol: symbol,
-                    type: string::utf8(b"fixed")
-                }
-            );
+            let new_collection = Collection {
+                name: name,
+                symbol: symbol,
+                type: string::utf8(b"fixed")
+            };
+            move_to(&collection_signer, new_collection);
             constructor_ref
         // If type is not recognised, will create a collection with unlimited supply.
         } else {
@@ -120,14 +119,12 @@ module townespace::core {
             );
 
             let collection_signer = object::generate_signer(&constructor_ref);
-            move_to(
-                &collection_signer,
-                Collection {
-                    name: name,
-                    symbol: symbol,
-                    type: string::utf8(b"unlimited")
-                }
-            );
+            let new_collection = Collection {
+                name: name,
+                symbol: symbol,
+                type: string::utf8(b"unlimited")
+            };
+            move_to(&collection_signer, new_collection);
             constructor_ref
         }
     }
@@ -141,7 +138,10 @@ module townespace::core {
         name: String,
         num_type: u64,
         uri: String,
-        traits: vector<Object<Trait>> // if compoosable being minted
+        traits: vector<Object<Trait>>, // if compoosable being minted
+        property_keys: Option<vector<String>>,
+        property_types: Option<vector<String>>,
+        property_values: Option<vector<vector<u8>>>
     ): ConstructorRef {
         let token_name = type;
         string::append_utf8(&mut token_name, b" #");
@@ -164,39 +164,55 @@ module townespace::core {
 
         let token_signer = object::generate_signer(&constructor_ref);
 
-        move_to(
-            &token_signer,
-            References {
-                burn_ref: burn_ref,
-                extend_ref: extend_ref,
-                mutator_ref: mutator_ref,
-                property_mutator_ref: property_mutator_ref,
-                transfer_ref: transfer_ref
-            }
-        );
+        let new_references = References {
+            burn_ref: burn_ref,
+            extend_ref: extend_ref,
+            mutator_ref: mutator_ref,
+            property_mutator_ref: property_mutator_ref,
+            transfer_ref: transfer_ref
+        };
+        move_to(&token_signer, new_references);
 
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             // if there are no traits or coins.
-            move_to(
-                &token_signer,
-                Composable {
-                    name: token_name,
-                    traits: traits,
-                    coins: vector::empty(), // TODO: should not be empty
-                }
-            ); 
+            let new_composable = Composable {
+                name: token_name,
+                traits: traits,
+                coins: vector::empty(), // empty for now
+            };
+            move_to(&token_signer, new_composable);
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
-            move_to(
-                &token_signer,
-                Trait {
-                    type: type,
-                    name: token_name
+            let new_trait = Trait {
+                type: type,
+                name: token_name,
+            };
+            move_to(&token_signer, new_trait);
+
+            // Add properties to property map
+            if (
+                option::is_some(&property_keys) 
+                && option::is_some(&property_types) 
+                && option::is_some(&property_values) == true
+                ){
+                    let (
+                    unrwaped_property_keys,
+                    unrwaped_property_types,
+                    unrwaped_property_values
+                    ) = (
+                        option::extract(&mut property_keys),
+                        option::extract(&mut property_types),
+                        option::extract(&mut property_values)
+                        );
+                    let properties = property_map::prepare_input(
+                        unrwaped_property_keys,
+                        unrwaped_property_types,
+                        unrwaped_property_values
+                        );
+                    property_map::init(&constructor_ref, properties);
                 }
-            );
         } else {
             assert!(false, E_TYPE_NOT_RECOCNIZED);
         }; 
-
         constructor_ref
     }   
 
@@ -223,31 +239,25 @@ module townespace::core {
         object::disable_ungated_transfer(&trait_references.transfer_ref);
     }
 
-    // TODO: Decompose a trait from a composable token
+    // Decompose a trait from a composable token
     public fun unequip_trait_internal(
         owner_signer: &signer,
         composable_object: Object<Composable>,
         trait_object: Object<Trait>
     ) acquires Composable, References {
-        // Composable 
-        let composable_address = object::object_address(&composable_object);
-        let composable_resource = borrow_global_mut<Composable>(composable_address);
-        let traits = composable_resource.traits;
+        // Composable
+        let composable_resource = borrow_global_mut<Composable>(object::object_address(&composable_object));
+        let traits_vector = composable_resource.traits;
         // Trait
-        let trait_address = object::object_address(&trait_object);
-        let trait_references = borrow_global_mut<References>(trait_address);
-        // get the index of the object. Needed for removing the trait from vector.
-        let (trait_exists, index) = vector::index_of(&traits, &trait_object);
-        // assert the object exists in traits
-        assert!(trait_exists == true, 4234);
-        // assert the object exists in the composable token address
-        assert!(object::is_owner(trait_object, composable_address), 8);
-        // Remove the object to the vector
-        vector::remove<Object<Trait>>(&mut traits, index);
+        let trait_references = borrow_global_mut<References>(object::object_address(&trait_object));
+        let (trait_exists, index) = vector::index_of(&traits_vector, &trait_object);
+        assert!(trait_exists == true, 10);
         // Enable ungated transfer for trait object
         object::enable_ungated_transfer(&trait_references.transfer_ref);
-        // Transfer
+        // Transfer trait object to owner
         object::transfer(owner_signer, trait_object, signer::address_of(owner_signer));
+        // Remove the object from the vector
+        vector::remove(&mut traits_vector, index);
     }
     
     // TODO: Transfer
@@ -276,7 +286,7 @@ module townespace::core {
         token::set_uri(mutator_reference, new_uri);
     }
 
-    // type casting
+    // type casting; cloned from dynamic_aptoads.move
     fun u64_to_string(value: u64): String {
       if (value == 0) {
          return string::utf8(b"0")

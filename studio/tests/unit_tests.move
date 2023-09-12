@@ -265,7 +265,10 @@ module townespace::unit_tests {
             name,
             num_type,
             uri,
-            traits
+            traits,
+            option::none(),
+            option::none(),
+            option::none()
             )
     }
 
@@ -286,7 +289,10 @@ module townespace::unit_tests {
             name,
             num_type,
             uri, 
-            vector::empty()
+            vector::empty(),
+            option::none(),
+            option::none(),
+            option::none()
             )
     }
 }

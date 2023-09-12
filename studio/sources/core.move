@@ -207,22 +207,20 @@ module townespace::core {
         trait_object: Object<Trait>
     ) acquires Composable, References {
         // Composable 
-        let composable = borrow_global_mut<Composable>(object::object_address(&composable_object));
+        let composable_resource = borrow_global_mut<Composable>(object::object_address(&composable_object));
         // Trait
         let trait_references = borrow_global_mut<References>(object::object_address(&trait_object));
         // index = vector length
-        let traits = composable.traits;
+        let traits = composable_resource.traits;
         let index = vector::length(&traits);
         // Add the object to the vector
-        vector::insert(&mut traits, index, trait_object);
+        vector::insert<Object<Trait>>(&mut traits, index, trait_object);
         // Assert ungated transfer enabled for the object token.
         assert!(object::ungated_transfer_allowed(trait_object) == true, 10);
         // Transfer
         object::transfer_to_object(owner_signer, trait_object, composable_object);
         // Disable ungated transfer for trait object
         object::disable_ungated_transfer(&trait_references.transfer_ref);
-        // assert the object successfully added to traits
-        assert!(vector::contains(&traits, &trait_object) == true, 4234);
     }
 
     // TODO: Decompose a trait from a composable token
@@ -233,18 +231,15 @@ module townespace::core {
     ) acquires Composable, References {
         // Composable 
         let composable_address = object::object_address(&composable_object);
-        let composable = borrow_global_mut<Composable>(composable_address);
+        let composable_resource = borrow_global_mut<Composable>(composable_address);
+        let traits = composable_resource.traits;
         // Trait
         let trait_address = object::object_address(&trait_object);
         let trait_references = borrow_global_mut<References>(trait_address);
-        let traits = composable.traits;
+        // get the index of the object. Needed for removing the trait from vector.
+        let (trait_exists, index) = vector::index_of(&traits, &trait_object);
         // assert the object exists in traits
-        assert!(vector::contains(&traits, &trait_object) == true, 4234);
-        // assert traits is not empty
-        assert!(vector::is_empty(&traits) == false, 132);
-        
-        // get the index of the object. Needed for removing the trait from vector. (pattern matching)
-        let (_, index) = vector::index_of(&traits, &trait_object);
+        assert!(trait_exists == true, 4234);
         // assert the object exists in the composable token address
         assert!(object::is_owner(trait_object, composable_address), 8);
         // Remove the object to the vector

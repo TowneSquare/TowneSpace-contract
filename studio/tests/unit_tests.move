@@ -154,7 +154,7 @@ module townespace::unit_tests {
 
     #[test(creator = @0x123)]
     fun e_compose_decompose_token(creator: &signer){
-let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NFTs");
+        let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NFTs");
         let collection_name = string::utf8(b"Hack Singapore 2023 Collection");
         let collection_symbol = string::utf8(b"HSGP23");
         let collection_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023");
@@ -171,6 +171,7 @@ let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NF
         let composable_token_name = string::utf8(b"Composable Token");
         let composable_token_description = string::utf8(b"Composable Token");
         let composable_token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/composable-token");
+        let traits = vector::empty<Object<Trait>>();
         let composable_constructor_ref = mint_composable_token_helper(
             creator, 
             collection_name,
@@ -178,7 +179,7 @@ let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NF
             composable_token_name,
             1,
             composable_token_uri,
-            vector::empty<Object<Trait>>()
+            traits
             );
         let composable_object = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
 
@@ -192,7 +193,7 @@ let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NF
             token_description,
             type,
             token_name,
-            1,
+            9,
             token_uri
             );
         let trait_object = object::object_from_constructor_ref<Trait>(&trait_constructor_ref);
@@ -204,6 +205,10 @@ let collection_description = string::utf8(b"Collection of Hack Singapore 2023 NF
             trait_object,
             updated_uri
         );
+        let composable_address = object::object_address(&composable_object);
+        assert!(object::is_owner(trait_object, composable_address) == true, 2234);
+        assert!(vector::contains(&traits, &trait_object) == true, 4234);
+
         let decomposed_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/jacket");
         studio::unequip_trait(
             creator,

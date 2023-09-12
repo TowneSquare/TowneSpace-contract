@@ -115,6 +115,7 @@ module townespace::unit_tests {
         let composable_token_name = string::utf8(b"Composable Token");
         let composable_token_description = string::utf8(b"Composable Token");
         let composable_token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/composable-token");
+        let traits = vector::empty<Object<Trait>>();
         let composable_constructor_ref = mint_composable_token_helper(
             creator, 
             collection_name,
@@ -122,10 +123,10 @@ module townespace::unit_tests {
             composable_token_name,
             1,
             composable_token_uri,
-            vector::empty()
+            traits
             );
         let composable_object = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
-
+        let composable_address = object::object_address(&composable_object);
         let token_name = string::utf8(b"Jacket");
         let token_description = string::utf8(b"Trait Token");
         let token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/jacket");
@@ -148,8 +149,8 @@ module townespace::unit_tests {
             trait_object,
             updated_uri
         );
-        // assert trait object is in the composable token
-        // assert trait is added to the vector
+        assert!(object::is_owner(trait_object, composable_address) == true, 2234);
+        assert!(vector::contains(&traits, &trait_object) == true, 4234);
     }
 
     #[test(creator = @0x123)]

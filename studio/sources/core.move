@@ -153,6 +153,7 @@ module townespace::core {
         num_type: u64,
         uri: String,
         traits: vector<Object<Trait>>, // if compoosable being minted
+        // properties if minted token is trait token
         property_keys: Option<vector<String>>,
         property_types: Option<vector<String>>,
         property_values: Option<vector<vector<u8>>>
@@ -243,10 +244,10 @@ module townespace::core {
         // Trait
         let trait_references = borrow_global_mut<References>(object::object_address(&trait_object));
         // index = vector length
-        let traits = composable_resource.traits;
-        let index = vector::length(&traits);
-        // Add the object to the vector
-        vector::insert<Object<Trait>>(&mut traits, index, trait_object);
+        let traits = &mut composable_resource.traits;
+        // let index = vector::length(&traits);
+        // Add the object to the end of the vector
+        vector::push_back<Object<Trait>>(traits, trait_object);
         // Assert ungated transfer enabled for the object token.
         assert!(object::ungated_transfer_allowed(trait_object) == true, E_UNGATED_TRANSFER_DISABLED);
         // Transfer
@@ -310,6 +311,65 @@ module townespace::core {
       };
       vector::reverse(&mut buffer);
       string::utf8(buffer)
-   }
+   }    
+
+   #[test_only]
+   use aptos_token_objects::collection::{/*FixedSupply, */UnlimitedSupply};
+
+    #[test(creator = @0x123)]
+    fun test(creator: &signer) acquires Composable, References {
+        create_collection_internal<UnlimitedSupply>(
+            creator,
+            string::utf8(b"test"), 
+            option::none(), 
+            string::utf8(b"test"), 
+            string::utf8(b"test"), 
+            option::none(), 
+            string::utf8(b"test")
+            );
+        let composable_constructor_ref = mint_token_internal<Composable>(
+            creator,
+            string::utf8(b"test"),
+            string::utf8(b"test"),
+            string::utf8(b"test"),
+            string::utf8(b"composable token"),
+            1,
+            string::utf8(b"test"),
+            vector::empty<Object<Trait>>(), 
+            option::none(),
+            option::none(),
+            option::none()
+        );
+        let trait_constructor_ref = mint_token_internal<Trait>(
+            creator,
+            string::utf8(b"test"),
+            string::utf8(b"test"),
+            string::utf8(b"test"),
+            string::utf8(b"trait token"),
+            2,
+            string::utf8(b"test"),
+            vector::empty(),
+            option::none(),
+            option::none(),
+            option::none()
+        );
+
+        let composable_object = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
+        let trait_object = object::object_from_constructor_ref<Trait>(&trait_constructor_ref);
+        let composable_address = object::object_address(&composable_object);
+        equip_trait_internal(creator, composable_object, trait_object);
+        let composable_resource = borrow_global_mut<Composable>(composable_address);
+        let traits = composable_resource.traits;
+        // assert the trait object is being transferred to the composable object
+        assert!(object::is_owner(trait_object, composable_address) == true, 2234);
+        // assert traits vector is not empty
+        assert!(vector::is_empty<Object<Trait>>(&traits) == false, 3234);
+        // assert the trait object is being added to the composable object's traits vector
+        assert!(vector::contains(&traits, &trait_object) == true, 4234);
+        unequip_trait_internal(creator, composable_object, trait_object);
+        // assert traits vector is not empty
+        assert!(vector::contains<Object<Trait>>(&traits, &trait_object) == true, 3234);
+    }
+
 
 }

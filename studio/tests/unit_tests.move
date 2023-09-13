@@ -102,6 +102,16 @@ module townespace::unit_tests {
         let collection_name = string::utf8(b"Hack Singapore 2023 Collection");
         let collection_symbol = string::utf8(b"HSGP23");
         let collection_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023");
+
+        let composable_token_name = string::utf8(b"Composable Token");
+        let composable_token_description = string::utf8(b"Composable Token");
+        let composable_token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/composable-token");
+        
+        let token_name = string::utf8(b"Jacket");
+        let token_description = string::utf8(b"Trait Token");
+        let token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/jacket");
+        let type = string::utf8(b"Clothing");
+        
         create_collection_helper<UnlimitedSupply>(
             creator, 
             collection_description, 
@@ -111,11 +121,7 @@ module townespace::unit_tests {
             option::none(),
             collection_uri
             );
-
-        let composable_token_name = string::utf8(b"Composable Token");
-        let composable_token_description = string::utf8(b"Composable Token");
-        let composable_token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/composable-token");
-        let traits = vector::empty<Object<Trait>>();
+        
         let composable_constructor_ref = mint_composable_token_helper(
             creator, 
             collection_name,
@@ -123,14 +129,9 @@ module townespace::unit_tests {
             composable_token_name,
             1,
             composable_token_uri,
-            traits
+            vector::empty<Object<Trait>>()
             );
-        let composable_object = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
-        let composable_address = object::object_address(&composable_object);
-        let token_name = string::utf8(b"Jacket");
-        let token_description = string::utf8(b"Trait Token");
-        let token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/jacket");
-        let type = string::utf8(b"Clothing");
+        
         let trait_constructor_ref = mint_trait_token_helper(
             creator, 
             collection_name,
@@ -140,17 +141,20 @@ module townespace::unit_tests {
             1,
             token_uri
             );
+
+        let composable_object = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
         let trait_object = object::object_from_constructor_ref<Trait>(&trait_constructor_ref);
 
+        // let composable_address = object::object_address(&composable_object);
+
         let updated_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/composable-token/jacket");
+        
         studio::equip_trait(
             creator,
             composable_object,
             trait_object,
             updated_uri
         );
-        assert!(object::is_owner(trait_object, composable_address) == true, 2234);
-        assert!(vector::contains(&traits, &trait_object) == true, 4234);
     }
 
     #[test(creator = @0x123)]
@@ -206,9 +210,6 @@ module townespace::unit_tests {
             trait_object,
             updated_uri
         );
-        let composable_address = object::object_address(&composable_object);
-        assert!(object::is_owner(trait_object, composable_address) == true, 2234);
-        assert!(vector::contains(&traits, &trait_object) == true, 4234);
 
         let decomposed_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/jacket");
         studio::unequip_trait(
@@ -217,6 +218,7 @@ module townespace::unit_tests {
             trait_object,
             decomposed_uri
         );
+        
     }
     
     // -------

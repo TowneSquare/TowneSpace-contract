@@ -1,6 +1,8 @@
 # Studio - NFT creation tool leveraging token v2
 Hack Singapore 2023
 
+deployed on devnet: https://explorer.aptoslabs.com/account/0x07ff0308d16a5041ace8e7e306a60b2946b6a4aee0e7e923b8f20e49bf3508ce/modules/code/core?network=devnet
+
 ## Modules structure
 ![Alt text](image-2.png)
 

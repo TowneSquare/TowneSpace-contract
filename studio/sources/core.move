@@ -15,10 +15,6 @@
         - add burn functions.
         - add mutators.
         - work on the fungible assets.
-
-    NOTES:
-    - for the sake of testing, all functions are set to be public.
-    They should be set to internal once the testing is done (public(friend)).
 */
 
 module townespace::core {
@@ -39,8 +35,7 @@ module townespace::core {
     use std::string::{Self, String};
     use std::vector;
 
-    // friend townespace::studio;
-    // friend townespace::unit_tests;
+    friend townespace::studio;
 
     // ------
     // errors
@@ -234,7 +229,7 @@ module townespace::core {
     }   
 
     // Compose trait to a composable token
-    public fun equip_trait_internal(
+    public(friend) fun equip_trait_internal(
         owner_signer: &signer,
         composable_object: Object<Composable>,
         trait_object: Object<Trait>
@@ -257,7 +252,7 @@ module townespace::core {
     }
 
     // Decompose a trait from a composable token. Tests panic.
-    public fun unequip_trait_internal(
+    public(friend) fun unequip_trait_internal(
         owner_signer: &signer,
         composable_object: Object<Composable>,
         trait_object: Object<Trait>
@@ -290,7 +285,7 @@ module townespace::core {
     // --------
 
     // Change uri
-    public fun update_uri_internal(
+    public(friend) fun update_uri_internal(
         composable_object_address: address,
         new_uri: String
     ) acquires References {

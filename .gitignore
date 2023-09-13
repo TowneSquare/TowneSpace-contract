@@ -2,7 +2,3 @@
 build
 .coverage_map.mvcov
 .trace
-old_events.move
-old_core.move
-old_studio.move
-old_test_utils.move

@@ -9,7 +9,6 @@
         - Composable token (cNFT): A token V2 that can hold Trait tokens.
         - Fungible assets: future work :)
     TODOs:
-        - fix unequip_trait_internal.
         - optimise the code: add inline functions (accessors).
         - add transfer functions.
         - add burn functions.

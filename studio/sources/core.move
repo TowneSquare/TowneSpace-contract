@@ -206,18 +206,18 @@ module townespace::core {
                 && option::is_some(&property_values) == true
                 ){
                     let (
-                    unrwaped_property_keys,
-                    unrwaped_property_types,
-                    unrwaped_property_values
+                    unwrapped_property_keys,
+                    unwrapped_property_types,
+                    unwrapped_property_values
                     ) = (
                         option::extract(&mut property_keys),
                         option::extract(&mut property_types),
                         option::extract(&mut property_values)
                         );
                     let properties = property_map::prepare_input(
-                        unrwaped_property_keys,
-                        unrwaped_property_types,
-                        unrwaped_property_values
+                        unwrapped_property_keys,
+                        unwrapped_property_types,
+                        unwrapped_property_values
                         );
                     property_map::init(&constructor_ref, properties);
                 }

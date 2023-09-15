@@ -55,9 +55,9 @@ deployed on devnet: https://explorer.aptoslabs.com/account/0x07ff0308d16a5041ace
 - Properties are initiated when minting the trait token.
     ```rust
     let (
-        unrwaped_property_keys,
-        unrwaped_property_types,
-        unrwaped_property_values
+        unwrapped_property_keys,
+        unwrapped_property_types,
+        unwrapped_property_values
         ) = (
             option::extract(&mut property_keys),
             option::extract(&mut property_types),
@@ -65,9 +65,9 @@ deployed on devnet: https://explorer.aptoslabs.com/account/0x07ff0308d16a5041ace
             );
 
         let properties = property_map::prepare_input(
-            unrwaped_property_keys,
-            unrwaped_property_types,
-            unrwaped_property_values
+            unwrapped_property_keys,
+            unwrapped_property_types,
+            unwrapped_property_values
             );
             
         property_map::init(&constructor_ref, properties);

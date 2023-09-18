@@ -1,13 +1,13 @@
 #[test_only]
 module townespace::unit_tests {
-    use aptos_framework::object::{Self, ConstructorRef, Object};
+    use aptos_framework::object::{Object};
     use aptos_token_objects::collection::{UnlimitedSupply};
     use aptos_token_objects::royalty::{Royalty};
     // use std::error;
     use std::option::{Self, Option};
     use std::string::{Self, String};
     use std::vector;
-    use townespace::core::{Self, Composable, Trait};
+    use townespace::core::{Self, Collection, Composable, Trait};
     use townespace::studio;
     
 
@@ -122,7 +122,7 @@ module townespace::unit_tests {
             collection_uri
             );
         
-        let composable_constructor_ref = mint_composable_token_helper(
+        let composable_object = mint_composable_token_helper(
             creator, 
             collection_name,
             composable_token_description,
@@ -132,7 +132,7 @@ module townespace::unit_tests {
             vector::empty<Object<Trait>>()
             );
         
-        let trait_constructor_ref = mint_trait_token_helper(
+        let trait_object = mint_trait_token_helper(
             creator, 
             collection_name,
             token_description,
@@ -141,9 +141,6 @@ module townespace::unit_tests {
             1,
             token_uri
             );
-
-        let composable_object = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
-        let trait_object = object::object_from_constructor_ref<Trait>(&trait_constructor_ref);
 
         // let composable_address = object::object_address(&composable_object);
 
@@ -177,7 +174,7 @@ module townespace::unit_tests {
         let composable_token_description = string::utf8(b"Composable Token");
         let composable_token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/composable-token");
         let traits = vector::empty<Object<Trait>>();
-        let composable_constructor_ref = mint_composable_token_helper(
+        let composable_object = mint_composable_token_helper(
             creator, 
             collection_name,
             composable_token_description,
@@ -186,13 +183,12 @@ module townespace::unit_tests {
             composable_token_uri,
             traits
             );
-        let composable_object = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
 
         let token_name = string::utf8(b"Jacket");
         let token_description = string::utf8(b"Trait Token");
         let token_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/jacket");
         let type = string::utf8(b"Clothing");
-        let trait_constructor_ref = mint_trait_token_helper(
+        let trait_object = mint_trait_token_helper(
             creator, 
             collection_name,
             token_description,
@@ -201,7 +197,6 @@ module townespace::unit_tests {
             9,
             token_uri
             );
-        let trait_object = object::object_from_constructor_ref<Trait>(&trait_constructor_ref);
 
         let updated_uri = string::utf8(b"https://aptosfoundation.org/events/singapore-hackathon-2023/composable-token/jacket");
         studio::equip_trait(
@@ -233,7 +228,7 @@ module townespace::unit_tests {
         symbol: String,
         royalty: Option<Royalty>,   // TODO get the same in core.move
         uri: String
-    ): ConstructorRef {
+    ): Object<Collection> {
         core::create_collection_internal<T>(
             creator_signer,
             description,
@@ -253,7 +248,7 @@ module townespace::unit_tests {
         num_type: u64,
         uri: String, 
         traits: vector<Object<Trait>>
-    ): ConstructorRef {
+    ): Object<Composable> {
         let type = string::utf8(b"");   // Composable token does not have a type
         core::mint_token_internal<Composable>(
             creator_signer,
@@ -264,6 +259,7 @@ module townespace::unit_tests {
             num_type,
             uri,
             traits,
+            vector::empty(), // no coins
             option::none(),
             option::none(),
             option::none()
@@ -278,7 +274,7 @@ module townespace::unit_tests {
         name: String,
         num_type: u64,
         uri: String,
-    ): ConstructorRef {
+    ): Object<Trait> {
         core::mint_token_internal<Trait>(
             creator_signer,
             collection_name,
@@ -288,6 +284,7 @@ module townespace::unit_tests {
             num_type,
             uri, 
             vector::empty(),
+            vector::empty(),  // no coins
             option::none(),
             option::none(),
             option::none()

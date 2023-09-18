@@ -6,6 +6,7 @@
 */
 
 module townespace::studio {
+    use aptos_framework::fungible_asset::{FungibleStore}; 
     use aptos_framework::object::{Self, Object};
     use aptos_token_objects::royalty::{Royalty};
     // use std::error;
@@ -64,7 +65,8 @@ module townespace::studio {
         name: String,
         num_type: u64,
         uri: String, 
-        traits: vector<Object<Trait>>   // TODO: wrap it in option
+        traits: vector<Object<Trait>>,
+        coins: vector<Object<FungibleStore>>
     ) {
         core::mint_token_internal<T>(
             creator_signer,
@@ -75,6 +77,7 @@ module townespace::studio {
             num_type,
             uri, 
             traits,
+            coins,
             option::none(),
             option::none(),
             option::none()

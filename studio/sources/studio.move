@@ -8,10 +8,10 @@
 module townespace::studio {
     use aptos_framework::fungible_asset::{FungibleStore}; 
     use aptos_framework::object::{Self, Object};
-    use aptos_token_objects::royalty::{Royalty};
     // use std::error;
     // use std::features;
     use std::option::{Self, Option};
+    use std::signer;
     use std::string::{String};
 
     use townespace::core::{
@@ -20,15 +20,7 @@ module townespace::studio {
         Trait
         };
 
-    // use townespace::events;
-
-    // -------
-    // Structs
-    // -------
-
-    // --------------
-    // Initialization
-    // --------------
+    use townespace::events;
 
     // ---------------
     // Entry Functions
@@ -41,19 +33,24 @@ module townespace::studio {
         max_supply: Option<u64>, // if the collection is set to haved a fixed supply.
         name: String,
         symbol: String,
-        royalty: Option<Royalty>,   // TODO get the same in core.move
-        uri: String
+        uri: String,
+        royalty_numerator: u64,
+        royalty_denominator: u64
     ) {
-        core::create_collection_internal<T>(
+        let collection_object = core::create_collection_internal<T>(
             creator_signer,
             description,
             max_supply,
             name,
             symbol,
-            royalty,
-            uri
+            uri,
+            royalty_numerator,
+            royalty_denominator
         );
-        // TODO: emit collection created event
+        events::emit_collection_created_event(
+            signer::address_of(creator_signer),
+            events::collection_metadata(collection_object)
+        );
     }
 
     // Mint a composable token
@@ -66,7 +63,9 @@ module townespace::studio {
         num_type: u64,
         uri: String, 
         traits: vector<Object<Trait>>,
-        coins: vector<Object<FungibleStore>>
+        coins: vector<Object<FungibleStore>>,
+        royalty_numerator: u64,
+        royalty_denominator: u64
     ) {
         core::mint_token_internal<T>(
             creator_signer,
@@ -78,6 +77,8 @@ module townespace::studio {
             uri, 
             traits,
             coins,
+            royalty_numerator,
+            royalty_denominator,
             option::none(),
             option::none(),
             option::none()

@@ -2,7 +2,6 @@
 module townespace::unit_tests {
     use aptos_framework::object::{Object};
     use aptos_token_objects::collection::{UnlimitedSupply};
-    use aptos_token_objects::royalty::{Royalty};
     // use std::error;
     use std::option::{Self, Option};
     use std::string::{Self, String};
@@ -27,8 +26,7 @@ module townespace::unit_tests {
             collection_description, 
             option::none(),
             collection_name, 
-            collection_symbol, 
-            option::none(),
+            collection_symbol,
             collection_uri
             );
     }
@@ -46,8 +44,7 @@ module townespace::unit_tests {
             collection_description, 
             option::none(),
             collection_name, 
-            collection_symbol, 
-            option::none(),
+            collection_symbol,
             collection_uri
             );
 
@@ -76,8 +73,7 @@ module townespace::unit_tests {
             collection_description, 
             option::none(),
             collection_name, 
-            collection_symbol, 
-            option::none(),
+            collection_symbol,
             collection_uri
             );
         
@@ -117,8 +113,7 @@ module townespace::unit_tests {
             collection_description, 
             option::none(),
             collection_name, 
-            collection_symbol, 
-            option::none(),
+            collection_symbol,
             collection_uri
             );
         
@@ -166,7 +161,6 @@ module townespace::unit_tests {
             option::none(),
             collection_name, 
             collection_symbol, 
-            option::none(),
             collection_uri
             );
 
@@ -226,7 +220,6 @@ module townespace::unit_tests {
         max_supply: Option<u64>, // if the collection is set to haved a fixed supply.
         name: String,
         symbol: String,
-        royalty: Option<Royalty>,   // TODO get the same in core.move
         uri: String
     ): Object<Collection> {
         core::create_collection_internal<T>(
@@ -235,8 +228,9 @@ module townespace::unit_tests {
             max_supply,
             name,
             symbol,
-            royalty,
-            uri
+            uri,
+            1,
+            2
             )
     }
 
@@ -260,6 +254,8 @@ module townespace::unit_tests {
             uri,
             traits,
             vector::empty(), // no coins
+            1,
+            2,
             option::none(),
             option::none(),
             option::none()
@@ -285,6 +281,8 @@ module townespace::unit_tests {
             uri, 
             vector::empty(),
             vector::empty(),  // no coins
+            1,
+            2,
             option::none(),
             option::none(),
             option::none()

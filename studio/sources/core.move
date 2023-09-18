@@ -23,7 +23,7 @@ module townespace::core {
         };
     use aptos_std::type_info;
     use aptos_token_objects::collection;
-    use aptos_token_objects::royalty::{Royalty};
+    use aptos_token_objects::royalty;
     use aptos_token_objects::token;
     use aptos_token_objects::property_map;
 
@@ -88,9 +88,11 @@ module townespace::core {
         max_supply: Option<u64>, // if the collection is set to haved a fixed supply.
         name: String,
         symbol: String,
-        royalty: Option<Royalty>,   // TODO get the same in aptos_token.move
         uri: String, 
+        royalty_numerator: u64,
+        royalty_denominator: u64
     ): Object<Collection> {
+        let royalty = royalty::create(royalty_numerator, royalty_denominator, signer::address_of(creator_signer));
         if (type_info::type_of<T>() == type_info::type_of<collection::FixedSupply>()) {
             // constructor reference, needed to generate the other references.
             let constructor_ref = collection::create_fixed_collection(
@@ -98,7 +100,8 @@ module townespace::core {
                 description,
                 option::extract(&mut max_supply),
                 name,
-                royalty,
+                // payee address is the creator by default, it can be changed after creation.
+                option::some(royalty),
                 uri
             );
 
@@ -118,7 +121,7 @@ module townespace::core {
                 creator_signer,
                 description,
                 name,
-                royalty,
+                option::some(royalty),
                 uri
             );
             // create collection resource and move it to the resource account.
@@ -145,6 +148,8 @@ module townespace::core {
         uri: String,
         traits: vector<Object<Trait>>, // if compoosable being minted
         coins: vector<Object<FungibleStore>>,   // if fungible asset being minted
+        royalty_numerator: u64,
+        royalty_denominator: u64,
         // properties if minted token is trait token
         property_keys: Option<vector<String>>,
         property_types: Option<vector<String>>,
@@ -154,12 +159,13 @@ module townespace::core {
         string::append_utf8(&mut token_name, b" #");
         string::append_utf8(&mut token_name, *string::bytes(&u64_to_string(num_type)));
 
+        let royalty = royalty::create(royalty_numerator, royalty_denominator, signer::address_of(creator_signer));
         let constructor_ref = token::create_named_token(
             creator_signer,
             collection_name,
             description,
             name,
-            option::none(), // TODO: add royalty
+            option::some(royalty), 
             uri
         );
 
@@ -275,55 +281,37 @@ module townespace::core {
     // --------------
     // View Functions
     // --------------
-    #[view]
+    inline fun borrow<T: key>(
+        object: Object<T>
+        ): &T acquires Collection, Composable, Trait {
+            let object_address = object::object_address(&object);
+            assert!(
+                exists<T>(object_address),
+                89,
+            );
+            borrow_global<T>(object_address)
+    }
+
     // collection
+    #[view]
     public fun get_collection_name(
-        collection_address: address
+        collection_object: Object<Collection>
     ): String acquires Collection {
-        let collection = borrow_global<Collection>(collection_address);
-        collection.name
+        borrow<Collection>(collection_object).name
     }
 
     #[view]
     public fun get_collection_symbol(
-        collection_address: address
+        collection_object: Object<Collection>
     ): String acquires Collection {
-        let collection = borrow_global<Collection>(collection_address);
-        collection.symbol
+        borrow<Collection>(collection_object).symbol
     }
 
     #[view]
-    public fun get_collection_type(
-        collection_address: address
-    ): String acquires Collection {
-        let collection = borrow_global<Collection>(collection_address);
-        collection.type
-    }
-
-    #[view]
-    // composable
-    public fun get_composable_name(
-        composable_address: address
-    ): String acquires Composable {
-        let composable = borrow_global<Composable>(composable_address);
-        composable.name
-    }
-
-    #[view]
-    // trait
-    public fun get_trait_name(
-        trait_address: address
-    ): String acquires Trait {
-        let trait = borrow_global<Trait>(trait_address);
-        trait.name
-    }
-
-    #[view]
-    public fun get_trait_type(
-        trait_address: address
-    ): String acquires Trait {
-        let trait = borrow_global<Trait>(trait_address);
-        trait.type
+    public fun get_traits(
+        composable_object: Object<Composable>
+    ): vector<Object<Trait>> acquires Composable {
+        borrow<Composable>(composable_object).traits  
     }
 
     // --------
@@ -352,10 +340,10 @@ module townespace::core {
       };
       vector::reverse(&mut buffer);
       string::utf8(buffer)
-   }    
+    }    
 
-   #[test_only]
-   use aptos_token_objects::collection::{/*FixedSupply, */UnlimitedSupply};
+    #[test_only]
+    use aptos_token_objects::collection::{/*FixedSupply, */UnlimitedSupply};
 
     #[test(creator = @0x123)]
     fun test(creator: &signer) acquires Composable, References {
@@ -364,9 +352,10 @@ module townespace::core {
             string::utf8(b"test"), 
             option::none(), 
             string::utf8(b"test"), 
+            string::utf8(b"test"),
             string::utf8(b"test"), 
-            option::none(), 
-            string::utf8(b"test")
+            1,
+            2
             );
         let composable_object = mint_token_internal<Composable>(
             creator,
@@ -378,6 +367,8 @@ module townespace::core {
             string::utf8(b"test"),
             vector::empty(),
             vector::empty(),    // no coins  
+            1,
+            2,
             option::none(),
             option::none(),
             option::none()
@@ -392,6 +383,8 @@ module townespace::core {
             string::utf8(b"test"),
             vector::empty(),
             vector::empty(),    // no coins
+            1,
+            2,
             option::none(),
             option::none(),
             option::none()

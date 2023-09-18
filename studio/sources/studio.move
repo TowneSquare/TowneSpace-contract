@@ -9,10 +9,10 @@ module townespace::studio {
     use aptos_framework::fungible_asset::{FungibleStore}; 
     use aptos_framework::object::{Self, Object};
     // use std::error;
-    // use std::features;
     use std::option::{Self, Option};
     use std::signer;
     use std::string::{String};
+    use std::vector;
 
     use townespace::core::{
         Self, 
@@ -54,7 +54,7 @@ module townespace::studio {
     }
 
     // Mint a composable token
-    public entry fun mint_token<T: key>(
+    public entry fun mint_composable_token(
         creator_signer: &signer,
         collection_name: String,
         description: String,
@@ -67,7 +67,7 @@ module townespace::studio {
         royalty_numerator: u64,
         royalty_denominator: u64
     ) {
-        core::mint_token_internal<T>(
+        let token_object = core::mint_token_internal<core::Composable>(
             creator_signer,
             collection_name,
             description,
@@ -84,7 +84,44 @@ module townespace::studio {
             option::none()
         );
         
-        // TODO: emit composable token minted event
+        events::emit_composable_token_minted_event(
+                signer::address_of(creator_signer),
+                events::composable_token_metadata(token_object)
+            );
+    }
+
+    public entry fun mint_trait_token(
+        creator_signer: &signer,
+        collection_name: String,
+        description: String,
+        type: String,
+        name: String,
+        num_type: u64,
+        uri: String,
+        royalty_numerator: u64,
+        royalty_denominator: u64
+    ) {
+        let token_object = core::mint_token_internal<core::Trait>(
+            creator_signer,
+            collection_name,
+            description,
+            type,
+            name,
+            num_type,
+            uri, 
+            vector::empty(),
+            vector::empty(),
+            royalty_numerator,
+            royalty_denominator,
+            option::none(),
+            option::none(),
+            option::none()
+        );
+        
+        events::emit_trait_token_minted_event(
+                signer::address_of(creator_signer),
+                events::trait_token_metadata(token_object)
+            );
     }
 
     // TODO: delete collection
@@ -110,7 +147,6 @@ module townespace::studio {
             object::object_address(&composable_object),
             new_uri
             );
-        // TODO Emit event
     }
 
     // Decompose one object
@@ -128,10 +164,9 @@ module townespace::studio {
             object::object_address(&composable_object), 
             new_uri
             );
-        // TODO Emit event
     }
 
-    // TODO: Decompose an entire composable token
+    // Decompose an entire composable token
     // public entry fun decompose_entire_token(
     //     owner_signer: &signer,
     //     collection_name: String,

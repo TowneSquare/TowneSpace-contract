@@ -12,6 +12,7 @@
         - add transfer functions.
         - add burn functions.
         - add mutators.
+        - add scripts.
         - work on the fungible assets.
 */
 
@@ -27,6 +28,7 @@ module townespace::core {
     use aptos_token_objects::token;
     use aptos_token_objects::property_map;
 
+    // use std::error;
     use std::option::{Self, Option};
     use std::signer;
     use std::string::{Self, String};
@@ -39,6 +41,7 @@ module townespace::core {
     // ------
     const E_TYPE_NOT_RECOGNIZED: u64 = 1;
     const E_UNGATED_TRANSFER_DISABLED: u64 = 2;
+    const E_TOKEN_NOT_BURNABLE: u64 = 3;
 
     // ---------
     // Resources
@@ -111,7 +114,7 @@ module townespace::core {
             let collection = Collection {
                 name: name,
                 symbol: symbol,
-                type: string::utf8(b"fixed")
+                type: string::utf8(b"fixed supply")
             };
             move_to(&collection_signer, collection);
             object::object_from_constructor_ref(&constructor_ref)
@@ -130,7 +133,7 @@ module townespace::core {
             let collection = Collection {
                 name: name,
                 symbol: symbol,
-                type: string::utf8(b"unlimited")
+                type: string::utf8(b"unlimited supply")
             };
             move_to(&collection_signer, collection);
             object::object_from_constructor_ref(&constructor_ref)
@@ -177,31 +180,37 @@ module townespace::core {
 
         let token_signer = object::generate_signer(&constructor_ref);
 
-        // create refs resource and move it to the resource account.
-        let references = References {
-            burn_ref: burn_ref,
-            extend_ref: extend_ref,
-            mutator_ref: mutator_ref,
-            property_mutator_ref: property_mutator_ref,
-            transfer_ref: transfer_ref
-        };
-        move_to(&token_signer, references);
+        // move resource under to token.
+        move_to(
+            &token_signer, 
+            References {
+                burn_ref: burn_ref,
+                extend_ref: extend_ref,
+                mutator_ref: mutator_ref,
+                property_mutator_ref: property_mutator_ref,
+                transfer_ref: transfer_ref
+            }
+        );
         // if type is composable
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
-            let composable = Composable {
-                name: token_name,
-                traits: traits,
-                coins: coins, 
-            };
-            move_to(&token_signer, composable);
+            move_to(
+                &token_signer, 
+                Composable {
+                    name: token_name,
+                    traits: traits,
+                    coins: coins, 
+                }
+            );
             // TODO if there are coins.
         // if type is trait
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
-            let trait = Trait {
-                type: type,
-                name: token_name
-            };
-            move_to(&token_signer, trait);
+            move_to(
+                &token_signer,
+                Trait {
+                    type: type,
+                    name: token_name
+                } 
+            );
 
             // Add properties to property map
             if (
@@ -272,6 +281,86 @@ module townespace::core {
         vector::remove(&mut composable_resource.traits, index);
     }
 
+    // transfer function; from user to user.
+    public(friend) fun transfer_token<T: key>(
+        owner_signer: &signer,
+        token_address: address,
+        new_owner: address
+    ) {
+        // assert new owner is not a token; check if it exists in Composable or Trait or TokenV2
+        assert!(object::is_object(new_owner) == false, 10); // might be wrong
+        object::transfer<T>(
+            owner_signer,
+            object::address_to_object<T>(token_address),
+            new_owner
+        )
+        // TODO: emit transfer events
+    }
+    // Transfer with fee.
+
+    // burn a token
+    // TODO: needs to be tested
+    public(friend) fun burn_token<T: key>(
+        token_object: Object<T>
+    ) acquires Composable, Trait, References {
+        // Burn tokens and delete references
+        let token_object_address = object::object_address(&token_object);
+        // assert object is either composable or trait
+        assert!(
+            exists<Composable>(token_object_address) 
+            || exists<Trait>(token_object_address), 
+            2
+            );
+        // get references
+        let references_resource = borrow_global<References>(token_object_address);
+        move references_resource;
+        // delete references
+        let refrences = move_from<References>(token_object_address);
+        let References {
+            burn_ref,
+            extend_ref: _,
+            mutator_ref: _,
+            property_mutator_ref: _,
+            transfer_ref: _
+        } = refrences;
+        // if type is composable
+        if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
+            // TODO: decompose; send traits back to owner
+            // get composable resource
+            let composable_resource = borrow_global_mut<Composable>(token_object_address);
+            move composable_resource;
+            // delete resources
+            let composable = move_from<Composable>(token_object_address);
+            let Composable {
+                name: _,
+                traits: _,
+                coins: _
+            } = composable;
+            // burn token
+            token::burn(burn_ref);
+            // TODO: emit composable burn event
+        // if type is trait
+        } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
+            // get trait resource
+            let trait_resource = borrow_global<Trait>(token_object_address);
+            move trait_resource;
+            let trait = move_from<Trait>(token_object_address);
+            let Trait {
+                type: _,
+                name: _
+            } = trait;
+            // burn token
+            token::burn(burn_ref);
+            // TODO: emit trait burn event
+        } else {
+            // if type is neither composable nor trait.
+            assert!(false, E_TYPE_NOT_RECOGNIZED);
+        }
+    }
+
+    // TODO: burn collection
+
+
     // TODO: convert trait to composable
 
     // ---------
@@ -281,16 +370,6 @@ module townespace::core {
     // --------------
     // View Functions
     // --------------
-    inline fun borrow<T: key>(
-        object: Object<T>
-        ): &T acquires Collection, Composable, Trait {
-            let object_address = object::object_address(&object);
-            assert!(
-                exists<T>(object_address),
-                89,
-            );
-            borrow_global<T>(object_address)
-    }
 
     // collection
     #[view]
@@ -312,6 +391,21 @@ module townespace::core {
         composable_object: Object<Composable>
     ): vector<Object<Trait>> acquires Composable {
         borrow<Composable>(composable_object).traits  
+    }
+
+    // ---------
+    // Accessors
+    // ---------
+
+    inline fun borrow<T: key>(
+        object: Object<T>
+        ): &T acquires Collection, Composable, Trait {
+            let object_address = object::object_address(&object);
+            assert!(
+                exists<T>(object_address),
+                89,
+            );
+            borrow_global<T>(object_address)
     }
 
     // --------

@@ -1,5 +1,8 @@
 /*
     Module for creating events for the studio.
+
+    TODO:
+        -  We don't need transfer event since there is TransferEvent from object?
 */
 
 module townespace::events {
@@ -13,11 +16,11 @@ module townespace::events {
         Collection, 
         Composable, 
         Trait
-        };
+    };
     
-    //use std::error;
-    //use std::features;
-    //use std::option;
+    // use std::error;
+    // use std::features;
+    // use std::option;
     use std::string::{String};
 
     friend townespace::studio;
@@ -149,7 +152,7 @@ module townespace::events {
         composable_token_metadata: ComposableMetadata
     }
 
-    public(friend) fun emit_composable_token_minted_event(
+    public(friend) fun emit_composable_token_created_event(
         composable_token_address: address,
         composable_token_metadata: ComposableMetadata
     ) {
@@ -168,7 +171,7 @@ module townespace::events {
         trait_token_metadata: TraitMetadata
     }
     
-    public(friend) fun emit_trait_token_minted_event(
+    public(friend) fun emit_trait_token_created_event(
         trait_token_address: address,
         trait_token_metadata: TraitMetadata
     ) {

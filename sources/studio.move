@@ -1,8 +1,13 @@
 /*
     - This module is the main entry point for the studio.
-    - It is responsible for creating collections, minting tokens,
+    - It is responsible for creating collections, creating tokens,
     and composing and decomposing tokens.
     - It is also responsible for transferring tokens.
+
+    TODO:
+        - add a view function to get all active capabilties for a given collection
+        - add a view function to get all active capabilties for a given token
+
 */
 
 module townespace::studio {
@@ -35,7 +40,9 @@ module townespace::studio {
         symbol: String,
         uri: String,
         royalty_numerator: u64,
-        royalty_denominator: u64
+        royalty_denominator: u64,
+        is_burnable: bool,
+        is_mutable: bool
     ) {
         let collection_object = core::create_collection_internal<T>(
             creator_signer,
@@ -45,83 +52,72 @@ module townespace::studio {
             symbol,
             uri,
             royalty_numerator,
-            royalty_denominator
+            royalty_denominator,
+            false,
+            false
         );
+        
         events::emit_collection_created_event(
             signer::address_of(creator_signer),
             events::collection_metadata(collection_object)
         );
     }
 
-    // Mint a composable token
-    public entry fun mint_composable_token(
+    // create a composable token
+    public entry fun create_composable_token(
         creator_signer: &signer,
         collection_name: String,
         description: String,
         type: String,
-        name: String,
-        num_type: u64,
         uri: String, 
         traits: vector<Object<Trait>>,
         coins: vector<Object<FungibleStore>>,
         royalty_numerator: u64,
         royalty_denominator: u64
     ) {
-        let token_object = core::mint_token_internal<core::Composable>(
+        let token_object = core::create_token_internal<Composable>(
             creator_signer,
             collection_name,
             description,
             type,
-            name,
-            num_type,
             uri, 
             traits,
             coins,
             royalty_numerator,
-            royalty_denominator,
-            option::none(),
-            option::none(),
-            option::none()
+            royalty_denominator
         );
         
-        events::emit_composable_token_minted_event(
-                signer::address_of(creator_signer),
-                events::composable_token_metadata(token_object)
-            );
+        events::emit_composable_token_created_event(
+            signer::address_of(creator_signer),
+            events::composable_token_metadata(token_object)
+        );
     }
 
-    public entry fun mint_trait_token(
+    public entry fun create_trait_token(
         creator_signer: &signer,
         collection_name: String,
         description: String,
         type: String,
-        name: String,
-        num_type: u64,
         uri: String,
         royalty_numerator: u64,
         royalty_denominator: u64
     ) {
-        let token_object = core::mint_token_internal<core::Trait>(
+        let token_object = core::create_token_internal<Trait>(
             creator_signer,
             collection_name,
             description,
             type,
-            name,
-            num_type,
             uri, 
             vector::empty(),
             vector::empty(),
             royalty_numerator,
-            royalty_denominator,
-            option::none(),
-            option::none(),
-            option::none()
+            royalty_denominator
         );
         
-        events::emit_trait_token_minted_event(
-                signer::address_of(creator_signer),
-                events::trait_token_metadata(token_object)
-            );
+        events::emit_trait_token_created_event(
+            signer::address_of(creator_signer),
+            events::trait_token_metadata(token_object)
+        );
     }
 
     // TODO: delete collection
@@ -207,6 +203,7 @@ module townespace::studio {
     // --------
     // Mutators
     // --------
+    
     // Composable Token
     inline fun update_uri(
         composable_object_address: address,

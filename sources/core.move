@@ -19,7 +19,8 @@
 
 module townespace::core {
     use aptos_framework::fungible_asset::{Self, FungibleStore}; 
-    use aptos_framework::object::{Self, Object};
+    use aptos_framework::object::{Self, Object, TransferRef};
+    use aptos_std::smart_table::{Self, SmartTable};
     use aptos_std::type_info;
     use aptos_token_objects::collection;
     use aptos_token_objects::royalty;
@@ -54,7 +55,7 @@ module townespace::core {
     // Storage state for composables; aka, the atom/primary of the token
     struct Composable has key {
         traits: vector<Object<Trait>>,
-        coins: vector<Object<Coin>>
+        coins: SmartTable<String, Object<FungibleStore>>
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -62,14 +63,7 @@ module townespace::core {
     struct Trait has key {
         index: u64, // index from the vector
         type: String,
-        coins: vector<Object<Coin>>
-    }
-
-    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    // Storage state for fungible assets
-    struct Coin has key {
-        index: u64, // index from the vector
-        fa: Object<FungibleStore>
+        coins: SmartTable<String, Object<FungibleStore>>
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -155,7 +149,7 @@ module townespace::core {
         uri: String,
         type: String,   // should be option?
         traits: vector<Object<Trait>>, 
-        coins: vector<Object<FungibleStore>>,   
+        coins: SmartTable<String, Object<FungibleStore>>,   
         royalty_numerator: u64,
         royalty_denominator: u64
     ): Object<T> {
@@ -190,8 +184,8 @@ module townespace::core {
             move_to(
                 &token_signer, 
                 Composable {
-                    traits: traits,
-                    coins: coins
+                    traits,
+                    coins
                 }
             );
         // if type is trait
@@ -199,8 +193,9 @@ module townespace::core {
             move_to(
                 &token_signer,
                 Trait {
-                    type: type,
-                    coins: coins
+                    index: vector::length(&traits),
+                    type,
+                    coins
                 } 
             );
         };
@@ -239,36 +234,16 @@ module townespace::core {
         object::disable_ungated_transfer(&trait_references.transfer_ref);
     }
 
-    // Compose Fungible asset to a composable token
-    // Cannot be equiped directly; needs to be transferred to the token owner and then the owner can equip it.
-    public(friend) fun equip_fungible_asset_internal<T: key>(
-        signer_ref: &signer,
-        fungible_asset: Object<T>,
-        composable_object: Object<Composable>,
-        amount: u64
-    ) acquires Composable, References {
-        let signer_addr = signer::address_of(signer_ref);
-        let composable_addr = object::object_address(&composable_object);
-        // if coin store is not created in composable object, create it.
-        if (!fungible_asset::store_exists(signer_addr)) {
-            let object_constructor_ref = object::create_object(composable_addr);
-            fungible_asset::create_store(&object_constructor_ref, fungible_asset);
-        };
-        // transfer amount to composable
-        let 
-        fungible_asset::transfer(signer_ref, fungible_asset, composable_object, amount);
-        // TODO: update coins vector
-        let coins = borrow_global_mut<Composable>(composable_addr).coins;
-        vector::push_back<Object<FungibleStore>>(&mut coins, fungible_asset);
-    }
-
-    fun check_and_create_store<T>(
-        signer_addr: address,
-        fungible_asset: Object<T>
-    ): Object<FungibleStore> {
-        assert!(!fungible_asset::store_exists(signer_addr), 1);
-        let object_constructor_ref = object::create_object(signer_addr);
-        fungible_asset::create_store(&object_constructor_ref, fungible_asset)
+    // Transfer fungible asset of type T to a token (only composable for now)
+    public(friend) fun transfer_fungible_assets<T: key>(
+        sender: &signer,
+        from: Object<T>,
+        to: Object<T>,
+        amount: u64,
+    ){
+        // check if from exists in coins and return index
+        // get the element from coins given the index
+        // transfer fa
     }
 
     // TODO: Decompose Fungible asset to a composable token
@@ -315,6 +290,7 @@ module townespace::core {
     public(friend) fun burn_token<T: key>(
         token_object: Object<T>
     ) acquires Composable, Trait, References {
+        // assert!
         // Burn tokens and delete references
         let token_object_address = object::object_address(&token_object);
         // assert object is either composable or trait
@@ -337,6 +313,8 @@ module townespace::core {
         // if type is composable
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             // TODO: decompose; send traits back to owner
+            // destroy coins table
+            smart_table::destroy(borrow_global_mut<Composable>(token_object_address).coins);
             // get composable resource
             let composable_resource = borrow_global_mut<Composable>(token_object_address);
             move composable_resource;
@@ -351,12 +329,16 @@ module townespace::core {
             // TODO: emit composable burn event
         // if type is trait
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
+            // destroy coins table
+            smart_table::destroy(borrow_global_mut<Trait>(token_object_address).coins);
             // get trait resource
             let trait_resource = borrow_global<Trait>(token_object_address);
             move trait_resource;
             let trait = move_from<Trait>(token_object_address);
             let Trait {
-                type: _
+                index: _,
+                type: _,
+                coins: _
             } = trait;
             // burn token
             token::burn(burn_ref);
@@ -367,7 +349,72 @@ module townespace::core {
         }
     }
 
-    // TODO: burn collection
+    // TODO: create store; this will create and object, from the constructor ref and its signer, create and returns a fungible store.
+    fun create_store<FA: key>(signer_ref: &signer, metadata: Object<FA>): (Object<FungibleStore>, TransferRef) {
+        // create object
+        let constructor_ref = object::create_object(signer::address_of(signer_ref));
+        // create fungible store, its transfer_ref, and return both
+        (fungible_asset::create_store<FA>(&constructor_ref, metadata), object::generate_transfer_ref(&constructor_ref))
+    }
+
+    // TODO: add store to a T; 
+    // if T is a token, send the object to the composable and update coins smart table <<FA>, FungibleStore<FA>>._
+    // if T is a user? how to kmoe if the input is an account or object?
+    fun add_store<FA: key, Token: key>(
+        signer_ref: &signer, 
+        token_obj: Object<Token>,
+        fungible_store_obj: Object<FungibleStore>,
+        fungible_store_transfer_ref: TransferRef
+    ) acquires Composable, Trait {
+        // TODO: assert destination is a token or user (account or object)
+
+        let token_obj_addr = object::object_address(&token_obj);
+        // based on type
+        if (type_info::type_of<Token>() == type_info::type_of<Composable>()) {
+            // transfer the fungible object to the composable
+            object::transfer_to_object(signer_ref, fungible_store_obj, token_obj);
+            // Disable ungated transfer for the fungible object
+            object::disable_ungated_transfer(&fungible_store_transfer_ref);
+            // update the coins smart table
+            smart_table::add(
+                &mut borrow_global_mut<Composable>(token_obj_addr).coins,
+                type_info::type_name<FA>(),
+                fungible_store_obj
+            );
+        } else if (type_info::type_of<Token>() == type_info::type_of<Trait>()) {
+            // transfer the fungible object to the trait and disable ungated transfer
+            object::transfer_to_object(signer_ref, fungible_store_obj, token_obj);
+            // Disable ungated transfer for the fungible object
+            object::disable_ungated_transfer(&fungible_store_transfer_ref);
+            // update the coins smart table
+            smart_table::add(
+                &mut borrow_global_mut<Trait>(token_obj_addr).coins,
+                type_info::type_name<FA>(),
+                fungible_store_obj
+            );
+        } else {
+            // if user (account not object)
+        }
+    }
+
+    // transfer fa to a token
+    // TODO: add Trait compotability
+    public(friend) fun transfer_fa_to_token<FA: key, Token: key>(
+        signer_ref: &signer,
+        from: Object<FungibleStore>,
+        token_obj: Object<Token>,
+        amount: u64
+    ) acquires Composable {
+        let token_obj_addr = object::object_address(&token_obj);
+        
+        // check if store for FA exists in the token
+        // get the store
+        let fa_store = *smart_table::borrow(&borrow_global<Composable>(token_obj_addr).coins, type_info::type_name<FA>());
+        // transfer 
+        fungible_asset::transfer(signer_ref, from, fa_store, amount);
+    }
+
+    // TODO: store exists in a composable token?
 
     // ---------
     // Accessors

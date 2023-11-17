@@ -11,6 +11,7 @@
 */
 
 module townespace::studio {
+    use aptos_framework::account;
     use aptos_framework::fungible_asset::{FungibleStore}; 
     use aptos_framework::object::{Self, Object};
     use aptos_std::smart_table::{Self, SmartTable};
@@ -72,7 +73,6 @@ module townespace::studio {
         type: String,
         uri: String, 
         traits: vector<Object<Trait>>,
-        coins: SmartTable<String, Object<FungibleStore>>,
         royalty_numerator: u64,
         royalty_denominator: u64
     ) {
@@ -83,7 +83,7 @@ module townespace::studio {
             type,
             uri, 
             traits,
-            coins,
+            smart_table::new<String, Object<FungibleStore>>(),
             royalty_numerator,
             royalty_denominator
         );

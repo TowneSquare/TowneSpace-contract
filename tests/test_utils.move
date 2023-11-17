@@ -8,6 +8,7 @@
 #[test_only]
 module townespace::test_utils {
     use aptos_framework::object::{Object};
+    use aptos_std::smart_table;
     use aptos_token_objects::collection;
     // use std::error;
     use std::option::{Self, Option};
@@ -65,7 +66,7 @@ module townespace::test_utils {
             string::utf8(COMPOSABLE_URI),
             type,
             vector::empty(),    // no traits
-            vector::empty(), // no coins
+            smart_table::new(), // no coins
             // royalty
             1,
             2
@@ -81,9 +82,12 @@ module townespace::test_utils {
             string::utf8(TRAIT_URI), 
             string::utf8(TRAIT_TYPE),
             vector::empty(),
-            vector::empty(),  // no coins
+            smart_table::new(),  // no coins
             1,
             2
         )
     }
+
+    // TODO: create fungible asset
+    public fun create_fungible_asset(){}
 }

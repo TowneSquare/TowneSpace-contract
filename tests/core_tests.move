@@ -1,8 +1,9 @@
 #[test_only]
 module townespace::core_tests {
     use aptos_framework::account;
-    use aptos_framework::fungible_asset::{FungibleStore}; 
+    use aptos_framework::fungible_asset::{Self, FungibleStore}; 
     use aptos_framework::object::{Self, Object};
+    use aptos_framework::primary_fungible_store;
     use aptos_token_objects::collection::{Collection, FixedSupply, UnlimitedSupply};
     use std::option::{Self, Option};
     use std::signer;
@@ -157,6 +158,22 @@ module townespace::core_tests {
         core::transfer_token<Composable>(alice, trait_address, signer::address_of(bob));
     }
 
-    // TODO: test transfer FA to composable (trait as well?)
+    #[test(std = @0x1, alice = @0x123, bob = @0x456)]
+    // test transfer FA to composable (trait as well?)
+    fun test_transfer_fungible_asset_from_user_to_user(std: signer, alice: &signer, bob: &signer) {
+        test_utils::prepare_for_test(std);
+        test_utils::create_collection_helper<UnlimitedSupply>(alice, COLLECTION_1_NAME, option::none());
+        let composable_object = test_utils::create_composable_token_helper(alice, COLLECTION_1_NAME);
+        // create and mint fa
+        let (fa_constructor_ref, fa_metadata) = fungible_asset::create_test_token(alice);
+        let (fa_mint_ref, fa_transfer_ref, fa_burn_ref) = primary_fungible_store::init_test_metadata_with_primary_store_enabled(&fa_constructor_ref);
+        primary_fungible_store::mint(&fa_mint_ref, @0x123, 100);
+        assert!(primary_fungible_store::balance(@0x123, fa_metadata) == 100, 1234);
+        assert!(primary_fungible_store::balance(@0x456, fa_metadata) == 0, 1234);
+        // transfer
+        core::transfer_fa(alice, @0x456, fa_metadata, 100);
+        assert!(primary_fungible_store::balance(@0x123, fa_metadata) == 0, 1234);
+        assert!(primary_fungible_store::balance(@0x456, fa_metadata) == 100, 1234);
+    }
 
 }

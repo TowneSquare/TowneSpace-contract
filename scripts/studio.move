@@ -11,22 +11,13 @@
 */
 
 module townespace::studio {
-    use aptos_framework::account;
-    use aptos_framework::fungible_asset::{FungibleStore}; 
     use aptos_framework::object::{Self, Object};
-    use aptos_std::smart_table::{Self, SmartTable};
-    // use std::error;
-    use std::option::{Self, Option};
+    use std::error;
+    use std::option::{Option};
     use std::signer;
-    use std::string::{String};
+    use std::string::{Self, String};
     use std::vector;
-
-    use townespace::core::{
-        Self, 
-        Composable,
-        Trait
-        };
-
+    use townespace::core::{Self, Composable, Trait};
     use townespace::events;
 
     // ---------------
@@ -70,7 +61,6 @@ module townespace::studio {
         creator_signer: &signer,
         collection_name: String,
         description: String,
-        type: String,
         uri: String, 
         traits: vector<Object<Trait>>,
         royalty_numerator: u64,
@@ -80,10 +70,9 @@ module townespace::studio {
             creator_signer,
             collection_name,
             description,
-            type,
             uri, 
+            string::utf8(b""),
             traits,
-            smart_table::new<String, Object<FungibleStore>>(),
             royalty_numerator,
             royalty_denominator
         );
@@ -110,7 +99,6 @@ module townespace::studio {
             type,
             uri, 
             vector::empty(),
-            smart_table::new(),
             royalty_numerator,
             royalty_denominator
         );
@@ -214,7 +202,7 @@ module townespace::studio {
         core::update_uri_internal(
             composable_object_address, 
             new_uri
-            );
+        );
         // TODO: events
     }
 

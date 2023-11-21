@@ -66,7 +66,6 @@ module townespace::test_utils {
             string::utf8(COMPOSABLE_URI),
             type,
             vector::empty(),    // no traits
-            smart_table::new(), // no coins
             // royalty
             1,
             2
@@ -82,7 +81,6 @@ module townespace::test_utils {
             string::utf8(TRAIT_URI), 
             string::utf8(TRAIT_TYPE),
             vector::empty(),
-            smart_table::new(),  // no coins
             1,
             2
         )

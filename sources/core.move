@@ -19,11 +19,9 @@
 */
 
 module townespace::core {
-    use aptos_framework::account;
-    use aptos_framework::fungible_asset::{Self, FungibleStore}; 
-    use aptos_framework::object::{Self, Object, TransferRef};
+    use aptos_framework::fungible_asset::{Self}; 
+    use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
-    use aptos_std::smart_table::{Self, SmartTable};
     use aptos_std::type_info;
     use aptos_token_objects::collection;
     use aptos_token_objects::royalty;
@@ -35,6 +33,7 @@ module townespace::core {
     use std::string::{Self, String};
     use std::vector;
 
+    friend townespace::mint;
     friend townespace::studio;
 
     // ------
@@ -57,16 +56,14 @@ module townespace::core {
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     // Storage state for composables; aka, the atom/primary of the token
     struct Composable has key {
-        traits: vector<Object<Trait>>,
-        coins: SmartTable<String, Object<FungibleStore>>
+        traits: vector<Object<Trait>>
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     // Storage state for traits
     struct Trait has key {
         index: u64, // index from the vector
-        type: String,
-        coins: SmartTable<String, Object<FungibleStore>>
+        type: String
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -83,13 +80,15 @@ module townespace::core {
     // ------------------
 
     // Create a collection
+    // TODO: if royalties option::some == true, init royalty. Not otherwise.
     public fun create_collection_internal<T>(
         signer_ref: &signer,
         description: String,
         max_supply: Option<u64>, // if the collection is set to haved a fixed supply.
         name: String,
         symbol: String,
-        uri: String, 
+        uri: String,    
+        // TODO: make royalties optional
         royalty_numerator: u64,
         royalty_denominator: u64,
         // whether tokens can be burned or not.
@@ -151,8 +150,7 @@ module townespace::core {
         description: String,
         uri: String,
         type: String,   // should be option?
-        traits: vector<Object<Trait>>, 
-        coins: SmartTable<String, Object<FungibleStore>>,   
+        traits: vector<Object<Trait>>,  
         royalty_numerator: u64,
         royalty_denominator: u64
     ): Object<T> {
@@ -187,8 +185,7 @@ module townespace::core {
             move_to(
                 &token_signer, 
                 Composable {
-                    traits,
-                    coins
+                    traits
                 }
             );
         // if type is trait
@@ -198,7 +195,6 @@ module townespace::core {
                 Trait {
                     index: vector::length(&traits),
                     type,
-                    coins
                 } 
             );
         };
@@ -245,7 +241,6 @@ module townespace::core {
         amount: u64
     ) {
         let token_obj_addr = object::object_address(&token_obj);
-        let fa_name = fungible_asset::name(fa);
         // assert Token is either composable or trait
         assert!(
             type_info::type_of<Token>() == type_info::type_of<Composable>() || type_info::type_of<Token>() == type_info::type_of<Trait>(), 
@@ -304,7 +299,9 @@ module townespace::core {
             || type_info::type_of<Token>() == type_info::type_of<Trait>(), 
             E_TYPE_NOT_RECOGNIZED
         );
-        // TODO: assert new owner is not a token
+
+        // assert new owner is not a token
+        assert!(!object::is_object(new_owner), 10);
 
         // transfer
         // TODO: should use transfer ref and object instead of token address?
@@ -353,30 +350,26 @@ module townespace::core {
         // if type is composable
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             // TODO: decompose; send traits back to owner
-            // TODO: destroy coins table; destroy if empty. if not, send FAs to the owner and then destroy
             // get composable resource
             let composable_resource = borrow_global_mut<Composable>(token_object_address);
             move composable_resource;
             // delete resources
-            // let composable = move_from<Composable>(token_object_address);
-            // let Composable {
-            //     traits: _,
-            //     coins: _
-            // } = composable;
+            let composable = move_from<Composable>(token_object_address);
+            let Composable {
+                traits: _
+            } = composable;
             // burn token
             token::burn(burn_ref);
         // if type is trait
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
-            // TODO: destroy coins table; destroy if empty. if not, send FAs to the owner and then destroy
             // get trait resource
             let trait_resource = borrow_global<Trait>(token_object_address);
             move trait_resource;
-            // let trait = move_from<Trait>(token_object_address);
-            // let Trait {
-            //     index: _,
-            //     type: _,
-            //     coins: _
-            // } = trait;
+            let trait = move_from<Trait>(token_object_address);
+            let Trait {
+                index: _,
+                type: _,
+            } = trait;
             // burn token
             token::burn(burn_ref);
         } else {
@@ -431,21 +424,7 @@ module townespace::core {
         let references = borrow_global_mut<References>(composable_object_address);
         let mutator_reference = &references.mutator_ref;
         token::set_uri(mutator_reference, new_uri);
-    }
-
-    // type casting; cloned from dynamic_aptoads.move
-    fun u64_to_string(value: u64): String {
-      if (value == 0) {
-         return string::utf8(b"0")
-      };
-      let buffer = vector::empty<u8>();
-      while (value != 0) {
-         vector::push_back(&mut buffer, ((48 + value % 10) as u8));
-         value = value / 10;
-      };
-      vector::reverse(&mut buffer);
-      string::utf8(buffer)
-    }  
+    } 
 
     #[test_only]
     friend townespace::studio_tests; 

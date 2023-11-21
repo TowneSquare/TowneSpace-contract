@@ -11,18 +11,14 @@ module townespace::events {
     use aptos_token_objects::collection;
     use aptos_token_objects::token;
     
-    use townespace::core::{
-        Self, 
-        Collection, 
-        Composable, 
-        Trait
-    };
+    use townespace::core::{Self, Collection, Composable, Trait};
     
     // use std::error;
     // use std::features;
     // use std::option;
     use std::string::{String};
 
+    friend townespace::mint;
     friend townespace::studio;
 
     // ------

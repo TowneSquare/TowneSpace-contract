@@ -9,23 +9,23 @@
         - Composable token (cNFT): A token V2 that can hold Trait tokens.
         - Fungible assets: future work :)
     TODOs:
-        - add burn functions.
         - add mutators.
         - add view functions to see collection details.
         - FA: only composables can hold FA (for now).
         - Implement royalties better, check framwork modules.
-        - Recover burned tokens?
         - refactor: tokens -> digital assets | fa -> fungible asset (remains the same)
+        - naming related: name should follow the nft type
+            e.g: type # index
+        - soulbound FA: not transferable but burnable. 
 */
 
 module townespace::core {
-    use aptos_framework::fungible_asset::{Self}; 
     use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
     use aptos_std::type_info;
     use aptos_token_objects::collection;
     use aptos_token_objects::royalty;
-    use aptos_token_objects::token;
+    use aptos_token_objects::token::{Self, Token as TokenV2};
 
     // use std::error;
     use std::option::{Self, Option};
@@ -305,7 +305,7 @@ module townespace::core {
 
         // transfer
         // TODO: should use transfer ref and object instead of token address?
-        object::transfer<Token>(signer_ref, object::address_to_object(token_address), new_owner)
+        object::transfer<TokenV2>(signer_ref, object::address_to_object(token_address), new_owner)
     }
 
     // transfer fa from user to user.
@@ -315,70 +315,27 @@ module townespace::core {
         fa: Object<FA>,
         amount: u64
     ) {
-        // TODO: assert new owner is not a token
-        
+        assert!(!object::is_object(recipient), 10);
         primary_fungible_store::transfer<FA>(signer_ref, fa, recipient, amount)
     }
 
-    // TODO: Transfer with fee.
-
     // burn a token
-    // TODO: needs to be tested
-    public(friend) fun burn_token<T: key>(
-        token_object: Object<T>
-    ) acquires Composable, Trait, References {
-        // assert!
+    public(friend) fun burn_token<T: key>(signer_ref: &signer, token_object: Object<T>) {
+        assert!(object::owns<T>(token_object, signer::address_of(signer_ref)), 10);
         // Burn tokens and delete references
         let token_object_address = object::object_address(&token_object);
         // assert object is either composable or trait
-        assert!(
-            exists<Composable>(token_object_address) 
-            || exists<Trait>(token_object_address), 
-            2
-            );
-        // get references
-        let references_resource = borrow_global<References>(token_object_address);
-        move references_resource;
-        // delete references
-        let refrences = move_from<References>(token_object_address);
-        let References {
-            burn_ref,
-            extend_ref: _,
-            mutator_ref: _,
-            transfer_ref: _
-        } = refrences;
+        assert!(exists<Composable>(token_object_address) || exists<Trait>(token_object_address), 2);
         // if type is composable
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             // TODO: decompose; send traits back to owner
-            // get composable resource
-            let composable_resource = borrow_global_mut<Composable>(token_object_address);
-            move composable_resource;
-            // delete resources
-            let composable = move_from<Composable>(token_object_address);
-            let Composable {
-                traits: _
-            } = composable;
-            // burn token
-            token::burn(burn_ref);
+            object::burn<T>(signer_ref, token_object);
         // if type is trait
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             // get trait resource
-            let trait_resource = borrow_global<Trait>(token_object_address);
-            move trait_resource;
-            let trait = move_from<Trait>(token_object_address);
-            let Trait {
-                index: _,
-                type: _,
-            } = trait;
-            // burn token
-            token::burn(burn_ref);
-        } else {
-            // if type is neither composable nor trait.
-            assert!(false, E_TYPE_NOT_RECOGNIZED);
-        }
+            object::burn<T>(signer_ref, token_object);
+        } else { assert!(false, E_TYPE_NOT_RECOGNIZED); };
     }
-
-    // TODO: store exists in a composable token?
 
     // ---------
     // Accessors
@@ -407,14 +364,25 @@ module townespace::core {
         borrow_global<Composable>(object_address).traits  
     }
 
-    #[view]
-    public fun borrow_mut_traits(composable_address: address): vector<Object<Trait>> acquires Composable {
+    public(friend) fun borrow_mut_traits(composable_address: address): vector<Object<Trait>> acquires Composable {
         borrow_global_mut<Composable>(composable_address).traits
     }
 
     // --------
     // Mutators
     // --------
+
+    // Change token name
+    public(friend) fun set_token_name_internal(
+        signer_ref: &signer,
+        token_object_address: address,
+        new_name: String
+    ) acquires References {
+        assert!(object::is_owner<TokenV2>(object::address_to_object(token_object_address), signer::address_of(signer_ref)), 10);
+        let references = borrow_global_mut<References>(token_object_address);
+        let mutator_reference = &references.mutator_ref;
+        token::set_name(mutator_reference, new_name);
+    }
 
     // Change uri
     public(friend) fun update_uri_internal(

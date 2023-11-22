@@ -7,11 +7,17 @@
 
 #[test_only]
 module townespace::test_utils {
+
+    use aptos_framework::account;
+    use aptos_framework::aptos_coin::{Self, AptosCoin};
+    use aptos_framework::coin;
+    use aptos_framework::managed_coin;
     use aptos_framework::object::{Object};
     use aptos_std::smart_table;
     use aptos_token_objects::collection;
     // use std::error;
     use std::option::{Self, Option};
+    use std::signer;
     use std::string::{Self, String};
     use std::vector;
     use townespace::core::{Self, Collection, Composable, Trait};
@@ -35,6 +41,30 @@ module townespace::test_utils {
     public fun prepare_for_test(std: signer) {
         let feature = features::get_auids();
         features::change_feature_flags(&std, vector[feature], vector[]);
+    }
+
+    public fun prepare_for_mint_test(std: signer, user_a: &signer, user_b: &signer) {
+        let feature = features::get_auids();
+        features::change_feature_flags(&std, vector[feature], vector[]);
+        prepare_account_for_test(&std, user_a, user_b);
+    }
+
+    fun prepare_account_for_test(aptos_framework: &signer, user_a: &signer, user_b: &signer) {
+        account::create_account_for_test(signer::address_of(aptos_framework));
+        account::create_account_for_test(signer::address_of(user_a));
+        account::create_account_for_test(signer::address_of(user_b));
+        // register aptos coin and mint some APT to be able to pay for the fee of generate_coin
+        managed_coin::register<AptosCoin>(aptos_framework);
+        managed_coin::register<AptosCoin>(user_a);
+        managed_coin::register<AptosCoin>(user_b);
+        let (aptos_coin_burn_cap, aptos_coin_mint_cap) = aptos_coin::initialize_for_test(aptos_framework);
+        // mint APT to be able to pay for the fee of generate_coin
+        aptos_coin::mint(aptos_framework, signer::address_of(user_a), 100000000000);
+        aptos_coin::mint(aptos_framework, signer::address_of(user_b), 100000000000);
+
+        // destroy APT mint and burn caps
+        coin::destroy_mint_cap<AptosCoin>(aptos_coin_mint_cap);
+        coin::destroy_burn_cap<AptosCoin>(aptos_coin_burn_cap);
     }
 
     public fun create_collection_helper<T: key>(

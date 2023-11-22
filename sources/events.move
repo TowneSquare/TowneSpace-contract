@@ -2,7 +2,8 @@
     Module for creating events for the studio.
 
     TODO:
-        -  We don't need transfer event since there is TransferEvent from object?
+        - make sure events are returning newlwy created tokens` addresses
+        - check from studio which func is missing events and add them   
 */
 
 module townespace::events {

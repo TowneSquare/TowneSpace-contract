@@ -1,5 +1,4 @@
 # Studio - NFT creation tool leveraging token v2
-Hack Singapore 2023
 
 deployed on devnet: https://explorer.aptoslabs.com/account/0x07ff0308d16a5041ace8e7e306a60b2946b6a4aee0e7e923b8f20e49bf3508ce/modules/code/core?network=devnet
 
@@ -22,7 +21,6 @@ deployed on devnet: https://explorer.aptoslabs.com/account/0x07ff0308d16a5041ace
     ```
 2. Mint a token:
     - Tokens are minted using the `mint_token_internal` function, which is defined in the `core.move` module, and built on top of the `aptos-object-token/token.move`.
-    - The minting function returns a `ConstructorRef` which is used later to generate references.
     ```rust
     // core.move
     public fun mint_token_internal<T>(

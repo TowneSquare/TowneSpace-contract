@@ -2,3 +2,4 @@
 build
 .coverage_map.mvcov
 .trace
+packages

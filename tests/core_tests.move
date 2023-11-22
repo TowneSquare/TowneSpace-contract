@@ -116,7 +116,7 @@ module townespace::core_tests {
 
     #[test(std = @0x1, alice = @0x123, bob = @0x456)]
     // test transfer and equip; alice creates a token, transfers it to bob, and bob tries to equip a trait to it
-    fun test_transfer_and_equip(std: signer, alice: &signer, bob: &signer) {
+    fun transfer_and_equip(std: signer, alice: &signer, bob: &signer) {
         test_utils::prepare_for_test(std);
         test_utils::create_collection_helper<UnlimitedSupply>(alice, COLLECTION_1_NAME, option::none());
         let composable_object = test_utils::create_composable_token_helper(alice, COLLECTION_1_NAME);
@@ -142,7 +142,7 @@ module townespace::core_tests {
 
     #[test(std = @0x1, alice = @0x123, bob = @0x456)]
     // equip trait in a composable and transfer it while equipped; should fail
-    #[expected_failure(abort_code = 393223, location = aptos_framework::object)]
+    #[expected_failure(abort_code = 327683, location = aptos_framework::object)]
     fun transfer_equiped_trait(std: signer, alice: &signer, bob: &signer) {
         test_utils::prepare_for_test(std);
         test_utils::create_collection_helper<UnlimitedSupply>(alice, COLLECTION_1_NAME, option::none());
@@ -160,7 +160,7 @@ module townespace::core_tests {
 
     #[test(std = @0x1, alice = @0x123, bob = @0x456)]
     // test transfer FA to composable (trait as well?)
-    fun test_transfer_fungible_asset_from_user_to_user(std: signer, alice: &signer, bob: &signer) {
+    fun transfer_fungible_asset_from_user_to_user(std: signer, alice: &signer, bob: &signer) {
         test_utils::prepare_for_test(std);
         test_utils::create_collection_helper<UnlimitedSupply>(alice, COLLECTION_1_NAME, option::none());
         let composable_object = test_utils::create_composable_token_helper(alice, COLLECTION_1_NAME);
@@ -174,6 +174,20 @@ module townespace::core_tests {
         core::transfer_fa(alice, @0x456, fa_metadata, 100);
         assert!(primary_fungible_store::balance(@0x123, fa_metadata) == 0, 1234);
         assert!(primary_fungible_store::balance(@0x456, fa_metadata) == 100, 1234);
+    }
+
+    #[test(std = @0x1, alice = @0x123, bob = @0x456)]
+    // test burn tokens
+    fun burn_tokens(std: signer, alice: &signer, bob: &signer) {
+        test_utils::prepare_for_test(std);
+        test_utils::create_collection_helper<UnlimitedSupply>(alice, COLLECTION_1_NAME, option::none());
+        let composable_object = test_utils::create_composable_token_helper(alice, COLLECTION_1_NAME);
+        let trait_object = test_utils::create_trait_token_helper(alice, COLLECTION_1_NAME);
+        // burn 
+        core::burn_token<Composable>(alice, composable_object);
+        core::burn_token<Trait>(alice, trait_object);
+        assert!(object::is_burnt<Composable>(composable_object) == true, 1234);
+        assert!(object::is_burnt<Trait>(trait_object) == true, 1234);
     }
 
 }

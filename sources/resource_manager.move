@@ -22,37 +22,12 @@ module townespace::resource_manager {
 
     //// Initialize PermissionConfig to establish control over the resource account.
     //// This function is invoked only when this resource is deployed the first time.
-    public(friend) entry fun init(module_signer: &signer) {
-        let module_signer_addr = signer::address_of(module_signer);
-        let signer_cap = resource_account::retrieve_resource_account_cap(module_signer, module_signer_addr);
-        let resource_addr = account::get_signer_capability_address(&signer_cap);
-        move_to(
-            module_signer, 
-            PermissionConfig {
-                signer_cap,
-                resource_addr
-            }
-        );
-    }
-
-    //// Can be called by friended modules to obtain the resource account signer.
-    //// Function will panic if the module is not friended or does not exist.
-    public(friend) fun get_signer(module_address: address): signer acquires PermissionConfig {
-        let signer_cap = &borrow_global<PermissionConfig>(module_address).signer_cap;
-        account::create_signer_with_capability(signer_cap)
-    }
-
-    public fun get_resource_address(module_signer: &signer): address acquires PermissionConfig {
-        borrow_global<PermissionConfig>(signer::address_of(module_signer)).resource_addr
-    }
-
-    #[test_only]
-    public fun initialize_for_test(deployer: &signer) {
+    public entry fun initialize(deployer: &signer) {
         let deployer_addr = signer::address_of(deployer);
+        assert!(signer::address_of(deployer) == @townespace, 1);
         if (!exists<PermissionConfig>(deployer_addr)) {
-            /// account::create_account_for_test(deployer_addr);
-            let signer_cap = account::create_test_signer_cap(deployer_addr);
-            let resource_addr = account::get_signer_capability_address(&signer_cap);
+            let (resource_signer, signer_cap) = account::create_resource_account(deployer, b"Townespace");
+            let resource_addr = signer::address_of(&resource_signer);
             move_to(
                 deployer, 
                 PermissionConfig {
@@ -63,6 +38,20 @@ module townespace::resource_manager {
         };
     }
 
+    //// Can be called by friended modules to obtain the resource account signer.
+    //// Function will panic if the module is not friended or does not exist.
+    public(friend) fun get_signer(): signer acquires PermissionConfig {
+        let signer_cap = &borrow_global<PermissionConfig>(@townespace).signer_cap;
+        account::create_signer_with_capability(signer_cap)
+    }
+
+    #[view]
+    public fun get_resource_address(): address acquires PermissionConfig {
+        borrow_global<PermissionConfig>(@townespace).resource_addr
+    }
+
     #[test_only]
     friend townespace::test_utils;
+    #[test_only]
+    friend townespace::mint_test;
 }

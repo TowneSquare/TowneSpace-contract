@@ -8,7 +8,7 @@
 
 module townespace::events {
     use aptos_framework::event;
-    use aptos_framework::object::{Object};
+    use aptos_framework::object::{Self, Object};
     use aptos_token_objects::collection;
     use aptos_token_objects::token;
     
@@ -62,6 +62,7 @@ module townespace::events {
         name: String,
         uri: String,
         traits: vector<Object<Trait>>,
+        base_mint_price: u64
     }
 
     
@@ -74,14 +75,16 @@ module townespace::events {
             let description = token::description<Composable>(composable_object);
             let name = token::name<Composable>(composable_object);
             let uri = token::uri<Composable>(composable_object);
+            let base_mint_price = core::get_base_mint_price<Composable>(object::object_address(&composable_object));
 
             ComposableMetadata {
-                creator: creator,
-                collection_name: collection_name,
-                description: description,
-                name: name,
-                uri: uri,
-                traits: traits,
+                creator,
+                collection_name,
+                description,
+                name,
+                uri,
+                traits,
+                base_mint_price
             }
     }
 
@@ -91,7 +94,9 @@ module townespace::events {
         collection_name: String,
         description: String,
         name: String,
-        uri: String
+        uri: String,
+        base_mint_price: u64
+
     }
 
     public fun trait_token_metadata(
@@ -102,13 +107,15 @@ module townespace::events {
             let description = token::description<Trait>(trait_object);
             let name = token::name<Trait>(trait_object);
             let uri = token::uri<Trait>(trait_object);
+            let base_mint_price = core::get_base_mint_price<Trait>(object::object_address(&trait_object));
 
             TraitMetadata {
-                creator: creator,
-                collection_name: collection_name,
-                description: description,
-                name: name,
-                uri: uri
+                creator,
+                collection_name,
+                description,
+                name,
+                uri,
+                base_mint_price
             }
     }
 

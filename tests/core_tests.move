@@ -73,7 +73,7 @@ module townespace::core_tests {
 
     #[test(std = @0x1, creator = @0x123)]
     // attempt to transfer a composable to a composable; expect failure
-    #[expected_failure(abort_code = 10, location = townespace::core)]
+    #[expected_failure(abort_code = 458759, location = townespace::core)]
     fun fail_transfer_composable_to_composable(std: signer, creator: &signer) {
         test_utils::prepare_for_test(std);
         // create collection
@@ -88,7 +88,7 @@ module townespace::core_tests {
 
     #[test(std = @0x1, creator = @0x123)]
     // attempt to transfer a trait to a trait; expect failure
-    #[expected_failure(abort_code = 10, location = townespace::core)]
+    #[expected_failure(abort_code = 458759, location = townespace::core)]
     fun fail_transfer_trait_to_trait(std: signer, creator: &signer) {
         test_utils::prepare_for_test(std);
         // create collection

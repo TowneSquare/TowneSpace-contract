@@ -2,7 +2,7 @@
     Module for creating events for the studio.
 
     TODO:
-        - make sure events are returning newlwy created tokens` addresses
+        - make sure events are returning newly created tokens` addresses
         - check from studio which func is missing events and add them   
 */
 
@@ -14,9 +14,6 @@ module townespace::events {
     
     use townespace::core::{Self, Collection, Composable, Trait};
     
-    // use std::error;
-    // use std::features;
-    // use std::option;
     use std::string::{String};
 
     friend townespace::mint;

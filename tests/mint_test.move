@@ -1,8 +1,5 @@
 /*
     Module containing helper functions needed for unit testing
-
-    TODO:
-        - 
 */
 
 #[test_only]
@@ -64,6 +61,7 @@ module townespace::mint_test {
             100,    // nbr of tokens to mint
             string::utf8(COMPOSABLE_DESCRIPTION),
             string::utf8(COMPOSABLE_URI),
+            100000000,
             1,
             2
         );
@@ -75,6 +73,7 @@ module townespace::mint_test {
             string::utf8(TRAIT_DESCRIPTION),
             string::utf8(TRAIT_URI),
             string::utf8(TRAIT_TYPE),
+            100000000,
             1,
             2
         );
@@ -106,6 +105,7 @@ module townespace::mint_test {
             100,    // nbr of tokens to mint
             string::utf8(COMPOSABLE_DESCRIPTION),
             string::utf8(COMPOSABLE_URI),
+            10000,
             1,
             2
         );
@@ -118,7 +118,7 @@ module townespace::mint_test {
         let token_to_mint = *vector::borrow<address>(&composables_addresses, 0);
 
         // minter mints it
-        mint::mint_token<Composable>(minter, token_to_mint, 100);
+        mint::mint_token<Composable>(minter, token_to_mint);
         let token_obj = object::address_to_object<Composable>(token_to_mint);
         assert!(object::is_owner<Composable>(token_obj, @0x456), 1);
     }

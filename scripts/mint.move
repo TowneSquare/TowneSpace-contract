@@ -1,8 +1,5 @@
 /*
     Minter module for creating collections and NFTs powered by the digital asset standard.
-
-    TODO:
-        - add errors
 */
 
 module townespace::mint {
@@ -10,22 +7,25 @@ module townespace::mint {
     use aptos_framework::aptos_coin::{AptosCoin as APT};
     use aptos_framework::coin;
     use aptos_framework::object;
+
     use aptos_std::type_info;
+
     use aptos_token_objects::collection::{FixedSupply, UnlimitedSupply};
     use aptos_token_objects::token::{Self, Token as TokenV2};
-    use std::error;
+
     use std::option;
     use std::signer;
     use std::string::{Self, String};
     use std::vector;
+
     use townespace::core::{Self, Composable, Trait};
+    use townespace::errors;
     use townespace::events;
     use townespace::resource_manager;
-    use townespace::studio;
 
     public entry fun initialize(signer_ref: &signer) {
         // assert that the signer is the owner of the module
-        assert!(signer::address_of(signer_ref) == @townespace, error::permission_denied(1));
+        assert!(signer::address_of(signer_ref) == @townespace, errors::not_townespace());
         // init resource
         resource_manager::initialize(signer_ref);
     }
@@ -102,7 +102,8 @@ module townespace::mint {
         collection_name: String,
         number_of_tokens_to_mint: u64,
         description: String,
-        uri: String,
+        uri: String,  
+        base_mint_price: u64,
         royalty_numerator: u64,
         royalty_denominator: u64
     ) {
@@ -116,6 +117,7 @@ module townespace::mint {
                 uri, 
                 string::utf8(b""),
                 vector::empty(),
+                base_mint_price,
                 royalty_numerator,
                 royalty_denominator
             );
@@ -130,8 +132,7 @@ module townespace::mint {
             core::transfer_token<Composable>(creator_signer, obj_addr, escrow_addr);
 
             i = i + 1;
-        }
-        
+        }   
     }
 
     public entry fun create_trait_tokens(
@@ -141,6 +142,7 @@ module townespace::mint {
         description: String,
         type: String,
         uri: String,
+        base_mint_price: u64,
         royalty_numerator: u64,
         royalty_denominator: u64
     ) {
@@ -154,6 +156,7 @@ module townespace::mint {
                 uri, 
                 type,
                 vector::empty(),
+                base_mint_price,
                 royalty_numerator,
                 royalty_denominator
             );
@@ -177,17 +180,16 @@ module townespace::mint {
     // ------------------------
 
     // Assuming an NFT is already creater and transfers it to the minter/caller
-    public entry fun mint_token<Type: key>(
-        signer_ref: &signer,
-        token_addr: address,
-        mint_price: u64 // in APT
-    ) {
+    public entry fun mint_token<Type: key>(signer_ref: &signer, token_addr: address) {
         let signer_addr = signer::address_of(signer_ref);
         let creator_addr = get_creator_addr_from_token_addr(token_addr);
-
-        assert!(type_info::type_of<Type>() == type_info::type_of<Composable>() || type_info::type_of<Type>() == type_info::type_of<Trait>(), 1);
-        assert!(coin::balance<APT>(signer_addr) >= mint_price, 1);
-        
+        assert!(
+            type_info::type_of<Type>() == type_info::type_of<Composable>() || type_info::type_of<Type>() == type_info::type_of<Trait>(), 
+            errors::type_not_recognized()
+        );
+        // get mint price
+        let mint_price = core::get_base_mint_price<Type>(token_addr);
+        assert!(coin::balance<APT>(signer_addr) >= mint_price, errors::insufficient_funds());
         // transfer composable from resource acc to the minter
         let resource_signer = &resource_manager::get_signer();
         core::transfer_token<Type>(resource_signer, token_addr, signer_addr);
@@ -207,7 +209,7 @@ module townespace::mint {
     #[test_only]
     public fun init_test(signer_ref: &signer) {
         // assert that the signer is the owner of the module
-        assert!(signer::address_of(signer_ref) == @townespace, error::permission_denied(1));
+        assert!(signer::address_of(signer_ref) == @townespace, errors::not_townespace());
         // init resource
         resource_manager::initialize(signer_ref);
     }
@@ -219,6 +221,7 @@ module townespace::mint {
         number_of_tokens_to_mint: u64,
         description: String,
         uri: String,
+        base_mint_price: u64,
         royalty_numerator: u64,
         royalty_denominator: u64
     ): vector<address> {
@@ -233,6 +236,7 @@ module townespace::mint {
                 uri, 
                 string::utf8(b""),
                 vector::empty(),
+                base_mint_price,
                 royalty_numerator,
                 royalty_denominator
             );

@@ -59,8 +59,8 @@ module townespace::test_utils {
         managed_coin::register<AptosCoin>(user_b);
         let (aptos_coin_burn_cap, aptos_coin_mint_cap) = aptos_coin::initialize_for_test(aptos_framework);
         // mint APT to be able to pay for the fee of generate_coin
-        aptos_coin::mint(aptos_framework, signer::address_of(user_a), 100000000000);
-        aptos_coin::mint(aptos_framework, signer::address_of(user_b), 100000000000);
+        aptos_coin::mint(aptos_framework, signer::address_of(user_a), 1000000000);
+        aptos_coin::mint(aptos_framework, signer::address_of(user_b), 1000000000);
 
         // destroy APT mint and burn caps
         coin::destroy_mint_cap<AptosCoin>(aptos_coin_mint_cap);
@@ -96,6 +96,7 @@ module townespace::test_utils {
             string::utf8(COMPOSABLE_URI),
             type,
             vector::empty(),    // no traits
+            100000000,    // base mint price
             // royalty
             1,
             2
@@ -111,6 +112,7 @@ module townespace::test_utils {
             string::utf8(TRAIT_URI), 
             string::utf8(TRAIT_TYPE),
             vector::empty(),
+            100000000,    // base mint price
             1,
             2
         )

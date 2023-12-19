@@ -179,7 +179,8 @@ module townespace::mint {
     // Minter related functions
     // ------------------------
 
-    // Assuming an NFT is already creater and transfers it to the minter/caller
+    // Assuming an NFT is already created, this function transfers it to the minter/caller
+    // the minter pays the mint price to the creator
     public entry fun mint_token<Type: key>(signer_ref: &signer, token_addr: address) {
         let signer_addr = signer::address_of(signer_ref);
         let creator_addr = get_creator_addr_from_token_addr(token_addr);

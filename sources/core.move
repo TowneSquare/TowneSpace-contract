@@ -234,6 +234,8 @@ module townespace::core {
         token_obj: Object<Token>,
         amount: u64
     ) {
+        // assert signer is the owner of the token object
+        assert!(object::is_owner<Token>(token_obj, signer::address_of(signer_ref)), errors::not_owner());
         let token_obj_addr = object::object_address(&token_obj);
         // assert Token is either composable or trait
         assert!(
@@ -251,6 +253,8 @@ module townespace::core {
         token_obj: Object<Token>,
         amount: u64
     ) {
+        // assert signer is the owner of the token object
+        assert!(object::is_owner<Token>(token_obj, signer::address_of(signer_ref)), errors::not_owner());
         // assert Token is either composable or trait
         assert!(
             type_info::type_of<Token>() == type_info::type_of<Composable>() || type_info::type_of<Token>() == type_info::type_of<Trait>(), 

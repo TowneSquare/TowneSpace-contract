@@ -190,4 +190,21 @@ module townespace::core_tests {
         assert!(object::is_burnt<Trait>(trait_object) == true, 1234);
     }
 
+    #[test(std = @0x1, alice = @0x123, bob = @0x456)]
+    // alice creates tokens, bob tries to equip these tokens. Bob is not the owner; should fail
+    #[expected_failure(abort_code = 327684, location = aptos_framework::object)]
+    fun fail_equip_unequip(std: signer, alice: &signer, bob: &signer) {
+        test_utils::prepare_for_test(std);
+        test_utils::create_collection_helper<UnlimitedSupply>(alice, COLLECTION_1_NAME, option::none());
+        let composable_object = test_utils::create_composable_token_helper(alice, COLLECTION_1_NAME);
+        let trait_object = test_utils::create_trait_token_helper(alice, COLLECTION_1_NAME);
+        // transfer composable and trait to bob
+        let composable_address = object::object_address(&composable_object);
+        let trait_address = object::object_address(&trait_object);
+        core::transfer_token<Composable>(alice, composable_address, signer::address_of(bob));
+        core::transfer_token<Trait>(alice, trait_address, signer::address_of(bob));
+        // equip trait to composable
+        core::equip_trait_internal(alice, composable_object, trait_object);
+    }
+
 }

@@ -39,13 +39,12 @@ module townespace::test_utils {
     const TRAIT_TYPE: vector<u8> = b"Trait type";
 
     public fun prepare_for_test(std: signer) {
-        let feature = features::get_auids();
-        features::change_feature_flags(&std, vector[feature], vector[]);
+        // auid and events
+        features::change_feature_flags(&std, vector[23, 26], vector[]);
     }
 
     public fun prepare_for_mint_test(std: signer, user_a: &signer, user_b: &signer) {
-        let feature = features::get_auids();
-        features::change_feature_flags(&std, vector[feature], vector[]);
+        features::change_feature_flags(&std, vector[23, 26], vector[]);
         prepare_account_for_test(&std, user_a, user_b);
     }
 

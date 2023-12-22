@@ -65,11 +65,11 @@ module townespace::migrate {
         );
     }
 
-    public entry fun from_v1_to_v2(signer_ref: &signer, creator: address, collection_name: String, token_name: String, property_version: u64) {
+    public entry fun from_v1_to_v2(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64) {
         let signer_addr = signer::address_of(signer_ref);
         // get the token metadata
-        let token_id = token_v1::create_token_id_raw(creator, collection_name, token_name, property_version);
-        let token_data_id = token_v1::create_token_data_id(signer_addr, collection_name, token_name);
+        let token_id = token_v1::create_token_id_raw(creator_addr, collection_name, token_name, property_version);
+        let token_data_id = token_v1::create_token_data_id(creator_addr, collection_name, token_name);
         let token_description = token_v1::get_tokendata_description(token_data_id);
         let token_uri = token_v1::get_tokendata_uri(creator_addr, token_data_id);
         // TODO: if token has royalty, get it
@@ -93,17 +93,104 @@ module townespace::migrate {
     }
 
     #[test_only]
-    public fun init_test(signer_ref: &signer, uri: string) {
+    use std::vector;
+    use std::bcs;
+    use aptos_framework::account;
+
+    #[test_only]
+    public fun get_collection_name(): String {
+        string::utf8(b"test collection")
+    }
+
+    #[test_only]
+    public fun get_token_name(): String {
+        string::utf8(b"test token")
+    }
+
+    #[test_only]
+    public fun create_collection_and_token(
+        creator: &signer,
+        amount: u64,
+        collection_max: u64,
+        token_max: u64,
+        property_keys: vector<String>,
+        property_values: vector<vector<u8>>,
+        property_types: vector<String>,
+        collection_mutate_setting: vector<bool>,
+        token_mutate_setting: vector<bool>,
+    ): token_v1::TokenId {
+        let mutate_setting = collection_mutate_setting;
+
+        token_v1::create_collection(
+            creator,
+            get_collection_name(),
+            string::utf8(b"Collection: Hello, World"),
+            string::utf8(b"https://aptos.dev"),
+            collection_max,
+            mutate_setting
+        );
+
+        let default_keys = if (vector::length<String>(&property_keys) == 0) { vector<String>[string::utf8(b"attack"), string::utf8(b"num_of_use")] } else { property_keys };
+        let default_vals = if (vector::length<vector<u8>>(&property_values) == 0) { vector<vector<u8>>[bcs::to_bytes<u64>(&10), bcs::to_bytes<u64>(&5)] } else { property_values };
+        let default_types = if (vector::length<String>(&property_types) == 0) { vector<String>[string::utf8(b"u64"), string::utf8(b"u64")] } else { property_types };
+        let mutate_setting = token_mutate_setting;
+        token_v1::create_token_script(
+            creator,
+            get_collection_name(),
+            get_token_name(),
+            string::utf8(b"Hello, Token"),
+            amount,
+            token_max,
+            string::utf8(b"https://aptos.dev"),
+            signer::address_of(creator),
+            100,
+            0,
+            mutate_setting,
+            default_keys,
+            default_vals,
+            default_types,
+        );
+        token_v1::create_token_id_raw(signer::address_of(creator), get_collection_name(), get_token_name(), 0)
+    }
+
+    #[test_only]
+    public fun init_test(signer_ref: &signer, uri: String) {
+        resource_manager::initialize(signer_ref);
         init(signer_ref, uri);
     }
 
-    // #[test]
-    // // test migration of a token v1 to v2
-    // fun test_migration(signer_ref: &signer) {
-    //     // create token v1
-    //     // migrate it to v2
-    //     from_v1_to_v2(signer_ref, token);
-    //     // assert token v1 is burned
-    //     // assert token v2 is minted
-    // }
+    const BURNABLE_BY_CREATOR: vector<u8> = b"TOKEN_BURNABLE_BY_CREATOR";
+    const BURNABLE_BY_OWNER: vector<u8> = b"TOKEN_BURNABLE_BY_OWNER";
+
+    #[test(ts = @townespace, creator = @0x456, alice = @0x123)]
+    // test migration of a token v1 to v2
+    fun test_migration(
+        alice: &signer,
+        ts: &signer,
+        creator: &signer,
+    ) {
+        account::create_account_for_test(signer::address_of(ts));
+        init_test(ts, string::utf8(b"test uri"));
+        account::create_account_for_test(signer::address_of(alice));
+        account::create_account_for_test(signer::address_of(creator));
+        // create token v1
+        let token_id = create_collection_and_token(
+            creator,
+            2,
+            4,
+            4,
+            vector<String>[string::utf8(BURNABLE_BY_CREATOR), string::utf8(BURNABLE_BY_OWNER)],
+            vector<vector<u8>>[bcs::to_bytes<bool>(&true), bcs::to_bytes<bool>(&true)],
+            vector<String>[string::utf8(b"bool"), string::utf8(b"bool")],
+            vector<bool>[false, false, false],
+            vector<bool>[false, false, false, false, false],
+        );
+        token_v1::opt_in_direct_transfer(alice, true);
+        token_v1::initialize_token_store(alice);
+        token_v1::transfer(creator, token_id, signer::address_of(alice), 1);
+        // migrate it to v2
+        from_v1_to_v2(alice, @0x456, get_collection_name(), get_token_name(), 1);
+        // assert token v1 is burned
+        // assert token v2 is minted
+    }
 }

@@ -8,6 +8,7 @@ module townespace::resource_manager {
     use aptos_framework::account::{Self, SignerCapability};
     use std::signer;
 
+    friend townespace::migrate;
     friend townespace::mint;
     friend townespace::studio;
 

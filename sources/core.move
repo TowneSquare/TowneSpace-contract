@@ -16,6 +16,7 @@
 */
 
 module townespace::core {
+    
     use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
     use aptos_std::type_info;

@@ -4,17 +4,28 @@ module townespace::errors {
     
     friend townespace::core;
     friend townespace::events;
+    friend townespace::migrate;
     friend townespace::mint;
 
+    /// Token type is not recognized
     const E_TYPE_NOT_RECOGNIZED: u64 = 1;
+    /// Ungated transfer is disabled
     const E_UNGATED_TRANSFER_DISABLED: u64 = 2;
+    /// Token is not burnable
     const E_TOKEN_NOT_BURNABLE: u64 = 3;
+    /// Token does not exist
     const E_TOKEN_DOES_NOT_EXIST: u64 = 4;
+    /// Sender is not the owner
     const E_NOT_OWNER: u64 = 5;
+    /// Recipient should be an account
     const E_RECIPIENT_SHOULD_BE_ACCOUNT: u64 = 6;
+    /// Already owner
     const E_ALREADY_OWNER: u64 = 7;
+    /// Not townespace
     const E_NOT_TOWNESPACE: u64 = 8;
+    /// Insufficient funds
     const E_INSUFFICIENT_FUNDS: u64 = 9;
+    /// Internal error
     const E_INTERNAL: u64 = 10;
 
     public(friend) fun type_not_recognized(): u64 { error::not_implemented(E_TYPE_NOT_RECOGNIZED) }

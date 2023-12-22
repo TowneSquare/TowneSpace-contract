@@ -93,8 +93,9 @@ module townespace::migrate {
     }
 
     #[test_only]
-    use std::vector;
+    use std::features;
     use std::bcs;
+    use std::vector;
     use aptos_framework::account;
 
     #[test_only]
@@ -144,7 +145,7 @@ module townespace::migrate {
             string::utf8(b"https://aptos.dev"),
             signer::address_of(creator),
             100,
-            0,
+            2,
             mutate_setting,
             default_keys,
             default_vals,
@@ -162,13 +163,16 @@ module townespace::migrate {
     const BURNABLE_BY_CREATOR: vector<u8> = b"TOKEN_BURNABLE_BY_CREATOR";
     const BURNABLE_BY_OWNER: vector<u8> = b"TOKEN_BURNABLE_BY_OWNER";
 
-    #[test(ts = @townespace, creator = @0x456, alice = @0x123)]
+    #[test(std = @0x1, ts = @townespace, creator = @0x456, alice = @0x123)]
     // test migration of a token v1 to v2
     fun test_migration(
+        std: &signer,
         alice: &signer,
         ts: &signer,
         creator: &signer,
     ) {
+        // auid and events
+        features::change_feature_flags(std, vector[23, 26], vector[]);
         account::create_account_for_test(signer::address_of(ts));
         init_test(ts, string::utf8(b"test uri"));
         account::create_account_for_test(signer::address_of(alice));

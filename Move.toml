@@ -10,17 +10,17 @@ townespace = "0x62161ae07778f042f4baf6d7af7b9b95e9bc24c57f311159a1ef68edc622be62
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "devnet"
+rev = "mainnet"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.AptosTokenObjects]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "devnet"
+rev = "mainnet"
 subdir = "aptos-move/framework/aptos-token-objects"
 
 [dependencies.AptosToken]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "devnet"
+rev = "mainnet"
 subdir = "aptos-move/framework/aptos-token"
 
 [dev-dependencies]

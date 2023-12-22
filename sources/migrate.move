@@ -69,7 +69,6 @@ module townespace::migrate {
         let signer_addr = signer::address_of(signer_ref);
         // get the token metadata
         let token_id = token_v1::create_token_id_raw(creator, collection_name, token_name, property_version);
-        let (creator_addr, collection_name, token_name, property_version) = token_v1::get_token_id_fields(&token_id);
         let token_data_id = token_v1::create_token_data_id(signer_addr, collection_name, token_name);
         let token_description = token_v1::get_tokendata_description(token_data_id);
         let token_uri = token_v1::get_tokendata_uri(creator_addr, token_data_id);

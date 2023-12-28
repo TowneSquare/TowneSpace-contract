@@ -19,6 +19,7 @@
         - add support to migrate digital assets to composable.
         - add support to batch migrate.
         - add events.
+        - first proposed way is owner specific. Make a creator specific way.
 */
 
 module townespace::migrate {
@@ -66,6 +67,11 @@ module townespace::migrate {
     }
 
     public entry fun from_v1_to_v2(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64) {
+        let token_addr = from_v1_to_v2_internal(signer_ref, creator_addr, collection_name, token_name, property_version);
+        // TODO: event must be here
+    }
+
+    public fun from_v1_to_v2_internal(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64): address {
         let signer_addr = signer::address_of(signer_ref);
         // get the token metadata
         let token_id = token_v1::create_token_id_raw(creator_addr, collection_name, token_name, property_version);
@@ -84,12 +90,14 @@ module townespace::migrate {
             token_uri
         );
         // transfer it to the signer
-        let new_token_addr = object::object_from_constructor_ref<token_v2::Token>(&constructor_ref);
-        object::transfer<token_v2::Token>(&resource_manager::get_signer(), new_token_addr, signer_addr);
+        let new_token_obj = object::object_from_constructor_ref<token_v2::Token>(&constructor_ref);
+        object::transfer<token_v2::Token>(&resource_manager::get_signer(), new_token_obj, signer_addr);
         // burn the token v1
         token_v1::burn(signer_ref, creator_addr, collection_name, token_name, property_version, 1);
         
         emit_token_migrated_from_v1_to_v2_event(token_id);
+
+        object::object_address<token_v2::Token>(&new_token_obj)
     }
 
     #[test_only]
@@ -189,12 +197,20 @@ module townespace::migrate {
             vector<bool>[false, false, false],
             vector<bool>[false, false, false, false, false],
         );
+        assert!(token_v1::balance_of(signer::address_of(creator), token_id) == 2, 1);
         token_v1::opt_in_direct_transfer(alice, true);
         token_v1::initialize_token_store(alice);
+        // token_v1::transfer_with_opt_in(creator, signer::address_of(creator), get_collection_name(),get_token_name(), 1, signer::address_of(alice), 1);
+        // let token = token_v1::withdraw_token(alice, token_id, 1);
+        // token_v1::direct_deposit_with_opt_in(signer::address_of(alice), token);
         token_v1::transfer(creator, token_id, signer::address_of(alice), 1);
         // migrate it to v2
-        from_v1_to_v2(alice, @0x456, get_collection_name(), get_token_name(), 1);
+        let token_v2_addr = from_v1_to_v2_internal(alice, signer::address_of(creator), get_collection_name(), get_token_name(), 0);
         // assert token v1 is burned
+        assert!(token_v1::balance_of(signer::address_of(alice), token_id) == 0, 2);
+        // TODO: explore more explicit way to check if token is burned
         // assert token v2 is minted
+        // assert!(object::object_exists<token_v2::Token>(&token_v2_addr), 3);
+        assert!(object::is_object(token_v2_addr), 3);
     }
 }

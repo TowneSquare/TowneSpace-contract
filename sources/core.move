@@ -1,5 +1,7 @@
 /*
-    - This contract represents the core of the studio.
+    FOR AUDITORS
+
+    - This contract represents the core logic for composability.
     - Allows to create collections and mint tokens.
     - Leverages aptos_token_objects.
     - All functions are internals and has limited visibility (check NOTES).
@@ -7,11 +9,9 @@
         - Collections using aptos_token_objects/collection.move
         - Trait token: A token V2 that represents a trait.
         - Composable token (cNFT): A token V2 that can hold Trait tokens.
-        - Fungible assets: future work :)
     TODOs:
         - Implement royalties better, check framwork modules.
-        - refactor: tokens -> digital assets | fa -> fungible asset (remains the same)
-        - naming related: name should follow the nft type
+        - naming related: name should follow the nft type.
             e.g: type # index
 */
 
@@ -131,9 +131,6 @@ module townespace::core {
             object::object_from_constructor_ref(&constructor_ref)
         }
     }
-
-    // TODO
-    // fun init_ref(): Option<>{}
 
     // Create tokens
     public fun create_token_internal<T: key>(
@@ -342,19 +339,16 @@ module townespace::core {
     // View Functions
     // --------------
 
-    #[view]
     public fun get_collection_name(collection_object: Object<Collection>): String acquires Collection {
         let object_address = object::object_address(&collection_object);
         borrow_global<Collection>(object_address).name
     }
 
-    #[view]
     public fun get_collection_symbol(collection_object: Object<Collection>): String acquires Collection {
         let object_address = object::object_address(&collection_object);
         borrow_global<Collection>(object_address).symbol
     }
 
-    #[view]
     // get mint price of a token
     public fun get_base_mint_price<T: key>(object_address: address): u64 acquires Composable, Trait {
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
@@ -362,13 +356,11 @@ module townespace::core {
         } else { borrow_global<Trait>(object_address).base_mint_price }
     }
 
-    #[view]
     public fun get_traits(composable_object: Object<Composable>): vector<Object<Trait>> acquires Composable {
         let object_address = object::object_address(&composable_object);
         borrow_global<Composable>(object_address).traits  
     }
 
-    #[view]
     public fun get_trait_type(trait_object: Object<Trait>): String acquires Trait {
         let object_address = object::object_address(&trait_object);
         borrow_global<Trait>(object_address).type

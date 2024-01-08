@@ -38,20 +38,20 @@ module townespace::events {
 
     public fun collection_metadata(
         collection_object: Object<Collection>
-        ): CollectionMetadata {
-            let creator = collection::creator<Collection>(collection_object);
-            let description = collection::description<Collection>(collection_object);
-            let name = collection::name<Collection>(collection_object);
-            let uri = collection::uri<Collection>(collection_object);
-            let symbol = core::get_collection_symbol(collection_object);
+    ): CollectionMetadata {
+        let creator = collection::creator<Collection>(collection_object);
+        let description = collection::description<Collection>(collection_object);
+        let name = collection::name<Collection>(collection_object);
+        let uri = collection::uri<Collection>(collection_object);
+        let symbol = core::get_collection_symbol(collection_object);
 
-            CollectionMetadata {
-                creator: creator,
-                name: name,
-                description: description,
-                uri: uri,
-                symbol: symbol,
-            }
+        CollectionMetadata {
+            creator: creator,
+            name: name,
+            description: description,
+            uri: uri,
+            symbol: symbol,
+        }
     }
 
     // Composable Token 
@@ -68,24 +68,24 @@ module townespace::events {
     
     public fun composable_token_metadata(
         composable_object: Object<Composable>
-        ): ComposableMetadata {
-            let traits = core::get_traits(composable_object);
-            let creator = token::creator<Composable>(composable_object);
-            let collection_name = token::collection_name<Composable>(composable_object);
-            let description = token::description<Composable>(composable_object);
-            let name = token::name<Composable>(composable_object);
-            let uri = token::uri<Composable>(composable_object);
-            let base_mint_price = core::get_base_mint_price<Composable>(object::object_address(&composable_object));
+    ): ComposableMetadata {
+        let traits = core::get_traits(composable_object);
+        let creator = token::creator<Composable>(composable_object);
+        let collection_name = token::collection_name<Composable>(composable_object);
+        let description = token::description<Composable>(composable_object);
+        let name = token::name<Composable>(composable_object);
+        let uri = token::uri<Composable>(composable_object);
+        let base_mint_price = core::get_base_mint_price<Composable>(object::object_address(&composable_object));
 
-            ComposableMetadata {
-                creator,
-                collection_name,
-                description,
-                name,
-                uri,
-                traits,
-                base_mint_price
-            }
+        ComposableMetadata {
+            creator,
+            collection_name,
+            description,
+            name,
+            uri,
+            traits,
+            base_mint_price
+        }
     }
 
     // Object Token 
@@ -101,22 +101,22 @@ module townespace::events {
 
     public fun trait_token_metadata(
         trait_object: Object<Trait>
-        ): TraitMetadata {
-            let creator = token::creator<Trait>(trait_object);
-            let collection_name = token::collection_name<Trait>(trait_object);
-            let description = token::description<Trait>(trait_object);
-            let name = token::name<Trait>(trait_object);
-            let uri = token::uri<Trait>(trait_object);
-            let base_mint_price = core::get_base_mint_price<Trait>(object::object_address(&trait_object));
+    ): TraitMetadata {
+        let creator = token::creator<Trait>(trait_object);
+        let collection_name = token::collection_name<Trait>(trait_object);
+        let description = token::description<Trait>(trait_object);
+        let name = token::name<Trait>(trait_object);
+        let uri = token::uri<Trait>(trait_object);
+        let base_mint_price = core::get_base_mint_price<Trait>(object::object_address(&trait_object));
 
-            TraitMetadata {
-                creator,
-                collection_name,
-                description,
-                name,
-                uri,
-                base_mint_price
-            }
+        TraitMetadata {
+            creator,
+            collection_name,
+            description,
+            name,
+            uri,
+            base_mint_price
+        }
     }
 
     // ------

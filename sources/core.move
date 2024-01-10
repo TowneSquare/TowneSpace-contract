@@ -7,10 +7,7 @@
         - Collections using aptos_token_objects/collection.move
         - Trait token: A token V2 that represents a trait.
         - Composable token (cNFT): A token V2 that can hold Trait tokens.
-        - Fungible assets: future work :)
     TODOs:
-        - Implement royalties better, check framwork modules.
-        - refactor: tokens -> digital assets | fa -> fungible asset (remains the same)
         - naming related: name should follow the nft type
             e.g: type # index
 */

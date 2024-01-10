@@ -19,15 +19,15 @@ module townespace::events {
     friend townespace::mint;
     friend townespace::studio;
 
-    // ------
-    // Errors
-    // ------
+    /// ------
+    /// Errors
+    /// ------
 
-    // -----------------------------
-    // Metadata and Helper Functions
-    // -----------------------------
+    /// -----------------------------
+    /// Metadata and Helper Functions
+    /// -----------------------------
 
-    // Collection 
+    /// Collection 
     struct CollectionMetadata has drop, store {
         creator: address,
         description: String,
@@ -54,7 +54,7 @@ module townespace::events {
             }
     }
 
-    // Composable Token 
+    /// Composable Token 
     struct ComposableMetadata has drop, store {
         creator: address,
         collection_name: String,
@@ -88,7 +88,7 @@ module townespace::events {
             }
     }
 
-    // Object Token 
+    /// Object Token 
     struct TraitMetadata has drop, store {
         creator: address,
         collection_name: String,
@@ -119,14 +119,14 @@ module townespace::events {
             }
     }
 
-    // ------
-    // Events
-    // ------
+    /// ------
+    /// Events
+    /// ------
 
-    // Collection 
+    /// Collection 
 
     #[event]
-    // Token Collection Created Event
+    /// Token Collection Created Event
     struct CollectionCreated has drop, store {
         collection: address,
         collection_metadata: CollectionMetadata
@@ -143,11 +143,11 @@ module townespace::events {
             }
         );
     }
-    // TODO: Token Collection Metadata Updated Event
-    // TODO: Token Collection Deleted Event
+    /// TODO: Token Collection Metadata Updated Event
+    /// TODO: Token Collection Deleted Event
 
     #[event]
-    // Composable Token 
+    /// Composable Token 
     struct ComposableMinted has drop, store {
         composable_token: address,
         composable_token_metadata: ComposableMetadata
@@ -166,7 +166,7 @@ module townespace::events {
     }
 
     #[event]
-    // Object Token 
+    /// Object Token 
     struct TraitMinted has drop, store {
         trait_token_address: address,
         trait_token_metadata: TraitMetadata
@@ -185,7 +185,7 @@ module townespace::events {
     }
 
     #[event]
-    // Object Token Composed Event
+    /// Object Token Composed Event
     struct CompositionEvent has drop, store {
         composable_token_metadata: ComposableMetadata,
         trait_token_to_compose_metadata: TraitMetadata,
@@ -207,7 +207,7 @@ module townespace::events {
     }
 
     #[event]
-    // Object Token Decomposed Event
+    /// Object Token Decomposed Event
     struct DecompositionEvent has drop, store {
         composable_token_metadata: ComposableMetadata,
         trait_token_to_decompose_metadata: TraitMetadata,
@@ -229,7 +229,7 @@ module townespace::events {
     }
     
     #[event]
-    // Composable Token Transferred Event
+    /// Composable Token Transferred Event
     struct ComposableTransferredEvent has drop, store {
         token_metadata: ComposableMetadata,
         from: address,
@@ -251,7 +251,7 @@ module townespace::events {
     }
 
     #[event]
-    // Object Token Transferred Event
+    /// Object Token Transferred Event
     struct TraitTransferredEvent has drop, store {
         token_metadata: TraitMetadata,
         from: address,
@@ -272,6 +272,30 @@ module townespace::events {
         );
     }
 
-    // TODO: Composable Token Burned Event
-    // TODO: Object Token Burned Event
+    #[event]
+    /// uri Updated Event
+    struct UriUpdatedEvent has drop, store {
+        composable_token_metadata: ComposableMetadata,
+        old_uri: String,
+        new_uri: String
+    }
+
+    public(friend) fun emit_uri_updated_event(
+        composable_token_addr: address,
+        new_uri: String
+    ) {
+        let composable_token_obj = object::address_to_object<Composable>(composable_token_addr);
+        let composable_token_metadata = composable_token_metadata(composable_token_obj);
+        let old_uri = composable_token_metadata.uri;
+        event::emit<UriUpdatedEvent>(
+            UriUpdatedEvent {
+                composable_token_metadata,
+                old_uri,
+                new_uri
+            }
+        );
+    }
+
+    /// TODO: Composable Token Burned Event
+    /// TODO: Object Token Burned Event
 }

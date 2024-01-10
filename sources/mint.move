@@ -24,21 +24,21 @@ module townespace::mint {
     use townespace::resource_manager;
 
     public entry fun initialize(signer_ref: &signer) {
-        // assert that the signer is the owner of the module
+        /// assert that the signer is the owner of the module
         assert!(signer::address_of(signer_ref) == @townespace, errors::not_townespace());
-        // init resource
+        /// init resource
         resource_manager::initialize(signer_ref);
     }
 
-    // -------------------------
-    // Creator related functions
-    // -------------------------
+    /// -------------------------
+    /// Creator related functions
+    /// -------------------------
 
-    // create a new collection given metadata and a total number of supply (if it's a fixed supply collection).
+    /// create a new collection given metadata and a total number of supply (if it's a fixed supply collection).
     public entry fun create_fixed_supply_collection(
         creator_signer: &signer,
         description: String,
-        max_supply: u64, // if the collection is set to haved a fixed supply.
+        max_supply: u64, /// if the collection is set to haved a fixed supply.
         name: String,
         symbol: String,
         uri: String,
@@ -96,7 +96,7 @@ module townespace::mint {
         );
     }
 
-    // mint NFTs given a metadata and a number of tokens to mint; can either mint traits or composables.
+    /// mint NFTs given a metadata and a number of tokens to mint; can either mint traits or composables.
     public entry fun create_composable_tokens(
         creator_signer: &signer,
         collection_name: String,
@@ -168,19 +168,19 @@ module townespace::mint {
                 events::trait_token_metadata(token_object)
             );
 
-            // transfer to the resource account
+            /// transfer to the resource account
             core::transfer_token<Trait>(creator_signer, obj_addr, escrow_addr);
 
             i = i + 1;
         }
     }
 
-    // ------------------------
-    // Minter related functions
-    // ------------------------
+    /// ------------------------
+    /// Minter related functions
+    /// ------------------------
 
-    // Assuming an NFT is already created, this function transfers it to the minter/caller
-    // the minter pays the mint price to the creator
+    /// Assuming an NFT is already created, this function transfers it to the minter/caller
+    /// the minter pays the mint price to the creator
     public entry fun mint_token<Type: key>(signer_ref: &signer, token_addr: address) {
         let signer_addr = signer::address_of(signer_ref);
         let creator_addr = get_creator_addr_from_token_addr(token_addr);
@@ -188,19 +188,19 @@ module townespace::mint {
             type_info::type_of<Type>() == type_info::type_of<Composable>() || type_info::type_of<Type>() == type_info::type_of<Trait>(), 
             errors::type_not_recognized()
         );
-        // get mint price
+        /// get mint price
         let mint_price = core::get_base_mint_price<Type>(token_addr);
         assert!(coin::balance<APT>(signer_addr) >= mint_price, errors::insufficient_funds());
-        // transfer composable from resource acc to the minter
+        /// transfer composable from resource acc to the minter
         let resource_signer = &resource_manager::get_signer();
         core::transfer_token<Type>(resource_signer, token_addr, signer_addr);
-        // transfer mint price to creator
+        /// transfer mint price to creator
         coin::transfer<APT>(signer_ref, creator_addr, mint_price);
     }
 
-    // ----------------
-    // Helper functions
-    // ----------------
+    /// ----------------
+    /// Helper functions
+    /// ----------------
 
     inline fun get_creator_addr_from_token_addr(token_addr: address): address {
         let token_obj = object::address_to_object<TokenV2>(token_addr);
@@ -209,9 +209,9 @@ module townespace::mint {
 
     #[test_only]
     public fun init_test(signer_ref: &signer) {
-        // assert that the signer is the owner of the module
+        /// assert that the signer is the owner of the module
         assert!(signer::address_of(signer_ref) == @townespace, errors::not_townespace());
-        // init resource
+        /// init resource
         resource_manager::initialize(signer_ref);
     }
 
@@ -249,7 +249,7 @@ module townespace::mint {
             vector::push_back(&mut created_composables, obj_addr);
         };
         
-        // return the addresses of the created composables
+        /// return the addresses of the created composables
         created_composables
     }
 }

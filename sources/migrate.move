@@ -42,7 +42,7 @@ module townespace::migrate {
     #[event]
     struct TokenMigratedFromV1toV2 has drop, store {
         old_token_id: token_v1::TokenId,
-        // new_token_metadata: token_v2::Token,
+        /// new_token_metadata: token_v2::Token,
     }
 
     fun emit_token_migrated_from_v1_to_v2_event(token_id: token_v1::TokenId) {
@@ -54,9 +54,9 @@ module townespace::migrate {
     }
 
     public entry fun init(signer_ref: &signer, uri: String) {
-        // assert signer is townespace
+        /// assert signer is townespace
         assert!(signer::address_of(signer_ref) == @townespace, errors::not_townespace());
-        // create a collection with unlimited supply
+        /// create a collection with unlimited supply
         collection::create_unlimited_collection(
             &resource_manager::get_signer(),
             string::utf8(b"transform your NFTv1 into NFTv2"),
@@ -68,31 +68,31 @@ module townespace::migrate {
 
     public entry fun from_v1_to_v2(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64) {
         let token_addr = from_v1_to_v2_internal(signer_ref, creator_addr, collection_name, token_name, property_version);
-        // TODO: event must be here
+        /// TODO: event must be here
     }
 
     public fun from_v1_to_v2_internal(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64): address {
         let signer_addr = signer::address_of(signer_ref);
-        // get the token metadata
+        /// get the token metadata
         let token_id = token_v1::create_token_id_raw(creator_addr, collection_name, token_name, property_version);
         let token_data_id = token_v1::create_token_data_id(creator_addr, collection_name, token_name);
         let token_description = token_v1::get_tokendata_description(token_data_id);
         let token_uri = token_v1::get_tokendata_uri(creator_addr, token_data_id);
-        // TODO: if token has royalty, get it
+        /// TODO: if token has royalty, get it
 
-        // mint a new token v2 with the metadata
+        /// mint a new token v2 with the metadata
         let constructor_ref = token_v2::create(
             &resource_manager::get_signer(), 
             string::utf8(b"Migrated NFTs"),
             token_description,
             token_name,
-            option::none(), // TODO: add royalty if applicable
+            option::none(), /// TODO: add royalty if applicable
             token_uri
         );
-        // transfer it to the signer
+        /// transfer it to the signer
         let new_token_obj = object::object_from_constructor_ref<token_v2::Token>(&constructor_ref);
         object::transfer<token_v2::Token>(&resource_manager::get_signer(), new_token_obj, signer_addr);
-        // burn the token v1
+        /// burn the token v1
         token_v1::burn(signer_ref, creator_addr, collection_name, token_name, property_version, 1);
         
         emit_token_migrated_from_v1_to_v2_event(token_id);
@@ -172,20 +172,20 @@ module townespace::migrate {
     const BURNABLE_BY_OWNER: vector<u8> = b"TOKEN_BURNABLE_BY_OWNER";
 
     #[test(std = @0x1, ts = @townespace, creator = @0x456, alice = @0x123)]
-    // test migration of a token v1 to v2
+    /// test migration of a token v1 to v2
     fun test_migration(
         std: &signer,
         alice: &signer,
         ts: &signer,
         creator: &signer,
     ) {
-        // auid and events
+        /// auid and events
         features::change_feature_flags(std, vector[23, 26], vector[]);
         account::create_account_for_test(signer::address_of(ts));
         init_test(ts, string::utf8(b"test uri"));
         account::create_account_for_test(signer::address_of(alice));
         account::create_account_for_test(signer::address_of(creator));
-        // create token v1
+        /// create token v1
         let token_id = create_collection_and_token(
             creator,
             2,
@@ -200,17 +200,17 @@ module townespace::migrate {
         assert!(token_v1::balance_of(signer::address_of(creator), token_id) == 2, 1);
         token_v1::opt_in_direct_transfer(alice, true);
         token_v1::initialize_token_store(alice);
-        // token_v1::transfer_with_opt_in(creator, signer::address_of(creator), get_collection_name(),get_token_name(), 1, signer::address_of(alice), 1);
-        // let token = token_v1::withdraw_token(alice, token_id, 1);
-        // token_v1::direct_deposit_with_opt_in(signer::address_of(alice), token);
+        /// token_v1::transfer_with_opt_in(creator, signer::address_of(creator), get_collection_name(),get_token_name(), 1, signer::address_of(alice), 1);
+        /// let token = token_v1::withdraw_token(alice, token_id, 1);
+        /// token_v1::direct_deposit_with_opt_in(signer::address_of(alice), token);
         token_v1::transfer(creator, token_id, signer::address_of(alice), 1);
-        // migrate it to v2
+        /// migrate it to v2
         let token_v2_addr = from_v1_to_v2_internal(alice, signer::address_of(creator), get_collection_name(), get_token_name(), 0);
-        // assert token v1 is burned
+        /// assert token v1 is burned
         assert!(token_v1::balance_of(signer::address_of(alice), token_id) == 0, 2);
-        // TODO: explore more explicit way to check if token is burned
-        // assert token v2 is minted
-        // assert!(object::object_exists<token_v2::Token>(&token_v2_addr), 3);
+        /// TODO: explore more explicit way to check if token is burned
+        /// assert token v2 is minted
+        /// assert!(object::object_exists<token_v2::Token>(&token_v2_addr), 3);
         assert!(object::is_object(token_v2_addr), 3);
     }
 }

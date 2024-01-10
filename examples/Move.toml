@@ -1,0 +1,21 @@
+[package]
+name = "Examples"
+version = "1.0.0"
+authors = []
+
+[addresses]
+examples = "0x62161ae07778f042f4baf6d7af7b9b95e9bc24c57f311159a1ef68edc622be62"
+
+[dev-addresses]
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dependencies.Studio]
+git = "https://github.com/TowneSquare/TowneSpace-contract"
+rev = "dev"
+subdir = ""
+
+[dev-dependencies]

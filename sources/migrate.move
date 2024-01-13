@@ -42,13 +42,14 @@ module townespace::migrate {
     #[event]
     struct TokenMigratedFromV1toV2 has drop, store {
         old_token_id: token_v1::TokenId,
-        /// new_token_metadata: token_v2::Token,
+        new_token_address: address,
     }
 
-    fun emit_token_migrated_from_v1_to_v2_event(token_id: token_v1::TokenId) {
+    fun emit_token_migrated_from_v1_to_v2_by_owner_event(token_id: token_v1::TokenId, new_token_address: address) {
         event::emit<TokenMigratedFromV1toV2>(
             TokenMigratedFromV1toV2 {
-                old_token_id: token_id
+                old_token_id: token_id,
+                new_token_address,
             }
         )
     }
@@ -66,12 +67,19 @@ module townespace::migrate {
         );
     }
 
-    public entry fun from_v1_to_v2(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64) {
-        let token_addr = from_v1_to_v2_internal(signer_ref, creator_addr, collection_name, token_name, property_version);
-        /// TODO: event must be here
+    /// by owner
+    public entry fun from_v1_to_v2_by_owner(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64) {
+        let (old_token_id, token_addr) = from_v1_to_v2_by_owner_internal(signer_ref, creator_addr, collection_name, token_name, property_version);
+        emit_token_migrated_from_v1_to_v2_by_owner_event(old_token_id, token_addr);
     }
 
-    public fun from_v1_to_v2_internal(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64): address {
+    /// by creator
+    public entry fun from_v1_to_v2_by_creator(creator_signer_ref: &signer, owner_addr: address, collection_name: String, token_name: String, property_version: u64) {
+        let (old_tokne_id, token_addr) = from_v1_to_v2_by_creator_internal(creator_signer_ref, owner_addr, collection_name, token_name, property_version);
+        // emit_token_migrated_from_v1_to_v2_by_creator_event(old_tokne_id, token_addr);
+    }
+
+    fun from_v1_to_v2_by_owner_internal(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64): (token_v1::TokenId, address) {
         let signer_addr = signer::address_of(signer_ref);
         /// get the token metadata
         let token_id = token_v1::create_token_id_raw(creator_addr, collection_name, token_name, property_version);
@@ -94,11 +102,37 @@ module townespace::migrate {
         object::transfer<token_v2::Token>(&resource_manager::get_signer(), new_token_obj, signer_addr);
         /// burn the token v1
         token_v1::burn(signer_ref, creator_addr, collection_name, token_name, property_version, 1);
-        
-        emit_token_migrated_from_v1_to_v2_event(token_id);
 
-        object::object_address<token_v2::Token>(&new_token_obj)
+        (token_id, object::object_address<token_v2::Token>(&new_token_obj))
     }
+
+    fun from_v1_to_v2_by_creator_internal(creator_signer_ref: &signer, owner_addr: address, collection_name: String, token_name: String, property_version: u64): (token_v1::TokenId, address) {
+        let creator_addr = signer::address_of(creator_signer_ref);
+        /// get the token metadata
+        let token_id = token_v1::create_token_id_raw(creator_addr, collection_name, token_name, property_version);
+        let token_data_id = token_v1::create_token_data_id(creator_addr, collection_name, token_name);
+        let token_description = token_v1::get_tokendata_description(token_data_id);
+        let token_uri = token_v1::get_tokendata_uri(creator_addr, token_data_id);
+        /// TODO: if token has royalty, get it
+       
+        /// mint a new token v2 with the metadata
+        let constructor_ref = token_v2::create(
+            creator_signer_ref, 
+            string::utf8(b"Migrated NFTs"),
+            token_description,
+            token_name,
+            option::none(), /// TODO: add royalty if applicable
+            token_uri
+        );
+        /// transfer it to the owner
+        let new_token_obj = object::object_from_constructor_ref<token_v2::Token>(&constructor_ref);
+        object::transfer<token_v2::Token>(creator_signer_ref, new_token_obj, owner_addr);
+        /// burn the token v1
+        token_v1::burn_by_creator(creator_signer_ref, owner_addr, collection_name, token_name, property_version, 1);
+
+        (token_id, object::object_address<token_v2::Token>(&new_token_obj))
+    }
+        
 
     #[test_only]
     use std::features;
@@ -205,7 +239,7 @@ module townespace::migrate {
         /// token_v1::direct_deposit_with_opt_in(signer::address_of(alice), token);
         token_v1::transfer(creator, token_id, signer::address_of(alice), 1);
         /// migrate it to v2
-        let token_v2_addr = from_v1_to_v2_internal(alice, signer::address_of(creator), get_collection_name(), get_token_name(), 0);
+        let token_v2_addr = from_v1_to_v2_by_owner_internal(alice, signer::address_of(creator), get_collection_name(), get_token_name(), 0);
         /// assert token v1 is burned
         assert!(token_v1::balance_of(signer::address_of(alice), token_id) == 0, 2);
         /// TODO: explore more explicit way to check if token is burned

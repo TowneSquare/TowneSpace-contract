@@ -94,7 +94,7 @@ module examples::hero {
 
     // Transfer wrappers 
 
-    public fun hero_equip_weapon(
+    public entry fun hero_equip_weapon(
         owner_signer: &signer, 
         hero_obj: Object<core::Composable>, 
         trait_obj: Object<core::Trait>,
@@ -103,7 +103,7 @@ module examples::hero {
         studio::equip_trait(owner_signer, hero_obj, trait_obj, new_uri);
     }
 
-    public fun hero_unequip_weapon(
+    public entry fun hero_unequip_weapon(
         owner_signer: &signer, 
         hero_obj: Object<core::Composable>, 
         weapon_obj: Object<core::Trait>,

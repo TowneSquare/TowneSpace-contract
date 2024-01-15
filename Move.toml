@@ -1,10 +1,10 @@
 [package]
-name = "Studio"
-version = "0.1.2"
+name = "Studio-alpha"
+version = "0.2.0"
 authors = ["lay"]
 
 [addresses]
-townespace = "0x62161ae07778f042f4baf6d7af7b9b95e9bc24c57f311159a1ef68edc622be62"
+townespace = "e352557fa5f8d9f2c755fe4dc9b3080fc6a2483c25b37d6dc9c4b4fc51cfe500"
 
 [dev-addresses]
 

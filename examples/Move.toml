@@ -13,9 +13,9 @@ git = "https://github.com/aptos-labs/aptos-core.git"
 rev = "mainnet"
 subdir = "aptos-move/framework/aptos-framework"
 
-[dependencies.Studio]
+[dependencies.Studio-alpha]
 git = "https://github.com/TowneSquare/TowneSpace-contract"
-rev = "dev"
+rev = "v0.2.0-alpha"
 subdir = ""
 
 [dev-dependencies]

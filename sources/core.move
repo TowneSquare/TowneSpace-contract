@@ -18,7 +18,7 @@
         
 */
 
-module townespace::token_v2 {
+module townespace::core {
     
     use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
@@ -450,7 +450,7 @@ module townespace::token_v2 {
         royalty_denominator: Option<u64>,
         property_keys: vector<String>,
         property_types: vector<String>,
-        property_values: vector<vector<u8>>,
+        property_values: vector<vector<u8>>
     ): object::ConstructorRef acquires Collection {
         // TODO: assert Type is either trait or composable.
         let signer_addr = signer::address_of(signer_ref);

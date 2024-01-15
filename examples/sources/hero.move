@@ -73,9 +73,18 @@ module examples::hero {
             uri,
             option::none(),
             option::none(),
-            vector::empty(),
-            vector::empty(),
-            vector::empty(),
+            vector[
+                string::utf8(b"attack"), 
+                string::utf8(b"defense")
+            ],
+            vector[
+                string::utf8(b"u64"), 
+                string::utf8(b"u64")
+            ],
+            vector[
+                bcs::to_bytes<u64>(&0), 
+                bcs::to_bytes<u64>(&0)
+            ]
         );
     }
 
@@ -90,7 +99,7 @@ module examples::hero {
         type: String,
         weight: u64
     ) {
-        core::create_token<core::Composable, core::Indexed>(
+        core::create_token<core::Trait, core::Indexed>(
             signer_ref,
             collection,
             description,
@@ -126,6 +135,16 @@ module examples::hero {
         new_uri: String
     ) { 
         studio::equip_trait(owner_signer, hero_obj, trait_obj, new_uri);
+        // // update hero's attack
+        // let (_, hero_attack_val) = property_map::read<core::Composable>(composable_obj, &string::utf8(b"attack"));
+        // let (_, weapon_attack_val) = property_map::read<core::Trait>(trait_obj, &string::utf8(b"attack"));
+        // let new_attack_val = hero_attack_val + weapon_attack_val;
+        // property_map::update(
+        //     mutator_ref, 
+        //     &string::utf8(b"attack"), 
+        //     string::utf8(b"u64"), 
+        //     new_attack_val
+        // );
     }
 
     // Unequip a weapon from a hero

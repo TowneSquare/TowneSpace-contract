@@ -617,7 +617,7 @@ module townespace::core {
         borrow_global<Trait>(token_address)
     }
 
-    public(friend) fun borrow_mut_traits(composable_address: address): vector<Object<Trait>> acquires Composable {
+    public fun borrow_mut_traits(composable_address: address): vector<Object<Trait>> acquires Composable {
         borrow_global_mut<Composable>(composable_address).traits
     }
 

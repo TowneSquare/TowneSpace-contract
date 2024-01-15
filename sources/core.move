@@ -898,7 +898,7 @@ module townespace::core {
     // set token uri
     // TODO: should this be for both composable and trait?
     public fun set_uri<T: key>(
-        creator: &signer,
+        owner: &signer,
         token: Object<T>,
         uri: String,
     ) acquires Collection, Composable, Trait {
@@ -907,10 +907,10 @@ module townespace::core {
             error::permission_denied(EFIELD_NOT_MUTABLE),
         );
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
-            let composable = authorized_composable_borrow(&token, creator);
+            let composable = authorized_composable_borrow(&token, owner);
             token::set_uri(option::borrow(&composable.refs.mutator_ref), uri);
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
-            let trait = authorized_trait_borrow(&token, creator);
+            let trait = authorized_trait_borrow(&token, owner);
             token::set_uri(option::borrow(&trait.refs.mutator_ref), uri);
         } else { abort EUNKNOWN_TOKEN_TYPE }
     }

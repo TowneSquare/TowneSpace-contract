@@ -8,8 +8,10 @@ module examples::hero {
 
     use aptos_token_objects::collection;
     use aptos_token_objects::token;
+    
     use aptos_std::string_utils;
 
+    use std::bcs;
     use std::error;
     use std::option::{Self, Option};
     use std::signer;
@@ -17,6 +19,7 @@ module examples::hero {
     use std::vector;
 
     use townespace::core;
+    use townespace::studio;
 
     const ENOT_A_HERO: u64 = 1;
     const ENOT_A_WEAPON: u64 = 2;

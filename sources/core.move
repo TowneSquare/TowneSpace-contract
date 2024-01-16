@@ -1010,26 +1010,42 @@ module townespace::core {
     public fun equip_trait_internal(
         signer_ref: &signer,
         composable_object: Object<Composable>,
-        trait_object: Object<Trait>
-    ) acquires Collection, Composable, References, Trait {
-        // Composable 
-        let composable_res = borrow_global_mut<Composable>(object::object_address(&composable_object));
-        // Trait
-        let trait_refs = borrow_global_mut<References>(object::object_address(&trait_object));
-        // Add the object to the end of the vector
-        vector::push_back<Object<Trait>>(&mut composable_res.traits, trait_object);
+        trait_object: Object<Trait>,
+        new_uri: String
+    ) acquires Collection, Composable, Trait {
         // Assert ungated transfer enabled for the object token.
         assert!(object::ungated_transfer_allowed(trait_object) == true, EUNGATED_TRANSFER_DISABLED);
+        // Add the object to the end of the vector
+        vector::push_back<Object<Trait>>(&mut authorized_composable_mut_borrow(&composable_object, signer_ref).traits, trait_object);
         // Transfer
         object::transfer_to_object(signer_ref, trait_object, composable_object);
         // Disable ungated transfer for trait object
-        object::disable_ungated_transfer(&trait_refs.transfer_ref);
+        object::disable_ungated_transfer(&authorized_trait_mut_borrow(&trait_object, signer_ref).refs.transfer_ref);
+        // Update the composable uri
+        update_composable_uri(signer_ref, composable_object, new_uri);
         // emit event
         emit_trait_equipped_event(
             composable_object,
             trait_object,
-            vector::length(&composable_res.traits) - 1,
+            get_trait_index(trait_object),
             token::uri<Trait>(trait_object)
+        );
+    }
+
+    inline fun update_composable_uri(
+        owner: &signer, 
+        composable_obj: Object<Composable>,
+        new_uri: String
+    ) acquires Collection, Composable {
+        // update the composable uri
+        let composable = authorized_composable_borrow(&composable_obj, owner);
+        let old_uri = token::uri<Composable>(composable_obj);
+        token::set_uri(option::borrow(&composable.refs.mutator_ref), new_uri);
+        emit_token_uri_updated_event(
+            object::object_address(&composable_obj),
+            type_info::type_name<Composable>(),
+            old_uri,
+            new_uri
         );
     }
 
@@ -1086,26 +1102,23 @@ module townespace::core {
     public fun unequip_trait_internal(
         signer_ref: &signer,
         composable_object: Object<Composable>,
-        trait_object: Object<Trait>
-    ) acquires Collection, Composable, References, Trait {
-        // Composable
-        let composable_resource = borrow_global_mut<Composable>(object::object_address(&composable_object));
-        // Trait
-        let trait_references = borrow_global_mut<References>(object::object_address(&trait_object));
-        let (trait_exists, index) = vector::index_of(&composable_resource.traits, &trait_object);
+        trait_object: Object<Trait>,
+        new_uri: String
+    ) acquires Collection, Composable, Trait {
+        let (trait_exists, index) = vector::index_of(&mut authorized_composable_mut_borrow(&composable_object, signer_ref).traits, &trait_object);
         assert!(trait_exists == true, ETRAIT_DOES_NOT_EXIST);
         // Enable ungated transfer for trait object
-        object::enable_ungated_transfer(&trait_references.transfer_ref);
+        object::enable_ungated_transfer(&authorized_trait_mut_borrow(&trait_object, signer_ref).refs.transfer_ref);
         // Transfer trait object to owner
         object::transfer(signer_ref, trait_object, signer::address_of(signer_ref));
         // Remove the object from the vector
-        vector::remove(&mut composable_resource.traits, index);
+        vector::remove(&mut authorized_composable_mut_borrow(&composable_object, signer_ref).traits, index);
         // emit event
         emit_trait_unequipped_event(
             composable_object,
             trait_object,
             index,
-            token::uri<Trait>(trait_object)
+            new_uri
         );
     }
 
@@ -1278,6 +1291,12 @@ module townespace::core {
     }
 
     #[view]
+    public fun get_trait_index(trait_object: Object<Trait>): u64 acquires Trait {
+        let object_address = object::object_address(&trait_object);
+        borrow_global<Trait>(object_address).index
+    }
+
+    #[view]
     public fun get_traits_from_composable(composable_object: Object<Composable>): vector<Object<Trait>> acquires Composable {
         let object_address = object::object_address(&composable_object);
         borrow_global<Composable>(object_address).traits  
@@ -1336,6 +1355,20 @@ module townespace::core {
         borrow_global<Composable>(token_addr)
     }
 
+    inline fun authorized_composable_mut_borrow<T: key>(token: &Object<T>, creator: &signer): &mut Composable {
+        let token_addr = object::object_address(token);
+        assert!(
+            exists<Composable>(token_addr),
+            error::not_found(ECOMPOSABLE_DOES_NOT_EXIST),
+        );
+
+        assert!(
+            token::creator(*token) == signer::address_of(creator),
+            error::permission_denied(ENOT_CREATOR),
+        );
+        borrow_global_mut<Composable>(token_addr)
+    }
+
     inline fun authorized_trait_borrow<T: key>(token: &Object<T>, creator: &signer): &Trait {
         let token_addr = object::object_address(token);
         assert!(
@@ -1348,6 +1381,20 @@ module townespace::core {
             error::permission_denied(ENOT_CREATOR),
         );
         borrow_global<Trait>(token_addr)
+    }
+
+    inline fun authorized_trait_mut_borrow<T: key>(token: &Object<T>, creator: &signer): &mut Trait {
+        let token_addr = object::object_address(token);
+        assert!(
+            exists<Trait>(token_addr),
+            error::not_found(ETRAIT_DOES_NOT_EXIST),
+        );
+
+        assert!(
+            token::creator(*token) == signer::address_of(creator),
+            error::permission_denied(ENOT_CREATOR),
+        );
+        borrow_global_mut<Trait>(token_addr)
     }
 
     // burn token based on type
@@ -1511,36 +1558,25 @@ module townespace::core {
     }
 
     // set token uri
-    // TODO: should this be for both composable and trait?
-    public fun set_uri<T: key>(
+    // Can be used only on traits that have a mutable uri.
+    public fun set_uri(
         owner: &signer,
-        token: Object<T>,
+        trait_obj: Object<Trait>,
         uri: String,
-    ) acquires Collection, Composable, Trait {
+    ) acquires Collection, Trait {
         assert!(
-            is_mutable_uri(token),
+            is_mutable_uri(trait_obj),
             error::permission_denied(EFIELD_NOT_MUTABLE),
         );
-        let old_uri = token::uri(token);
-        if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
-            let composable = authorized_composable_borrow(&token, owner);
-            token::set_uri(option::borrow(&composable.refs.mutator_ref), uri);
-            emit_token_uri_updated_event(
-                object::object_address(&token),
-                type_info::type_name<Composable>(),
-                old_uri,
-                uri,
-            );
-        } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
-            let trait = authorized_trait_borrow(&token, owner);
-            token::set_uri(option::borrow(&trait.refs.mutator_ref), uri);
-            emit_token_uri_updated_event(
-                object::object_address(&token),
-                type_info::type_name<Trait>(),
-                old_uri,
-                uri,
-            );
-        } else { abort EUNKNOWN_TOKEN_TYPE }
+        let old_uri = token::uri(trait_obj);
+        let trait = authorized_trait_borrow(&trait_obj, owner);
+        token::set_uri(option::borrow(&trait.refs.mutator_ref), uri);
+        emit_token_uri_updated_event(
+            object::object_address<Trait>(&trait_obj),
+            type_info::type_name<Trait>(),
+            old_uri,
+            uri,
+        );
     }
 
     // set token properties

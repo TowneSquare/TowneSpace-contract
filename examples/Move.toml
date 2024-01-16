@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-examples = "0x62161ae07778f042f4baf6d7af7b9b95e9bc24c57f311159a1ef68edc622be62"
+examples = "effb9356ede780467b845c6ae6ec90592b5293f44392ddb39b1776ba72f64a83"
 
 [dev-addresses]
 

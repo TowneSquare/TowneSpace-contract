@@ -14,11 +14,13 @@
         - improve error handling
         - change the name for the module: Token creator? Token factory?
         - Organize the functions
+        - add functions to return collections and tokens metadata
         
 */
 
 module townespace::core {
     
+    use aptos_framework::event;
     use aptos_framework::object::{Self, Object};
     use aptos_framework::primary_fungible_store;
 
@@ -32,7 +34,7 @@ module townespace::core {
     use std::error;
     use std::option::{Self, Option};
     use std::signer;
-    use std::string::{Self, String};
+    use std::string::String;
     use std::vector;
 
     // -------
@@ -214,10 +216,185 @@ module townespace::core {
             royalty_numerator,
             royalty_denominator
         );
-        CollectionCreatedEvent { metadata };
+        event::emit<CollectionCreatedEvent>( CollectionCreatedEvent { metadata });
     }
 
-    // Composable related
+    // Token related
+
+    #[event]
+    struct TokenBurnedEvent has drop, store { token_addr: address, token_type: String }
+    fun emit_token_burned_event(
+        token_addr: address,
+        token_type: String
+    ) {
+        event::emit<TokenBurnedEvent>( TokenBurnedEvent { token_addr, token_type });
+    }
+
+    #[event]
+    struct TokenDescriptionUpdatedEvent has drop, store { 
+        token_addr: address, 
+        token_type: String,
+        old_description: String,
+        new_description: String
+    }  
+    fun emit_token_description_updated_event(
+        token_addr: address,
+        token_type: String,
+        old_description: String,
+        new_description: String
+    ) {
+        event::emit<TokenDescriptionUpdatedEvent>(
+            TokenDescriptionUpdatedEvent { 
+                token_addr, 
+                token_type,
+                old_description,
+                new_description
+            }
+        );
+    }  
+
+    #[event]
+    struct TokenNameUpdatedEvent has drop, store { 
+        token_addr: address, 
+        token_type: String,
+        old_name: String,
+        new_name: String
+    }
+    fun emit_token_name_updated_event(
+        token_addr: address,
+        token_type: String,
+        old_name: String,
+        new_name: String
+    ) {
+        event::emit<TokenNameUpdatedEvent>(
+            TokenNameUpdatedEvent { 
+                token_addr, 
+                token_type,
+                old_name,
+                new_name
+            }
+        );
+    }
+
+    #[event]
+    struct TokenUriUpdatedEvent has drop, store { 
+        token_addr: address, 
+        token_type: String,
+        old_uri: String,
+        new_uri: String
+    }
+    fun emit_token_uri_updated_event(
+        token_addr: address,
+        token_type: String,
+        old_uri: String,
+        new_uri: String
+    ) {
+        event::emit<TokenUriUpdatedEvent>(
+            TokenUriUpdatedEvent { 
+                token_addr, 
+                token_type,
+                old_uri,
+                new_uri
+            }
+        );
+    }
+
+    #[event]
+    struct PropertyAddedEvent has drop, store { 
+        token_addr: address, 
+        token_type: String,
+        key: String,
+        type: String,
+        value: vector<u8>
+    }
+    fun emit_property_added_event(
+        token_addr: address,
+        token_type: String,
+        key: String,
+        type: String,
+        value: vector<u8>
+    ) {
+        event::emit<PropertyAddedEvent>(
+            PropertyAddedEvent { 
+                token_addr, 
+                token_type,
+                key,
+                type,
+                value
+            }
+        );
+    }
+
+    #[event]
+    struct TypedPropertyAddedEvent has drop, store { 
+        token_addr: address, 
+        token_type: String,
+        key: String,
+        value: String
+    }
+    fun emit_typed_property_added_event(
+        token_addr: address,
+        token_type: String,
+        key: String,
+        value: String
+    ) {
+        event::emit<TypedPropertyAddedEvent>(
+            TypedPropertyAddedEvent { 
+                token_addr, 
+                token_type,
+                key,
+                value
+            }
+        );
+    }
+
+    #[event]
+    struct PropertRemovedEvent has drop, store { 
+        token_addr: address, 
+        token_type: String,
+        key: String
+    } 
+    fun emit_property_removed_event(
+        token_addr: address,
+        token_type: String,
+        key: String
+    ) {
+        event::emit<PropertRemovedEvent>(
+            PropertRemovedEvent { 
+                token_addr, 
+                token_type,
+                key
+            }
+        );
+    }
+
+    #[event]
+    struct PropertyUpdatedEvent has drop, store { 
+        token_addr: address, 
+        token_type: String,
+        key: String,
+        old_value: vector<u8>,
+        new_value: vector<u8>
+    }
+    fun emit_property_updated_event(
+        token_addr: address,
+        token_type: String,
+        key: String,
+        old_value: vector<u8>,
+        new_value: vector<u8>
+    ) {
+        event::emit<PropertyUpdatedEvent>(
+            PropertyUpdatedEvent { 
+                token_addr, 
+                token_type,
+                key,
+                old_value,
+                new_value
+            }
+        );
+    }
+
+    // Composable 
 
     struct ComposableMetadata has drop, store {
         creator: address,
@@ -269,7 +446,7 @@ module townespace::core {
         ComposableCreatedEvent { metadata };
     }
 
-    // Trait related
+    // Trait
 
     struct TraitMetadata has drop, store {
         creator: address,
@@ -318,7 +495,7 @@ module townespace::core {
         trait_object: Object<Trait>
     ) acquires Collection, Composable, Trait {
         let metadata = trait_metadata(trait_object);
-        TraitCreatedEvent { metadata };
+        event::emit<TraitCreatedEvent>( TraitCreatedEvent { metadata });
     }
 
     // Composition related
@@ -338,12 +515,14 @@ module townespace::core {
     ) acquires Collection, Composable, Trait {
         let composable_metadata = composable_metadata(composable_object);
         let trait_metadata = trait_metadata(trait_object);
-        TraitEquippedEvent {
-            composable: composable_metadata,
-            trait: trait_metadata,
-            index,
-            new_uri
-        };
+        event::emit<TraitEquippedEvent>(
+            TraitEquippedEvent {
+                composable: composable_metadata,
+                trait: trait_metadata,
+                index,
+                new_uri
+            }
+        );
     }
 
     #[event]
@@ -361,12 +540,14 @@ module townespace::core {
     ) acquires Collection, Composable, Trait {
         let composable_metadata = composable_metadata(composable_object);
         let trait_metadata = trait_metadata(trait_object);
-        TraitUnequippedEvent {
-            composable: composable_metadata,
-            trait: trait_metadata,
-            index,
-            new_uri
-        };
+        event::emit<TraitUnequippedEvent>(
+            TraitUnequippedEvent {
+                composable: composable_metadata,
+                trait: trait_metadata,
+                index,
+                new_uri
+            }
+        );
     }
 
     // FA related
@@ -383,11 +564,13 @@ module townespace::core {
         amount: u64
     ) acquires Collection, Composable, Trait {
         let composable_metadata = composable_metadata(composable_object);
-        FAEquippedEvent {
-            composable: composable_metadata,
-            fa,
-            amount
-        };
+        event::emit<FAEquippedEvent>(
+            FAEquippedEvent {
+                composable: composable_metadata,
+                fa,
+                amount
+            }
+        );
     }
 
     #[event]
@@ -402,11 +585,57 @@ module townespace::core {
         amount: u64
     ) acquires Collection, Composable, Trait {
         let composable_metadata = composable_metadata(composable_object);
-        FAUnequippedEvent {
-            composable: composable_metadata,
-            fa,
-            amount
-        };
+        event::emit<FAUnequippedEvent>(
+            FAUnequippedEvent {
+                composable: composable_metadata,
+                fa,
+                amount
+            }
+        );
+    }
+
+    // Transfer related
+
+    #[event]
+    struct TokenTransferredEvent has drop, store {
+        token_addr: address,
+        from: address,
+        to: address
+    }
+    fun emit_token_transferred_event(
+        token_addr: address,
+        from: address,
+        to: address
+    ) {
+        event::emit<TokenTransferredEvent>( TokenTransferredEvent { token_addr, from, to });
+    }
+
+    #[event]
+    struct FATransferredEvent has drop, store {
+        fa: address,
+        from: address,
+        to: address,
+        amount: u64
+    }
+    fun emit_fa_transferred_event(
+        fa: address,
+        from: address,
+        to: address,
+        amount: u64
+    ) {
+        event::emit<FATransferredEvent>( FATransferredEvent { fa, from, to, amount });
+    }
+
+    #[event]
+    struct TransferFrozenEvent has drop, store { token_addr: address, token_type: String }
+    fun emit_transfer_frozen_event(token_addr: address, token_type: String) {
+        event::emit<TransferFrozenEvent>( TransferFrozenEvent { token_addr, token_type });
+    }
+
+    #[event]
+    struct TransferUnfrozenEvent has drop, store { token_addr: address, token_type: String }
+    fun emit_transfer_unfrozen_event(token_addr: address, token_type: String) {
+        event::emit<TransferUnfrozenEvent>( TransferUnfrozenEvent { token_addr, token_type });
     }
 
     // ------------------   
@@ -810,7 +1039,7 @@ module townespace::core {
         fa: Object<FA>,
         token_obj: Object<Token>,
         amount: u64
-    ) {
+    ) acquires Collection, Composable, Trait {
         // assert signer is the owner of the token object
         assert!(object::is_owner<Token>(token_obj, signer::address_of(signer_ref)), ENOT_OWNER);
         let token_obj_addr = object::object_address(&token_obj);
@@ -823,7 +1052,7 @@ module townespace::core {
         primary_fungible_store::transfer(signer_ref, fa, token_obj_addr, amount);
         // emit event
         emit_fa_equipped_event(
-            object::address_to_object<Token>(token_obj_addr),
+            object::address_to_object<Composable>(token_obj_addr),
             signer::address_of(signer_ref),
             amount
         );
@@ -835,7 +1064,7 @@ module townespace::core {
         fa: Object<FA>,
         token_obj: Object<Token>,
         amount: u64
-    ) {
+    ) acquires Collection, Composable, Trait {
         // assert signer is the owner of the token object
         assert!(object::is_owner<Token>(token_obj, signer::address_of(signer_ref)), ENOT_OWNER);
         // assert Token is either composable or trait
@@ -847,7 +1076,7 @@ module townespace::core {
         primary_fungible_store::transfer(signer_ref, fa, signer::address_of(signer_ref), amount);
         // emit event
         emit_fa_unequipped_event(
-            object::address_to_object<Token>(object::object_address(&token_obj)),
+            object::address_to_object<Composable>(object::object_address(&token_obj)),
             signer::address_of(signer_ref),
             amount
         );
@@ -858,7 +1087,7 @@ module townespace::core {
         signer_ref: &signer,
         composable_object: Object<Composable>,
         trait_object: Object<Trait>
-    ) acquires Composable, References {
+    ) acquires Collection, Composable, References, Trait {
         // Composable
         let composable_resource = borrow_global_mut<Composable>(object::object_address(&composable_object));
         // Trait
@@ -883,7 +1112,7 @@ module townespace::core {
     // transfer digital assets; from user to user.
     public fun transfer_token<Token: key>(
         signer_ref: &signer,
-        token_address: address,
+        token_addr: address,
         new_owner: address
     ) {
         // assert Token is either composable, trait or FA
@@ -897,8 +1126,13 @@ module townespace::core {
         assert!(!object::is_object(new_owner), ENOT_OWNER);
 
         // transfer
-        object::transfer<TokenV2>(signer_ref, object::address_to_object(token_address), new_owner)
-        // TODO: emit event
+        object::transfer<TokenV2>(signer_ref, object::address_to_object(token_addr), new_owner);
+        // emit event
+        emit_token_transferred_event(
+            token_addr,
+            signer::address_of(signer_ref),
+            new_owner
+        );
     }
 
     // transfer fa from user to user.
@@ -909,8 +1143,14 @@ module townespace::core {
         amount: u64
     ) {
         assert!(!object::is_object(recipient), ENOT_OWNER);
-        primary_fungible_store::transfer<FA>(signer_ref, fa, recipient, amount)
-        // TODO: emit event
+        primary_fungible_store::transfer<FA>(signer_ref, fa, recipient, amount);
+        // emit event
+        emit_fa_transferred_event(
+            object::object_address(&fa),
+            signer::address_of(signer_ref),
+            recipient,
+            amount
+        );
     }
 
     // ---------
@@ -932,21 +1172,21 @@ module townespace::core {
     }
     
     inline fun borrow_composable<T: key>(token: &Object<T>): &Composable {
-        let token_address = object::object_address(token);
+        let token_addr = object::object_address(token);
         assert!(
-            exists<Composable>(token_address),
+            exists<Composable>(token_addr),
             error::not_found(ECOMPOSABLE_DOES_NOT_EXIST),
         );
-        borrow_global<Composable>(token_address)
+        borrow_global<Composable>(token_addr)
     }
 
     inline fun borrow_trait<T: key>(token: &Object<T>): &Trait {
-        let token_address = object::object_address(token);
+        let token_addr = object::object_address(token);
         assert!(
-            exists<Trait>(token_address),
+            exists<Trait>(token_addr),
             error::not_found(ETRAIT_DOES_NOT_EXIST),
         );
-        borrow_global<Trait>(token_address)
+        borrow_global<Trait>(token_addr)
     }
 
     public fun borrow_mut_traits(composable_address: address): vector<Object<Trait>> acquires Composable {
@@ -1083,9 +1323,9 @@ module townespace::core {
     // --------
 
     inline fun authorized_composable_borrow<T: key>(token: &Object<T>, creator: &signer): &Composable {
-        let token_address = object::object_address(token);
+        let token_addr = object::object_address(token);
         assert!(
-            exists<Composable>(token_address),
+            exists<Composable>(token_addr),
             error::not_found(ECOMPOSABLE_DOES_NOT_EXIST),
         );
 
@@ -1093,13 +1333,13 @@ module townespace::core {
             token::creator(*token) == signer::address_of(creator),
             error::permission_denied(ENOT_CREATOR),
         );
-        borrow_global<Composable>(token_address)
+        borrow_global<Composable>(token_addr)
     }
 
     inline fun authorized_trait_borrow<T: key>(token: &Object<T>, creator: &signer): &Trait {
-        let token_address = object::object_address(token);
+        let token_addr = object::object_address(token);
         assert!(
-            exists<Trait>(token_address),
+            exists<Trait>(token_addr),
             error::not_found(ETRAIT_DOES_NOT_EXIST),
         );
 
@@ -1107,11 +1347,13 @@ module townespace::core {
             token::creator(*token) == signer::address_of(creator),
             error::permission_denied(ENOT_CREATOR),
         );
-        borrow_global<Trait>(token_address)
+        borrow_global<Trait>(token_addr)
     }
 
     // burn token based on type
     public fun burn_token<Type: key>(creator: &signer, token: Object<Type>) acquires Composable, Trait {
+        // TODO: assert is a composable or trait
+        let token_addr = object::object_address(&token);
         if (type_info::type_of<Type>() == type_info::type_of<Composable>()) {
             let composable = authorized_composable_borrow(&token, creator);
             assert!(
@@ -1133,6 +1375,7 @@ module townespace::core {
             } = composable;
             property_map::burn(property_mutator_ref);
             token::burn(option::extract(&mut burn_ref));
+            emit_token_burned_event(token_addr, type_info::type_name<Composable>());
         } else if (type_info::type_of<Type>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, creator);
             assert!(
@@ -1154,8 +1397,8 @@ module townespace::core {
             } = trait;
             property_map::burn(property_mutator_ref);
             token::burn(option::extract(&mut burn_ref));
+            emit_token_burned_event(token_addr, type_info::type_name<Trait>());
         } else { abort EUNKNOWN_TOKEN_TYPE }
-        // TODO: emit event
     }
 
     // freeze token based on type
@@ -1167,6 +1410,7 @@ module townespace::core {
                 error::permission_denied(EFIELD_NOT_MUTABLE),
             );
             object::disable_ungated_transfer(&composable.refs.transfer_ref);
+            emit_transfer_frozen_event(object::object_address(&token), type_info::type_name<Composable>());
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, creator);
             assert!(
@@ -1174,8 +1418,9 @@ module townespace::core {
                 error::permission_denied(EFIELD_NOT_MUTABLE),
             );
             object::disable_ungated_transfer(&trait.refs.transfer_ref);
-        } else { abort EUNKNOWN_TOKEN_TYPE }
-        // TODO: emit event
+            emit_transfer_frozen_event(object::object_address(&token), type_info::type_name<Trait>());
+        } else { abort EUNKNOWN_TOKEN_TYPE };
+        
     }
 
     // unfreeze token based on type
@@ -1187,6 +1432,7 @@ module townespace::core {
                 error::permission_denied(EFIELD_NOT_MUTABLE),
             );
             object::enable_ungated_transfer(&composable.refs.transfer_ref);
+            emit_transfer_unfrozen_event(object::object_address(&token), type_info::type_name<Composable>());
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, creator);
             assert!(
@@ -1194,8 +1440,9 @@ module townespace::core {
                 error::permission_denied(EFIELD_NOT_MUTABLE),
             );
             object::enable_ungated_transfer(&trait.refs.transfer_ref);
-        } else { abort EUNKNOWN_TOKEN_TYPE }
-        // TODO: emit event
+            emit_transfer_unfrozen_event(object::object_address(&token), type_info::type_name<Trait>());
+        } else { abort EUNKNOWN_TOKEN_TYPE };
+        
     }
 
     // set token description 
@@ -1208,14 +1455,27 @@ module townespace::core {
             is_mutable_description(token),
             error::permission_denied(EFIELD_NOT_MUTABLE),
         );
+        let old_description = token::description(token);
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             let composable = authorized_composable_borrow(&token, creator);
+            
             token::set_description(option::borrow(&composable.refs.mutator_ref), description);
+            emit_token_description_updated_event(
+                object::object_address(&token),
+                type_info::type_name<Composable>(),
+                old_description,
+                description,
+            );
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, creator);
             token::set_description(option::borrow(&trait.refs.mutator_ref), description);
+            emit_token_description_updated_event(
+                object::object_address(&token),
+                type_info::type_name<Trait>(),
+                old_description,
+                description,
+            );
         } else { abort EUNKNOWN_TOKEN_TYPE }
-        // TODO: emit event
     }
 
     // set token name
@@ -1228,14 +1488,26 @@ module townespace::core {
             is_mutable_name(token),
             error::permission_denied(EFIELD_NOT_MUTABLE),
         );
+        let old_name = token::name(token);
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             let composable = authorized_composable_borrow(&token, creator);
             token::set_name(option::borrow(&composable.refs.mutator_ref), name);
+            emit_token_name_updated_event(
+                object::object_address(&token),
+                type_info::type_name<Composable>(),
+                old_name,
+                name,
+            );
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, creator);
             token::set_name(option::borrow(&trait.refs.mutator_ref), name);
+            emit_token_name_updated_event(
+                object::object_address(&token),
+                type_info::type_name<Trait>(),
+                old_name,
+                name,
+            );
         } else { abort EUNKNOWN_TOKEN_TYPE }
-        // TODO: emit event
     }
 
     // set token uri
@@ -1249,14 +1521,26 @@ module townespace::core {
             is_mutable_uri(token),
             error::permission_denied(EFIELD_NOT_MUTABLE),
         );
+        let old_uri = token::uri(token);
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             let composable = authorized_composable_borrow(&token, owner);
             token::set_uri(option::borrow(&composable.refs.mutator_ref), uri);
+            emit_token_uri_updated_event(
+                object::object_address(&token),
+                type_info::type_name<Composable>(),
+                old_uri,
+                uri,
+            );
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, owner);
             token::set_uri(option::borrow(&trait.refs.mutator_ref), uri);
+            emit_token_uri_updated_event(
+                object::object_address(&token),
+                type_info::type_name<Trait>(),
+                old_uri,
+                uri,
+            );
         } else { abort EUNKNOWN_TOKEN_TYPE }
-        // TODO: emit event
     }
 
     // set token properties
@@ -1274,11 +1558,24 @@ module townespace::core {
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             let composable = authorized_composable_borrow(&token, creator);
             property_map::add(&composable.refs.property_mutator_ref, key, type, value);
+            emit_property_added_event(
+                object::object_address(&token),
+                type_info::type_name<Composable>(),
+                key,
+                type,
+                value,
+            );
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, creator);
             property_map::add(&trait.refs.property_mutator_ref, key, type, value);
+            emit_property_added_event(
+                object::object_address(&token),
+                type_info::type_name<Trait>(),
+                key,
+                type,
+                value,
+            );
         } else { abort EUNKNOWN_TOKEN_TYPE }
-        // TODO: emit event
     }
 
     public fun add_typed_property<T: key, V: drop>(
@@ -1294,11 +1591,22 @@ module townespace::core {
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             let composable = authorized_composable_borrow(&token, creator);
             property_map::add_typed(&composable.refs.property_mutator_ref, key, value);
+            emit_typed_property_added_event(
+                object::object_address(&token),
+                type_info::type_name<Composable>(),
+                key,
+                type_info::type_name<V>(),
+            );
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, creator);
             property_map::add_typed(&trait.refs.property_mutator_ref, key, value);
+            emit_typed_property_added_event(
+                object::object_address(&token),
+                type_info::type_name<Trait>(),
+                key,
+                type_info::type_name<V>(),
+            );
         } else { abort EUNKNOWN_TOKEN_TYPE }
-        // TODO: emit event
     }
 
     // remove token properties
@@ -1314,11 +1622,20 @@ module townespace::core {
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             let composable = authorized_composable_borrow(&token, creator);
             property_map::remove(&composable.refs.property_mutator_ref, &key);
+            emit_property_removed_event(
+                object::object_address(&token),
+                type_info::type_name<Composable>(),
+                key,
+            );
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, creator);
             property_map::remove(&trait.refs.property_mutator_ref, &key);
+            emit_property_removed_event(
+                object::object_address(&token),
+                type_info::type_name<Trait>(),
+                key,
+            );
         } else { abort EUNKNOWN_TOKEN_TYPE }
-        // TODO: emit event
     }
 
     // update token properties
@@ -1332,13 +1649,27 @@ module townespace::core {
             are_properties_mutable(token),
             error::permission_denied(EPROPERTIES_NOT_MUTABLE),
         );
+        let (_, old_value) = property_map::read(&token, &key);
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             let composable = authorized_composable_borrow(&token, creator);
             property_map::update_typed(&composable.refs.property_mutator_ref, &key, value);
+            emit_property_updated_event(
+                object::object_address(&token),
+                type_info::type_name<Composable>(),
+                key,
+                old_value,
+                value,
+            );
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, creator);
             property_map::update_typed(&trait.refs.property_mutator_ref, &key, value);
+            emit_property_updated_event(
+                object::object_address(&token),
+                type_info::type_name<Trait>(),
+                key,
+                old_value,
+                value,
+            );
         } else { abort EUNKNOWN_TOKEN_TYPE }
-        // TODO: emit event
     }
 }

@@ -15,7 +15,7 @@
         - change the name for the module: Token creator? Token factory?
         - Organize the functions
         - add functions to return collections and tokens metadata
-        
+        - add "add_royalty_to_collection/token" function
 */
 
 module townespace::core {
@@ -1202,7 +1202,7 @@ module townespace::core {
         borrow_global<Trait>(token_addr)
     }
 
-    public fun borrow_mut_traits(composable_address: address): vector<Object<Trait>> acquires Composable {
+    inline fun borrow_mut_traits(composable_address: address): vector<Object<Trait>> acquires Composable {
         borrow_global_mut<Composable>(composable_address).traits
     }
 
@@ -1559,7 +1559,7 @@ module townespace::core {
 
     // set token uri
     // Can be used only on traits that have a mutable uri.
-    public fun set_uri(
+    public fun set_trait_uri(
         owner: &signer,
         trait_obj: Object<Trait>,
         uri: String,

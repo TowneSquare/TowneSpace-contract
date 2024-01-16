@@ -1,3 +1,0 @@
-/*
-    Module for asserts that are commonly used in the multiple modules
-*/

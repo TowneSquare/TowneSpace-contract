@@ -14,7 +14,6 @@
         - improve error handling
         - change the name for the module: Token creator? Token factory?
         - Organize the functions
-        - Add events
         
 */
 
@@ -36,11 +35,9 @@ module townespace::core {
     use std::string::{Self, String};
     use std::vector;
 
-    // use townespace::asserts;
-
-    // ------
-    // Errors
-    // ------
+    // -------
+    // Asserts
+    // -------
 
     // The collection type is not recognised.
     const EUNKNOWN_COLLECTION_TYPE: u64 = 0;
@@ -65,9 +62,12 @@ module townespace::core {
     // The signer is not the owner of the token.
     const ENOT_OWNER: u64 = 10;
 
+    // TODO: add asserts functions here.
+
     // ---------
     // Resources
     // ---------
+     
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     // Storage state for collections
     struct Collection has key {
@@ -75,6 +75,8 @@ module townespace::core {
         name: String,
         // Symbol of the collection
         symbol: String,
+        // Supply type of the collection; can be fixed, unlimited or concurrent
+        supply_type: String,
         // Used to mutate collection fields
         mutator_ref: Option<collection::MutatorRef>,
         // Used to mutate royalties
@@ -123,9 +125,289 @@ module townespace::core {
         property_mutator_ref: property_map::MutatorRef
     }
 
+    // Used to determine the naming style of the token
     struct Named has key {}
-
     struct Indexed has key {}
+
+    // ------
+    // Events
+    // ------
+
+    // Collection related
+
+    struct CollectionMetadata has drop, store {
+        creator: address,
+        supply_type: String,   // Fixed, Unlimited or Concurrent
+        description: String,
+        max_supply: Option<u64>,    // if the collection is set to haved a fixed or concurrent supply.
+        name: String,
+        symbol: String,
+        uri: String,
+        mutable_description: bool,
+        mutable_royalty: bool,
+        mutable_uri: bool,
+        mutable_token_description: bool,
+        mutable_token_name: bool,
+        mutable_token_properties: bool,
+        mutable_token_uri: bool,
+        tokens_burnable_by_creator: bool,
+        tokens_freezable_by_creator: bool,
+        royalty_numerator: Option<u64>,
+        royalty_denominator: Option<u64>
+    }
+
+    inline fun collection_metadata(
+        collection_object: Object<Collection>, 
+        max_supply: Option<u64>,
+        royalty_numerator: Option<u64>,
+        royalty_denominator: Option<u64>
+    ): CollectionMetadata acquires Collection {
+        let creator_addr = collection::creator<Collection>(collection_object);
+        let supply_type = get_collection_supply_type(collection_object);
+        let description = collection::description<Collection>(collection_object);
+        let name = collection::name<Collection>(collection_object);
+        let symbol = get_collection_symbol(collection_object);
+        let uri = collection::uri<Collection>(collection_object);
+        let mutable_description = is_mutable_collection_description(collection_object);
+        let mutable_royalty = is_mutable_collection_royalty(collection_object);
+        let mutable_uri = is_mutable_collection_uri(collection_object);
+        let mutable_token_description = is_mutable_collection_token_description(collection_object);
+        let mutable_token_name = is_mutable_collection_token_name(collection_object);
+        let mutable_token_properties = is_mutable_collection_token_properties(collection_object);
+        let mutable_token_uri = is_mutable_collection_token_uri(collection_object);
+        let tokens_burnable_by_creator = are_collection_tokens_burnable(collection_object);
+        let tokens_freezable_by_creator = are_collection_tokens_freezable(collection_object);
+
+        CollectionMetadata {
+            creator: creator_addr,
+            supply_type: supply_type,
+            description: description,
+            max_supply,
+            name: name,
+            symbol: symbol,
+            uri: uri,
+            mutable_description: mutable_description,
+            mutable_royalty: mutable_royalty,
+            mutable_uri: mutable_uri,
+            mutable_token_description: mutable_token_description,
+            mutable_token_name: mutable_token_name,
+            mutable_token_properties: mutable_token_properties,
+            mutable_token_uri: mutable_token_uri,
+            tokens_burnable_by_creator: tokens_burnable_by_creator,
+            tokens_freezable_by_creator: tokens_freezable_by_creator,
+            royalty_numerator,
+            royalty_denominator
+        }
+    }
+
+    #[event]
+    struct CollectionCreatedEvent has drop, store { metadata: CollectionMetadata }
+    fun emit_collection_created_event<SupplyType: key>(
+        collection_object: Object<Collection>,
+        max_supply: Option<u64>,
+        royalty_numerator: Option<u64>,
+        royalty_denominator: Option<u64>
+    ) acquires Collection {
+        let metadata = collection_metadata(
+            collection_object,
+            max_supply,
+            royalty_numerator,
+            royalty_denominator
+        );
+        CollectionCreatedEvent { metadata };
+    }
+
+    // Composable related
+
+    struct ComposableMetadata has drop, store {
+        creator: address,
+        name: String,
+        uri: String,
+        base_mint_price: u64,
+        mutable_description: bool,
+        mutable_name: bool,
+        mutable_uri: bool,
+        mutable_properties: bool,
+        burnable: bool,
+        freezable: bool
+    }
+
+    inline fun composable_metadata(
+        composable_object: Object<Composable>
+    ): ComposableMetadata acquires Collection, Composable, Trait {
+        let creator_addr = token::creator<Composable>(composable_object);
+        let name = token::name<Composable>(composable_object);
+        let uri = token::uri<Composable>(composable_object);
+        let base_mint_price = get_base_mint_price<Composable>(object::object_address(&composable_object));
+        let mutable_description = is_mutable_description(composable_object);
+        let mutable_name = is_mutable_name(composable_object);
+        let mutable_uri = is_mutable_uri(composable_object);
+        let mutable_properties = are_properties_mutable(composable_object);
+        let burnable = is_burnable(composable_object);
+        let freezable = are_collection_tokens_freezable(token::collection_object(composable_object));
+
+        ComposableMetadata {
+            creator: creator_addr,
+            name: name,
+            uri: uri,
+            base_mint_price: base_mint_price,
+            mutable_description: mutable_description,
+            mutable_name: mutable_name,
+            mutable_uri: mutable_uri,
+            mutable_properties: mutable_properties,
+            burnable: burnable,
+            freezable: freezable
+        }
+    }
+
+    #[event]
+    struct ComposableCreatedEvent has drop, store { metadata: ComposableMetadata }
+    fun emit_composable_created_event(
+        composable_object: Object<Composable>
+    ) acquires Collection, Composable, Trait {
+        let metadata = composable_metadata(composable_object);
+        ComposableCreatedEvent { metadata };
+    }
+
+    // Trait related
+
+    struct TraitMetadata has drop, store {
+        creator: address,
+        name: String,
+        uri: String,
+        base_mint_price: u64,
+        mutable_description: bool,
+        mutable_name: bool,
+        mutable_uri: bool,
+        mutable_properties: bool,
+        burnable: bool,
+        freezable: bool
+    }
+
+    inline fun trait_metadata(
+        trait_object: Object<Trait>
+    ): TraitMetadata acquires Collection, Composable, Trait {
+        let creator_addr = token::creator<Trait>(trait_object);
+        let name = token::name<Trait>(trait_object);
+        let uri = token::uri<Trait>(trait_object);
+        let base_mint_price = get_base_mint_price<Trait>(object::object_address(&trait_object));
+        let mutable_description = is_mutable_description(trait_object);
+        let mutable_name = is_mutable_name(trait_object);
+        let mutable_uri = is_mutable_uri(trait_object);
+        let mutable_properties = are_properties_mutable(trait_object);
+        let burnable = is_burnable(trait_object);
+        let freezable = are_collection_tokens_freezable(token::collection_object(trait_object));
+
+        TraitMetadata {
+            creator: creator_addr,
+            name: name,
+            uri: uri,
+            base_mint_price: base_mint_price,
+            mutable_description: mutable_description,
+            mutable_name: mutable_name,
+            mutable_uri: mutable_uri,
+            mutable_properties: mutable_properties,
+            burnable: burnable,
+            freezable: freezable
+        }
+    }
+
+    #[event]
+    struct TraitCreatedEvent has drop, store { metadata: TraitMetadata }
+    fun emit_trait_created_event(
+        trait_object: Object<Trait>
+    ) acquires Collection, Composable, Trait {
+        let metadata = trait_metadata(trait_object);
+        TraitCreatedEvent { metadata };
+    }
+
+    // Composition related
+
+    #[event]
+    struct TraitEquippedEvent has drop, store {
+        composable: ComposableMetadata,
+        trait: TraitMetadata,
+        index: u64,
+        new_uri: String
+    }
+    fun emit_trait_equipped_event(
+        composable_object: Object<Composable>,
+        trait_object: Object<Trait>,
+        index: u64,
+        new_uri: String
+    ) acquires Collection, Composable, Trait {
+        let composable_metadata = composable_metadata(composable_object);
+        let trait_metadata = trait_metadata(trait_object);
+        TraitEquippedEvent {
+            composable: composable_metadata,
+            trait: trait_metadata,
+            index,
+            new_uri
+        };
+    }
+
+    #[event]
+    struct TraitUnequippedEvent has drop, store {
+        composable: ComposableMetadata,
+        trait: TraitMetadata,
+        index: u64,
+        new_uri: String
+    }
+    fun emit_trait_unequipped_event(
+        composable_object: Object<Composable>,
+        trait_object: Object<Trait>,
+        index: u64,
+        new_uri: String
+    ) acquires Collection, Composable, Trait {
+        let composable_metadata = composable_metadata(composable_object);
+        let trait_metadata = trait_metadata(trait_object);
+        TraitUnequippedEvent {
+            composable: composable_metadata,
+            trait: trait_metadata,
+            index,
+            new_uri
+        };
+    }
+
+    // FA related
+
+    #[event]
+    struct FAEquippedEvent has drop, store {
+        composable: ComposableMetadata,
+        fa: address,
+        amount: u64
+    }
+    fun emit_fa_equipped_event(
+        composable_object: Object<Composable>,
+        fa: address,
+        amount: u64
+    ) acquires Collection, Composable, Trait {
+        let composable_metadata = composable_metadata(composable_object);
+        FAEquippedEvent {
+            composable: composable_metadata,
+            fa,
+            amount
+        };
+    }
+
+    #[event]
+    struct FAUnequippedEvent has drop, store {
+        composable: ComposableMetadata,
+        fa: address,
+        amount: u64
+    }
+    fun emit_fa_unequipped_event(
+        composable_object: Object<Composable>,
+        fa: address,
+        amount: u64
+    ) acquires Collection, Composable, Trait {
+        let composable_metadata = composable_metadata(composable_object);
+        FAUnequippedEvent {
+            composable: composable_metadata,
+            fa,
+            amount
+        };
+    }
 
     // ------------------   
     // Internal Functions
@@ -151,6 +433,7 @@ module townespace::core {
         constructor_ref: &object::ConstructorRef,
         name: String,
         symbol: String,
+        supply_type: String,
         mutable_description: bool,
         mutable_uri: bool,
         mutable_token_description: bool,
@@ -180,6 +463,7 @@ module townespace::core {
             Collection {
                 name,
                 symbol,
+                supply_type,
                 mutator_ref,
                 royalty_mutator_ref,
                 mutable_description,
@@ -228,6 +512,7 @@ module townespace::core {
                 &constructor_ref,
                 name,
                 symbol,
+                type_info::type_name<collection::FixedSupply>(),
                 mutable_description,
                 mutable_uri,
                 mutable_token_description,
@@ -256,6 +541,7 @@ module townespace::core {
                 &constructor_ref,
                 name,
                 symbol,
+                type_info::type_name<collection::UnlimitedSupply>(),
                 mutable_description,
                 mutable_uri,
                 mutable_token_description,
@@ -296,7 +582,8 @@ module townespace::core {
         tokens_freezable_by_creator: bool,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>
-    ): object::ConstructorRef {
+        // TODO: add payee address option that if it is ignored then the payee addr will be the signer.
+    ): object::ConstructorRef acquires Collection {
         // TODO: assert supply type is either fixed, unlimited, or concurrent.
         let signer_addr = signer::address_of(signer_ref);
         let royalty = create_royalty_internal(royalty_numerator, royalty_denominator, signer_addr);
@@ -319,7 +606,14 @@ module townespace::core {
             royalty
         );
 
-        // TODO: emit event
+        // emit event
+        emit_collection_created_event<SupplyType>(
+            object::address_to_object<Collection>(collection::create_collection_address(&signer_addr, &name)),
+            max_supply,
+            royalty_numerator,
+            royalty_denominator
+        );
+
         constructor_ref
     }
 
@@ -451,7 +745,7 @@ module townespace::core {
         property_keys: vector<String>,
         property_types: vector<String>,
         property_values: vector<vector<u8>>
-    ): object::ConstructorRef acquires Collection {
+    ): object::ConstructorRef acquires Collection, Composable, Trait {
         // TODO: assert Type is either trait or composable.
         let signer_addr = signer::address_of(signer_ref);
         let royalty = create_royalty_internal(royalty_numerator, royalty_denominator, signer_addr);
@@ -469,7 +763,17 @@ module townespace::core {
             property_values
         );
 
-        // TODO: emit event
+        // emit event
+        if (type_info::type_of<Type>() == type_info::type_of<Composable>()) {
+            emit_composable_created_event(
+                object::address_to_object<Composable>(token::create_token_address(&signer_addr, &collection, &name)),
+            );
+        } else if (type_info::type_of<Type>() == type_info::type_of<Trait>()) {
+            emit_trait_created_event(
+                object::address_to_object<Trait>(token::create_token_address(&signer_addr, &collection, &name)),
+            );
+        } else { abort EUNKNOWN_TOKEN_TYPE };
+
         constructor_ref
     }
 
@@ -478,7 +782,7 @@ module townespace::core {
         signer_ref: &signer,
         composable_object: Object<Composable>,
         trait_object: Object<Trait>
-    ) acquires Composable, References {
+    ) acquires Collection, Composable, References, Trait {
         // Composable 
         let composable_res = borrow_global_mut<Composable>(object::object_address(&composable_object));
         // Trait
@@ -491,6 +795,13 @@ module townespace::core {
         object::transfer_to_object(signer_ref, trait_object, composable_object);
         // Disable ungated transfer for trait object
         object::disable_ungated_transfer(&trait_refs.transfer_ref);
+        // emit event
+        emit_trait_equipped_event(
+            composable_object,
+            trait_object,
+            vector::length(&composable_res.traits) - 1,
+            token::uri<Trait>(trait_object)
+        );
     }
 
     // equip fa; transfer fa to a token; token can be either composable or trait
@@ -510,6 +821,12 @@ module townespace::core {
         );
         // transfer 
         primary_fungible_store::transfer(signer_ref, fa, token_obj_addr, amount);
+        // emit event
+        emit_fa_equipped_event(
+            object::address_to_object<Token>(token_obj_addr),
+            signer::address_of(signer_ref),
+            amount
+        );
     }
 
     // unequip fa; transfer fa from a token to the owner
@@ -528,6 +845,12 @@ module townespace::core {
         );
         // transfer 
         primary_fungible_store::transfer(signer_ref, fa, signer::address_of(signer_ref), amount);
+        // emit event
+        emit_fa_unequipped_event(
+            object::address_to_object<Token>(object::object_address(&token_obj)),
+            signer::address_of(signer_ref),
+            amount
+        );
     }
 
     // Decompose a trait from a composable token. Tests panic.
@@ -548,6 +871,13 @@ module townespace::core {
         object::transfer(signer_ref, trait_object, signer::address_of(signer_ref));
         // Remove the object from the vector
         vector::remove(&mut composable_resource.traits, index);
+        // emit event
+        emit_trait_unequipped_event(
+            composable_object,
+            trait_object,
+            index,
+            token::uri<Trait>(trait_object)
+        );
     }
 
     // transfer digital assets; from user to user.
@@ -568,6 +898,7 @@ module townespace::core {
 
         // transfer
         object::transfer<TokenV2>(signer_ref, object::address_to_object(token_address), new_owner)
+        // TODO: emit event
     }
 
     // transfer fa from user to user.
@@ -579,6 +910,7 @@ module townespace::core {
     ) {
         assert!(!object::is_object(recipient), ENOT_OWNER);
         primary_fungible_store::transfer<FA>(signer_ref, fa, recipient, amount)
+        // TODO: emit event
     }
 
     // ---------
@@ -689,6 +1021,12 @@ module townespace::core {
     public fun get_collection_symbol(collection_object: Object<Collection>): String acquires Collection {
         let object_address = object::object_address(&collection_object);
         borrow_global<Collection>(object_address).symbol
+    }
+
+    #[view]
+    public fun get_collection_supply_type(collection_object: Object<Collection>): String acquires Collection {
+        let object_address = object::object_address(&collection_object);
+        borrow_global<Collection>(object_address).supply_type
     }
 
     #[view]
@@ -817,6 +1155,7 @@ module townespace::core {
             property_map::burn(property_mutator_ref);
             token::burn(option::extract(&mut burn_ref));
         } else { abort EUNKNOWN_TOKEN_TYPE }
+        // TODO: emit event
     }
 
     // freeze token based on type
@@ -836,6 +1175,7 @@ module townespace::core {
             );
             object::disable_ungated_transfer(&trait.refs.transfer_ref);
         } else { abort EUNKNOWN_TOKEN_TYPE }
+        // TODO: emit event
     }
 
     // unfreeze token based on type
@@ -855,6 +1195,7 @@ module townespace::core {
             );
             object::enable_ungated_transfer(&trait.refs.transfer_ref);
         } else { abort EUNKNOWN_TOKEN_TYPE }
+        // TODO: emit event
     }
 
     // set token description 
@@ -874,6 +1215,7 @@ module townespace::core {
             let trait = authorized_trait_borrow(&token, creator);
             token::set_description(option::borrow(&trait.refs.mutator_ref), description);
         } else { abort EUNKNOWN_TOKEN_TYPE }
+        // TODO: emit event
     }
 
     // set token name
@@ -893,6 +1235,7 @@ module townespace::core {
             let trait = authorized_trait_borrow(&token, creator);
             token::set_name(option::borrow(&trait.refs.mutator_ref), name);
         } else { abort EUNKNOWN_TOKEN_TYPE }
+        // TODO: emit event
     }
 
     // set token uri
@@ -913,6 +1256,7 @@ module townespace::core {
             let trait = authorized_trait_borrow(&token, owner);
             token::set_uri(option::borrow(&trait.refs.mutator_ref), uri);
         } else { abort EUNKNOWN_TOKEN_TYPE }
+        // TODO: emit event
     }
 
     // set token properties
@@ -934,6 +1278,7 @@ module townespace::core {
             let trait = authorized_trait_borrow(&token, creator);
             property_map::add(&trait.refs.property_mutator_ref, key, type, value);
         } else { abort EUNKNOWN_TOKEN_TYPE }
+        // TODO: emit event
     }
 
     public fun add_typed_property<T: key, V: drop>(
@@ -953,6 +1298,7 @@ module townespace::core {
             let trait = authorized_trait_borrow(&token, creator);
             property_map::add_typed(&trait.refs.property_mutator_ref, key, value);
         } else { abort EUNKNOWN_TOKEN_TYPE }
+        // TODO: emit event
     }
 
     // remove token properties
@@ -972,6 +1318,7 @@ module townespace::core {
             let trait = authorized_trait_borrow(&token, creator);
             property_map::remove(&trait.refs.property_mutator_ref, &key);
         } else { abort EUNKNOWN_TOKEN_TYPE }
+        // TODO: emit event
     }
 
     // update token properties
@@ -992,5 +1339,6 @@ module townespace::core {
             let trait = authorized_trait_borrow(&token, creator);
             property_map::update_typed(&trait.refs.property_mutator_ref, &key, value);
         } else { abort EUNKNOWN_TOKEN_TYPE }
+        // TODO: emit event
     }
 }

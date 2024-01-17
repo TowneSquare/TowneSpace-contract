@@ -24,7 +24,7 @@ module townespace::studio {
     use std::string::String;
     use std::vector;
 
-    use townespace::dynamic_tokens::{Self, Collection, Composable, Indexed, Named, Trait};
+    use townespace::composables::{Self, Collection, Composable, Indexed, Named, Trait};
 
     // ------
     // Events
@@ -88,7 +88,7 @@ module townespace::studio {
         royalty_numerator: u64,
         royalty_denominator: u64
     ) {
-        let constructor_ref = dynamic_tokens::create_collection<collection::FixedSupply>(
+        let constructor_ref = composables::create_collection<collection::FixedSupply>(
             signer_ref,
             description,
             option::some(max_supply),
@@ -135,7 +135,7 @@ module townespace::studio {
         tokens_burnable_by_creator: bool,
         tokens_freezable_by_creator: bool
     ) {
-        let constructor_ref = dynamic_tokens::create_collection<collection::FixedSupply>(
+        let constructor_ref = composables::create_collection<collection::FixedSupply>(
             signer_ref,
             description,
             option::some(max_supply),
@@ -183,7 +183,7 @@ module townespace::studio {
         royalty_numerator: u64,
         royalty_denominator: u64
     ) {
-        let constructor_ref = dynamic_tokens::create_collection<collection::UnlimitedSupply>(
+        let constructor_ref = composables::create_collection<collection::UnlimitedSupply>(
             signer_ref,
             description,
             option::none(),
@@ -229,7 +229,7 @@ module townespace::studio {
         tokens_burnable_by_creator: bool,
         tokens_freezable_by_creator: bool
     ) {
-        let constructor_ref = dynamic_tokens::create_collection<collection::UnlimitedSupply>(
+        let constructor_ref = composables::create_collection<collection::UnlimitedSupply>(
             signer_ref,
             description,
             option::none(),
@@ -269,7 +269,7 @@ module townespace::studio {
         property_types: vector<String>,
         property_values: vector<vector<u8>>
     ) {
-        let constructor_ref = dynamic_tokens::create_token<Composable, Named>(
+        let constructor_ref = composables::create_token<Composable, Named>(
             signer_ref,
             collection,
             description,
@@ -307,7 +307,7 @@ module townespace::studio {
         property_types: vector<String>,
         property_values: vector<vector<u8>>
     ) {
-        let constructor_ref = dynamic_tokens::create_token<Composable, Named>(
+        let constructor_ref = composables::create_token<Composable, Named>(
             signer_ref,
             collection,
             description,
@@ -344,7 +344,7 @@ module townespace::studio {
         property_types: vector<String>,
         property_values: vector<vector<u8>>
     ) {
-        let constructor_ref = dynamic_tokens::create_token<Composable, Indexed>(
+        let constructor_ref = composables::create_token<Composable, Indexed>(
             signer_ref,
             collection,
             description,
@@ -379,7 +379,7 @@ module townespace::studio {
         property_types: vector<String>,
         property_values: vector<vector<u8>>
     ) {
-        let constructor_ref = dynamic_tokens::create_token<Composable, Indexed>(
+        let constructor_ref = composables::create_token<Composable, Indexed>(
             signer_ref,
             collection,
             description,
@@ -415,7 +415,7 @@ module townespace::studio {
         property_types: vector<String>,
         property_values: vector<vector<u8>>
     ) {
-        let constructor_ref = dynamic_tokens::create_token<Trait, Named>(
+        let constructor_ref = composables::create_token<Trait, Named>(
             signer_ref,
             collection,
             description,
@@ -453,7 +453,7 @@ module townespace::studio {
         property_types: vector<String>,
         property_values: vector<vector<u8>>
     ) {
-        let constructor_ref = dynamic_tokens::create_token<Trait, Named>(
+        let constructor_ref = composables::create_token<Trait, Named>(
             signer_ref,
             collection,
             description,
@@ -483,7 +483,7 @@ module townespace::studio {
         property_types: vector<String>,
         property_values: vector<vector<u8>>
     ) {
-        let constructor_ref = dynamic_tokens::create_token<Trait, Indexed>(
+        let constructor_ref = composables::create_token<Trait, Indexed>(
             signer_ref,
             collection,
             description,
@@ -518,7 +518,7 @@ module townespace::studio {
         property_types: vector<String>,
         property_values: vector<vector<u8>>
     ) {
-        let constructor_ref = dynamic_tokens::create_token<Trait, Indexed>(
+        let constructor_ref = composables::create_token<Trait, Indexed>(
             signer_ref,
             collection,
             description,
@@ -548,7 +548,7 @@ module townespace::studio {
         signer_ref: &signer,
         token_obj: Object<T>
     ) {
-        dynamic_tokens::burn_token<T>(signer_ref, token_obj);
+        composables::burn_token<T>(signer_ref, token_obj);
     }
 
     // Freeze a token
@@ -556,7 +556,7 @@ module townespace::studio {
         signer_ref: &signer,
         token_obj: Object<T>
     ) {
-        dynamic_tokens::freeze_transfer<T>(signer_ref, token_obj);
+        composables::freeze_transfer<T>(signer_ref, token_obj);
     }
 
     // Unfreeze a token
@@ -564,7 +564,7 @@ module townespace::studio {
         signer_ref: &signer,
         token_obj: Object<T>
     ) {
-        dynamic_tokens::unfreeze_transfer<T>(signer_ref, token_obj);
+        composables::unfreeze_transfer<T>(signer_ref, token_obj);
     }
 
     // Equip trait to a composable
@@ -574,7 +574,7 @@ module townespace::studio {
         trait_obj: Object<Trait>,
         new_uri: String // User should not prompt this! It should be generated by the studio.
     ) { 
-        dynamic_tokens::equip_trait_internal(owner, composable_obj, trait_obj, new_uri);
+        composables::equip_trait_internal(owner, composable_obj, trait_obj, new_uri);
     }
 
     // Equip fungible asset to a trait or composable
@@ -584,7 +584,7 @@ module townespace::studio {
         token_obj: Object<TokenType>,
         amount: u64
     ) {
-        dynamic_tokens::equip_fa_to_token<FA, TokenType>(signer_ref, fa, token_obj, amount);
+        composables::equip_fa_to_token<FA, TokenType>(signer_ref, fa, token_obj, amount);
     }
 
     // Unequip trait from a composable
@@ -594,7 +594,7 @@ module townespace::studio {
         trait_obj: Object<Trait>,
         new_uri: String // User should not prompt this! It should be generated by the studio.
     ) {
-        dynamic_tokens::unequip_trait_internal(owner, composable_obj, trait_obj, new_uri);
+        composables::unequip_trait_internal(owner, composable_obj, trait_obj, new_uri);
     }
 
     // Unequip fungible asset from a trait or composable
@@ -604,7 +604,7 @@ module townespace::studio {
         token_obj: Object<TokenType>,
         amount: u64
     ) {
-        dynamic_tokens::unequip_fa_from_token<FA, TokenType>(signer_ref, fa, token_obj, amount);
+        composables::unequip_fa_from_token<FA, TokenType>(signer_ref, fa, token_obj, amount);
     }
 
     // Decompose an entire composable token
@@ -615,12 +615,12 @@ module townespace::studio {
         new_uri: String // User should not prompt this! It should be generated by the studio.
     ) {
         // iterate through the vector and unequip traits
-        let traits = dynamic_tokens::get_traits_from_composable(composable_obj);
+        let traits = composables::get_traits_from_composable(composable_obj);
         let i = 0;
         // TODO: can be optimized
         while (i < vector::length<Object<Trait>>(&traits)) {
             let trait_obj = *vector::borrow(&traits, i);
-            dynamic_tokens::unequip_trait_internal(owner, composable_obj, trait_obj, new_uri);
+            composables::unequip_trait_internal(owner, composable_obj, trait_obj, new_uri);
             i = i + 1;
         };
     }
@@ -631,7 +631,7 @@ module townespace::studio {
         token_address: address,
         new_owner_address: address,
     ) {
-        dynamic_tokens::transfer_token<T>(owner, token_address, new_owner_address);
+        composables::transfer_token<T>(owner, token_address, new_owner_address);
     }
 
     // Directly transfer a token to a user.
@@ -641,7 +641,7 @@ module townespace::studio {
         fa: Object<FA>,
         amount: u64
     ) {
-        dynamic_tokens::transfer_fa<FA>(signer_ref, recipient, fa, amount);
+        composables::transfer_fa<FA>(signer_ref, recipient, fa, amount);
     }
 
     // --------
@@ -654,7 +654,7 @@ module townespace::studio {
         token_obj: Object<T>,
         new_name: String
     ) {
-        dynamic_tokens::set_name<T>(signer_ref, token_obj, new_name);
+        composables::set_name<T>(signer_ref, token_obj, new_name);
     }
 
     // set token description
@@ -663,7 +663,7 @@ module townespace::studio {
         token_obj: Object<T>,
         new_description: String
     ) {
-        dynamic_tokens::set_description<T>(signer_ref, token_obj, new_description);
+        composables::set_description<T>(signer_ref, token_obj, new_description);
     }
 
     // set trait token uri
@@ -672,7 +672,7 @@ module townespace::studio {
         trait_obj: Object<Trait>,
         new_uri: String
     ) {
-        dynamic_tokens::set_trait_uri(signer_ref, trait_obj, new_uri);
+        composables::set_trait_uri(signer_ref, trait_obj, new_uri);
     }
 
     // add a property to a token
@@ -683,7 +683,7 @@ module townespace::studio {
         type: String,
         value: vector<u8>
     ) {
-        dynamic_tokens::add_property<T>(signer_ref, token_obj, key, type, value);
+        composables::add_property<T>(signer_ref, token_obj, key, type, value);
     }
 
     // add a typed property to a token
@@ -693,7 +693,7 @@ module townespace::studio {
         key: String,
         value: V
     ) {
-        dynamic_tokens::add_typed_property<T, V>(signer_ref, token_obj, key, value);
+        composables::add_typed_property<T, V>(signer_ref, token_obj, key, value);
     }
 
     // update a property from a token
@@ -703,7 +703,7 @@ module townespace::studio {
         key: String,
         value: vector<u8>
     ) {
-        dynamic_tokens::update_property<T>(signer_ref, token_obj, key, value);
+        composables::update_property<T>(signer_ref, token_obj, key, value);
     }
 
     // remove a property from a token
@@ -712,6 +712,6 @@ module townespace::studio {
         token_obj: Object<T>,
         key: String
     ) {
-        dynamic_tokens::remove_property<T>(signer_ref, token_obj, key);
+        composables::remove_property<T>(signer_ref, token_obj, key);
     }
 }

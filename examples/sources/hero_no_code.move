@@ -18,7 +18,7 @@ module examples::hero_no_code {
     use std::string::{Self, String};
     use std::vector;
 
-    use townespace::core;
+    use townespace::composables;
     use townespace::studio;
 
     const ENOT_A_HERO: u64 = 1;
@@ -32,7 +32,7 @@ module examples::hero_no_code {
     const COLLECTION_NAME: vector<u8> = b"Hero Quest!";
 
     fun init_module(account: &signer) {
-        let constructor_ref = core::create_collection<collection::FixedSupply>(
+        let constructor_ref = composables::create_collection<collection::FixedSupply>(
             account,
             string::utf8(b"collection description"),
             option::some(100),
@@ -63,7 +63,7 @@ module examples::hero_no_code {
         name_with_index_suffix: String,
         uri: String
     ) {
-        core::create_token<core::Composable, core::Indexed>(
+        composables::create_token<composables::Composable, composables::Indexed>(
             signer_ref,
             collection,
             description,
@@ -99,7 +99,7 @@ module examples::hero_no_code {
         type: String,
         weight: u64
     ) {
-        core::create_token<core::Trait, core::Indexed>(
+        composables::create_token<composables::Trait, composables::Indexed>(
             signer_ref,
             collection,
             description,
@@ -130,14 +130,14 @@ module examples::hero_no_code {
     // Equip a weapon to a hero
     entry fun hero_equip_weapon(
         owner_signer: &signer, 
-        hero_obj: Object<core::Composable>, 
-        trait_obj: Object<core::Trait>,
+        hero_obj: Object<composables::Composable>, 
+        trait_obj: Object<composables::Trait>,
         new_uri: String
     ) { 
         studio::equip_trait(owner_signer, hero_obj, trait_obj, new_uri);
         // // update hero's attack
-        // let (_, hero_attack_val) = property_map::read<core::Composable>(composable_obj, &string::utf8(b"attack"));
-        // let (_, weapon_attack_val) = property_map::read<core::Trait>(trait_obj, &string::utf8(b"attack"));
+        // let (_, hero_attack_val) = property_map::read<composables::Composable>(composable_obj, &string::utf8(b"attack"));
+        // let (_, weapon_attack_val) = property_map::read<composables::Trait>(trait_obj, &string::utf8(b"attack"));
         // let new_attack_val = hero_attack_val + weapon_attack_val;
         // property_map::update(
         //     mutator_ref, 
@@ -150,8 +150,8 @@ module examples::hero_no_code {
     // Unequip a weapon from a hero
     entry fun hero_unequip_weapon(
         owner_signer: &signer, 
-        hero_obj: Object<core::Composable>, 
-        weapon_obj: Object<core::Trait>,
+        hero_obj: Object<composables::Composable>, 
+        weapon_obj: Object<composables::Trait>,
         new_uri: String
     ) { 
         studio::unequip_trait(owner_signer, hero_obj, weapon_obj, new_uri);

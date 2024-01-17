@@ -169,9 +169,10 @@ module townespace::composables_test {
         let collection_1_obj = object::object_from_constructor_ref<Collection>(&collection_1_constructor_ref);
         let collection_2_obj = object::object_from_constructor_ref<Collection>(&collection_2_constructor_ref);
 
-        debug::print<address>(&object::owner<Collection>(collection_1_obj));
-        debug::print<address>(&object::owner<Composable>(composable_obj));
-        debug::print<address>(&object::owner<Trait>(trait_obj));
+        // debug::print<address>(&object::owner<Collection>(collection_1_obj));
+        // debug::print<address>(&object::owner<Composable>(composable_obj));
+        // debug::print<address>(&object::owner<Trait>(trait_obj));
+
         // equip the trait to the composable
         let uri_after_equipping_trait = string::utf8(b"URI after equipping trait");
         composables::equip_trait(creator, composable_obj, trait_obj, uri_after_equipping_trait);
@@ -226,5 +227,7 @@ module townespace::composables_test {
         // TODO: check that the trait is equipped correctly
         // TODO: check events are emited correctly
     }
+
+    // TODO: Add more tests
 
 }

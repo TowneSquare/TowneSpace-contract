@@ -12,16 +12,57 @@
 */
 
 module townespace::studio {
+
+    use aptos_framework::event;
     use aptos_framework::object::{Self, Object};
     
     use aptos_token_objects::collection;
 
     use std::option;
+    use std::string;
     // use std::signer;
     use std::string::String;
     use std::vector;
 
     use townespace::core::{Self, Collection, Composable, Indexed, Named, Trait};
+
+    // ------
+    // Events
+    // ------
+
+    #[event]
+    struct CollectionCreatedEvent has drop, store {
+        obj: Object<Collection>,
+        type: String,
+        created_with_royalty: bool
+    }
+    fun emit_collection_created_event(
+        obj: Object<Collection>, 
+        type: String,
+        created_with_royalty: bool
+    ) {
+        event::emit<CollectionCreatedEvent>(
+            CollectionCreatedEvent { obj, type, created_with_royalty }
+        )
+    }
+
+    #[event]
+    struct TokenCreatedEvent<phantom T> has drop, store {
+        obj: Object<T>,
+        type: String,
+        naming_style: String,
+        created_with_royalty: bool
+    }
+    fun emit_token_created_event<T>(
+        obj: Object<T>,
+        type: String,
+        naming_style: String,
+        created_with_royalty: bool
+    ) {
+        event::emit<TokenCreatedEvent<T>>(
+            TokenCreatedEvent<T> { obj, type, naming_style, created_with_royalty }
+        )
+    }
 
     // ---------------
     // Entry Functions
@@ -67,7 +108,13 @@ module townespace::studio {
             option::some(royalty_denominator)
         );
         // generate the collection object
-        object::object_from_constructor_ref<Collection>(&constructor_ref);
+        let obj = object::object_from_constructor_ref<Collection>(&constructor_ref);
+        // emit creation event
+        emit_collection_created_event(
+            obj,
+            string::utf8(b"fixed supply"),
+            true
+        );
     }
 
     // Create a new collection with fixed supply and royalty off.
@@ -108,7 +155,13 @@ module townespace::studio {
             option::none()
         );
         // generate the collection object
-        object::object_from_constructor_ref<Collection>(&constructor_ref);
+        let obj = object::object_from_constructor_ref<Collection>(&constructor_ref);
+        // emit creation event
+        emit_collection_created_event(
+            obj,
+            string::utf8(b"fixed supply"),
+            false
+        );
     }
 
     // Create a new collection with unlimited supply and royalty on.
@@ -150,7 +203,13 @@ module townespace::studio {
             option::some(royalty_denominator)
         );
         // generate the collection object
-        object::object_from_constructor_ref<Collection>(&constructor_ref);
+        let obj = object::object_from_constructor_ref<Collection>(&constructor_ref);
+        // emit creation event
+        emit_collection_created_event(
+            obj,
+            string::utf8(b"unlimited supply"),
+            true
+        );
     }
 
     // Create a new collection with unlimited supply and royalty off.
@@ -190,7 +249,13 @@ module townespace::studio {
             option::none()
         );
         // generate the collection object
-        object::object_from_constructor_ref<Collection>(&constructor_ref);
+        let obj = object::object_from_constructor_ref<Collection>(&constructor_ref);
+        // emit creation event
+        emit_collection_created_event(
+            obj,
+            string::utf8(b"unlimited supply"),
+            false
+        );
     }
 
     // Create a named composable token with no royalty
@@ -199,8 +264,6 @@ module townespace::studio {
         collection: String,
         description: String,
         name: String,
-        name_with_index_prefix: String,
-        name_with_index_suffix: String,
         uri: String,
         property_keys: vector<String>,
         property_types: vector<String>,
@@ -211,8 +274,8 @@ module townespace::studio {
             collection,
             description,
             name,
-            name_with_index_prefix,
-            name_with_index_suffix,
+            string::utf8(b""), // won't be used
+            string::utf8(b""), // won't be used
             uri,
             option::none(),
             option::none(),
@@ -221,48 +284,22 @@ module townespace::studio {
             property_values
         );
         // generate the token object
-        object::object_from_constructor_ref<Composable>(&constructor_ref);
-    }
-
-    // Create a named composable token with royalty off
-    public entry fun create_named_composable_token_with_royalty_off(
-        signer_ref: &signer,
-        collection: String,
-        description: String,
-        name: String,
-        name_with_index_prefix: String,
-        name_with_index_suffix: String,
-        uri: String,
-        property_keys: vector<String>,
-        property_types: vector<String>,
-        property_values: vector<vector<u8>>
-    ) {
-        let constructor_ref = core::create_token<Composable, Named>(
-            signer_ref,
-            collection,
-            description,
-            name,
-            name_with_index_prefix,
-            name_with_index_suffix,
-            uri,
-            option::none(),
-            option::none(),
-            property_keys,
-            property_types,
-            property_values
+        let obj = object::object_from_constructor_ref<Composable>(&constructor_ref);
+        // emit creation event
+        emit_token_created_event<Composable>(
+            obj,
+            string::utf8(b"composable"),
+            string::utf8(b"named"),
+            false
         );
-        // generate the token object
-        object::object_from_constructor_ref<Composable>(&constructor_ref);
     }
 
-    // Create an indexed composable token with royalty 
-    public entry fun create_indexed_composable_token_with_royalty(
+    // Create a named composable token with royalty
+    public entry fun create_named_composable_token_with_royalty(
         signer_ref: &signer,
         collection: String,
         description: String,
         name: String,
-        name_with_index_prefix: String,
-        name_with_index_suffix: String,
         uri: String,
         royalty_numerator: u64,
         royalty_denominator: u64,
@@ -270,13 +307,13 @@ module townespace::studio {
         property_types: vector<String>,
         property_values: vector<vector<u8>>
     ) {
-        let constructor_ref = core::create_token<Composable, Indexed>(
+        let constructor_ref = core::create_token<Composable, Named>(
             signer_ref,
             collection,
             description,
             name,
-            name_with_index_prefix,
-            name_with_index_suffix,
+            string::utf8(b""), // won't be used
+            string::utf8(b""), // won't be used
             uri,
             option::some(royalty_numerator),
             option::some(royalty_denominator),
@@ -285,17 +322,58 @@ module townespace::studio {
             property_values
         );
         // generate the token object
-        object::object_from_constructor_ref<Composable>(&constructor_ref);
+        let obj = object::object_from_constructor_ref<Composable>(&constructor_ref);
+        // emit creation event
+        emit_token_created_event<Composable>(
+            obj,
+            string::utf8(b"composable"),
+            string::utf8(b"named"),
+            true
+        );
     }
 
-    // Create an indexed composable token with royalty off
-    public entry fun create_indexed_composable_token_with_royalty_off(
+    // Create an indexed composable token with royalty 
+    public entry fun create_indexed_composable_token_with_royalty(
         signer_ref: &signer,
         collection: String,
         description: String,
-        name: String,
-        name_with_index_prefix: String,
-        name_with_index_suffix: String,
+        uri: String,
+        royalty_numerator: u64,
+        royalty_denominator: u64,
+        property_keys: vector<String>,
+        property_types: vector<String>,
+        property_values: vector<vector<u8>>
+    ) {
+        let constructor_ref = core::create_token<Composable, Indexed>(
+            signer_ref,
+            collection,
+            description,
+            string::utf8(b""), // won't be used
+            string::utf8(b"#"),
+            string::utf8(b""),
+            uri,
+            option::some(royalty_numerator),
+            option::some(royalty_denominator),
+            property_keys,
+            property_types,
+            property_values
+        );
+        // generate the token object
+        let obj = object::object_from_constructor_ref<Composable>(&constructor_ref);
+        // emit creation event
+        emit_token_created_event<Composable>(
+            obj,
+            string::utf8(b"composable"),
+            string::utf8(b"indexed"),
+            true
+        );
+    }
+
+    // Create an indexed composable token without royalty 
+    public entry fun create_indexed_composable_token_with_no_royalty(
+        signer_ref: &signer,
+        collection: String,
+        description: String,
         uri: String,
         property_keys: vector<String>,
         property_types: vector<String>,
@@ -305,9 +383,9 @@ module townespace::studio {
             signer_ref,
             collection,
             description,
-            name,
-            name_with_index_prefix,
-            name_with_index_suffix,
+            string::utf8(b""), // won't be used
+            string::utf8(b"#"),
+            string::utf8(b""),
             uri,
             option::none(),
             option::none(),
@@ -316,7 +394,14 @@ module townespace::studio {
             property_values
         );
         // generate the token object
-        object::object_from_constructor_ref<Composable>(&constructor_ref);
+        let obj = object::object_from_constructor_ref<Composable>(&constructor_ref);
+        // emit creation event
+        emit_token_created_event<Composable>(
+            obj,
+            string::utf8(b"composable"),
+            string::utf8(b"indexed"),
+            false
+        );
     }
 
     // Create a named trait token with no royalty
@@ -325,8 +410,6 @@ module townespace::studio {
         collection: String,
         description: String,
         name: String,
-        name_with_index_prefix: String,
-        name_with_index_suffix: String,
         uri: String,
         property_keys: vector<String>,
         property_types: vector<String>,
@@ -337,8 +420,8 @@ module townespace::studio {
             collection,
             description,
             name,
-            name_with_index_prefix,
-            name_with_index_suffix,
+            string::utf8(b""), // won't be used
+            string::utf8(b""), // won't be used
             uri,
             option::none(),
             option::none(),
@@ -347,7 +430,14 @@ module townespace::studio {
             property_values
         );
         // generate the token object
-        object::object_from_constructor_ref<Trait>(&constructor_ref);
+        let obj = object::object_from_constructor_ref<Trait>(&constructor_ref);
+        // emit creation event
+        emit_token_created_event<Trait>(
+            obj,
+            string::utf8(b"trait"),
+            string::utf8(b"named"),
+            false
+        );
     }
 
     // Create a named trait token with royalty
@@ -356,8 +446,6 @@ module townespace::studio {
         collection: String,
         description: String,
         name: String,
-        name_with_index_prefix: String,
-        name_with_index_suffix: String,
         uri: String,
         royalty_numerator: u64,
         royalty_denominator: u64,
@@ -370,8 +458,8 @@ module townespace::studio {
             collection,
             description,
             name,
-            name_with_index_prefix,
-            name_with_index_suffix,
+            string::utf8(b""), // won't be used
+            string::utf8(b""), // won't be used
             uri,
             option::some(royalty_numerator),
             option::some(royalty_denominator),
@@ -388,9 +476,6 @@ module townespace::studio {
         signer_ref: &signer,
         collection: String,
         description: String,
-        name: String,
-        name_with_index_prefix: String,
-        name_with_index_suffix: String,
         uri: String,
         royalty_numerator: u64,
         royalty_denominator: u64,
@@ -402,9 +487,9 @@ module townespace::studio {
             signer_ref,
             collection,
             description,
-            name,
-            name_with_index_prefix,
-            name_with_index_suffix,
+            string::utf8(b""), // won't be used
+            string::utf8(b"#"),
+            string::utf8(b""),
             uri,
             option::some(royalty_numerator),
             option::some(royalty_denominator),
@@ -413,7 +498,14 @@ module townespace::studio {
             property_values
         );
         // generate the token object
-        object::object_from_constructor_ref<Trait>(&constructor_ref);
+        let obj = object::object_from_constructor_ref<Trait>(&constructor_ref);
+        // emit creation event
+        emit_token_created_event<Trait>(
+            obj,
+            string::utf8(b"trait"),
+            string::utf8(b"indexed"),
+            true
+        );
     }
 
     // Create an indexed trait token with royalty off
@@ -421,9 +513,6 @@ module townespace::studio {
         signer_ref: &signer,
         collection: String,
         description: String,
-        name: String,
-        name_with_index_prefix: String,
-        name_with_index_suffix: String,
         uri: String,
         property_keys: vector<String>,
         property_types: vector<String>,
@@ -433,9 +522,9 @@ module townespace::studio {
             signer_ref,
             collection,
             description,
-            name,
-            name_with_index_prefix,
-            name_with_index_suffix,
+            string::utf8(b""), // won't be used
+            string::utf8(b"#"),
+            string::utf8(b""),
             uri,
             option::none(),
             option::none(),
@@ -444,7 +533,14 @@ module townespace::studio {
             property_values
         );
         // generate the token object
-        object::object_from_constructor_ref<Trait>(&constructor_ref);
+        let obj = object::object_from_constructor_ref<Trait>(&constructor_ref);
+        // emit creation event
+        emit_token_created_event<Trait>(
+            obj,
+            string::utf8(b"trait"),
+            string::utf8(b"indexed"),
+            false
+        );
     }
 
     // Burn a token

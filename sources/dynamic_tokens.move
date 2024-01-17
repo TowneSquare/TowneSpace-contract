@@ -1260,29 +1260,21 @@ module townespace::dynamic_tokens {
         borrow_collection(&collection).tokens_freezable_by_creator
     }
 
-    // --------------
-    // View Functions
-    // --------------
-
-    #[view]
     public fun get_collection_name(collection_object: Object<Collection>): String acquires Collection {
         let object_address = object::object_address(&collection_object);
         borrow_global<Collection>(object_address).name
     }
 
-    #[view]
     public fun get_collection_symbol(collection_object: Object<Collection>): String acquires Collection {
         let object_address = object::object_address(&collection_object);
         borrow_global<Collection>(object_address).symbol
     }
 
-    #[view]
     public fun get_collection_supply_type(collection_object: Object<Collection>): String acquires Collection {
         let object_address = object::object_address(&collection_object);
         borrow_global<Collection>(object_address).supply_type
     }
 
-    #[view]
     // get mint price of a token
     public fun get_base_mint_price<T: key>(object_address: address): u64 acquires Composable, Trait {
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
@@ -1290,25 +1282,21 @@ module townespace::dynamic_tokens {
         } else { borrow_global<Trait>(object_address).base_mint_price }
     }
 
-    #[view]
     public fun get_trait_index(trait_object: Object<Trait>): u64 acquires Trait {
         let object_address = object::object_address(&trait_object);
         borrow_global<Trait>(object_address).index
     }
 
-    #[view]
     public fun get_traits_from_composable(composable_object: Object<Composable>): vector<Object<Trait>> acquires Composable {
         let object_address = object::object_address(&composable_object);
         borrow_global<Composable>(object_address).traits  
     }
 
-    #[view]
     public fun are_properties_mutable<T: key>(token: Object<T>): bool acquires Collection {
         let collection = token::collection_object(token);
         borrow_collection(&collection).mutable_token_properties
     }
 
-    #[view]
     public fun is_burnable<T: key>(token: Object<T>): bool acquires Composable, Trait {
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             option::is_some(&borrow_composable(&token).refs.burn_ref)
@@ -1317,22 +1305,18 @@ module townespace::dynamic_tokens {
         } else { abort EUNKNOWN_TOKEN_TYPE }
     }
 
-    #[view]
     public fun is_freezable_by_creator<T: key>(token: Object<T>): bool acquires Collection {
         are_collection_tokens_freezable(token::collection_object(token))
     }
 
-    #[view]
     public fun is_mutable_description<T: key>(token: Object<T>): bool acquires Collection {
         is_mutable_collection_token_description(token::collection_object(token))
     }
 
-    #[view]
     public fun is_mutable_name<T: key>(token: Object<T>): bool acquires Collection {
         is_mutable_collection_token_name(token::collection_object(token))
     }
 
-    #[view]
     public fun is_mutable_uri<T: key>(token: Object<T>): bool acquires Collection {
         is_mutable_collection_token_uri(token::collection_object(token))
     }

@@ -1,7 +1,7 @@
-/*
+// /*
 
-*/
+// */
 
-module examples::hero {
+// module examples::hero {
     
-}
+// }

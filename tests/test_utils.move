@@ -142,7 +142,7 @@ module townespace::test_utils {
             string::utf8(collection_name),
             string::utf8(TRAIT_DESCRIPTION),
             string::utf8(trait_name),
-            string::utf8(TRAIT_TYPE),
+            string::utf8(b""),
             string::utf8(b""),
             string::utf8(TRAIT_URI),
             option::some(1),

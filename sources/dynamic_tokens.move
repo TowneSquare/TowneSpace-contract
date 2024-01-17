@@ -18,7 +18,7 @@
         - add "add_royalty_to_collection/token" function
 */
 
-module townespace::core {
+module townespace::dynamic_tokens {
     
     use aptos_framework::event;
     use aptos_framework::object::{Self, Object};

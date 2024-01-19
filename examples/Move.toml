@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = ["lay (Aladeen)"]
 
 [addresses]
-townespace = "0x0c408b87f4adcbca12d2e8b9cd0a62a0886746bad66aa29eea4cbcd0fe66958a"
+townespace = "0x04d8dd898c13ab06a4897d2fdedb478cf7ac4d3e530d1daa5741c9b9d9ea15ee"
 examples = "effb9356ede780467b845c6ae6ec90592b5293f44392ddb39b1776ba72f64a83"
 
 [dev-addresses]
@@ -16,7 +16,12 @@ subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.Composables]
 git = "https://github.com/TowneSquare/TowneSpace-contract"
-rev = "v0.2.0-alpha"
-subdir = ""
+rev = "devnet"
+subdir = "composables"
+
+[dependencies.Studio-alpha]
+git = "https://github.com/TowneSquare/TowneSpace-contract"
+rev = "devnet"
+subdir = "studio"
 
 [dev-dependencies]

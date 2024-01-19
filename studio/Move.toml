@@ -25,7 +25,7 @@ subdir = "aptos-move/framework/aptos-token"
 
 [dependencies.Composables]
 git = "https://github.com/TowneSquare/TowneSpace-contract"
-rev = "testnet"
+rev = "mainnet"
 subdir = "composables"
 
 [dev-dependencies]

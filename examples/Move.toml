@@ -16,12 +16,12 @@ subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.Composables]
 git = "https://github.com/TowneSquare/TowneSpace-contract"
-rev = "devnet"
+rev = "testnet"
 subdir = "composables"
 
 [dependencies.Studio-alpha]
 git = "https://github.com/TowneSquare/TowneSpace-contract"
-rev = "devnet"
+rev = "testnet"
 subdir = "studio"
 
 [dev-dependencies]

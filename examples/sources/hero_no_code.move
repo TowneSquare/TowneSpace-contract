@@ -4,19 +4,13 @@
 */
 
 module examples::hero_no_code {
-    use aptos_framework::object::{Self, ConstructorRef, Object};
+    use aptos_framework::object::{Object};
 
     use aptos_token_objects::collection;
-    use aptos_token_objects::token;
-    
-    use aptos_std::string_utils;
 
     use std::bcs;
-    use std::error;
-    use std::option::{Self, Option};
-    use std::signer;
+    use std::option;
     use std::string::{Self, String};
-    use std::vector;
 
     use townespace::composables;
     use townespace::studio;
@@ -32,7 +26,7 @@ module examples::hero_no_code {
     const COLLECTION_NAME: vector<u8> = b"Hero Quest!";
 
     fun init_module(account: &signer) {
-        let constructor_ref = composables::create_collection<collection::FixedSupply>(
+        composables::create_collection<collection::FixedSupply>(
             account,
             string::utf8(b"collection description"),
             option::some(100),

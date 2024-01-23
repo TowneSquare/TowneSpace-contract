@@ -127,8 +127,8 @@ module townespace::composables {
     }
 
     // Used to determine the naming style of the token
-    struct Named has key {}
     struct Indexed has key {}
+    struct Named has key {}
 
     // ------
     // Events

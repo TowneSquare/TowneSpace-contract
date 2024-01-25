@@ -105,15 +105,13 @@ module townespace::composables {
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     // Storage state for composables; aka, the atom/primary of the token
     struct Composable has key {
-        traits: vector<Object<Trait>>,
-        base_mint_price: u64
+        traits: vector<Object<Trait>>
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     // Storage state for traits
     struct Trait has key {
         index: u64, // index from the vector
-        base_mint_price: u64
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -403,7 +401,6 @@ module townespace::composables {
         token_address: address,
         name: String,
         uri: String,
-        base_mint_price: u64,
         mutable_description: bool,
         mutable_name: bool,
         mutable_uri: bool,
@@ -419,7 +416,6 @@ module townespace::composables {
         let token_address = object::object_address(&composable_object);
         let name = token::name<Composable>(composable_object);
         let uri = token::uri<Composable>(composable_object);
-        let base_mint_price = get_base_mint_price<Composable>(object::object_address(&composable_object));
         let mutable_description = is_mutable_description(composable_object);
         let mutable_name = is_mutable_name(composable_object);
         let mutable_uri = is_mutable_uri(composable_object);
@@ -430,15 +426,14 @@ module townespace::composables {
         ComposableMetadata {
             creator: creator_addr,
             token_address,
-            name: name,
-            uri: uri,
-            base_mint_price: base_mint_price,
-            mutable_description: mutable_description,
-            mutable_name: mutable_name,
-            mutable_uri: mutable_uri,
-            mutable_properties: mutable_properties,
-            burnable: burnable,
-            freezable: freezable
+            name,
+            uri,
+            mutable_description,
+            mutable_name,
+            mutable_uri,
+            mutable_properties,
+            burnable,
+            freezable
         }
     }
 
@@ -446,7 +441,7 @@ module townespace::composables {
     struct ComposableCreatedEvent has drop, store { metadata: ComposableMetadata }
     fun emit_composable_created_event(
         composable_object: Object<Composable>
-    ) acquires Collection, Composable, References, Trait {
+    ) acquires Collection, References {
         let metadata = composable_metadata(composable_object);
         ComposableCreatedEvent { metadata };
     }
@@ -458,7 +453,6 @@ module townespace::composables {
         token_address: address,
         name: String,
         uri: String,
-        base_mint_price: u64,
         mutable_description: bool,
         mutable_name: bool,
         mutable_uri: bool,
@@ -474,7 +468,6 @@ module townespace::composables {
         let token_address = object::object_address(&trait_object);
         let name = token::name<Trait>(trait_object);
         let uri = token::uri<Trait>(trait_object);
-        let base_mint_price = get_base_mint_price<Trait>(object::object_address(&trait_object));
         let mutable_description = is_mutable_description(trait_object);
         let mutable_name = is_mutable_name(trait_object);
         let mutable_uri = is_mutable_uri(trait_object);
@@ -487,7 +480,6 @@ module townespace::composables {
             token_address,
             name,
             uri,
-            base_mint_price,
             mutable_description,
             mutable_name,
             mutable_uri,
@@ -501,7 +493,7 @@ module townespace::composables {
     struct TraitCreatedEvent has drop, store { metadata: TraitMetadata }
     fun emit_trait_created_event(
         trait_object: Object<Trait>
-    ) acquires Collection, Composable, References, Trait {
+    ) acquires Collection, References {
         let metadata = trait_metadata(trait_object);
         event::emit<TraitCreatedEvent>( TraitCreatedEvent { metadata });
     }
@@ -520,7 +512,7 @@ module townespace::composables {
         trait_object: Object<Trait>,
         index: u64,
         new_uri: String
-    ) acquires Collection, Composable, References, Trait {
+    ) acquires Collection, References {
         let composable_metadata = composable_metadata(composable_object);
         let trait_metadata = trait_metadata(trait_object);
         event::emit<TraitEquippedEvent>(
@@ -545,7 +537,7 @@ module townespace::composables {
         trait_object: Object<Trait>,
         index: u64,
         new_uri: String
-    ) acquires Collection, Composable, References, Trait {
+    ) acquires Collection, References {
         let composable_metadata = composable_metadata(composable_object);
         let trait_metadata = trait_metadata(trait_object);
         event::emit<TraitUnequippedEvent>(
@@ -570,7 +562,7 @@ module townespace::composables {
         composable_object: Object<Composable>,
         fa: address,
         amount: u64
-    ) acquires Collection, Composable, References, Trait {
+    ) acquires Collection, References {
         let composable_metadata = composable_metadata(composable_object);
         event::emit<FAEquippedEvent>(
             FAEquippedEvent {
@@ -591,7 +583,7 @@ module townespace::composables {
         composable_object: Object<Composable>,
         fa: address,
         amount: u64
-    ) acquires Collection, Composable, References, Trait {
+    ) acquires Collection, References {
         let composable_metadata = composable_metadata(composable_object);
         event::emit<FAUnequippedEvent>(
             FAUnequippedEvent {
@@ -944,7 +936,7 @@ module townespace::composables {
             // create the composable resource
             move_to(
                 &obj_signer, 
-                Composable { traits, base_mint_price: 0 }
+                Composable { traits }
             );
             // move refs resource under the token signer.
             move_to(&obj_signer, refs);
@@ -953,7 +945,7 @@ module townespace::composables {
             // create the trait resource
             move_to(
                 &obj_signer, 
-                Trait { index, base_mint_price: 0 }
+                Trait { index }
             );
             // move refs resource under the token signer.
             move_to(&obj_signer, refs);
@@ -978,7 +970,7 @@ module townespace::composables {
         property_keys: vector<String>,
         property_types: vector<String>,
         property_values: vector<vector<u8>>
-    ): object::ConstructorRef acquires Collection, Composable, References, Trait {
+    ): object::ConstructorRef acquires Collection, References {
         // TODO: assert Type is either trait or composable.
         let signer_addr = signer::address_of(signer_ref);
         let royalty = create_royalty_internal(royalty_numerator, royalty_denominator, signer_addr);
@@ -1059,7 +1051,7 @@ module townespace::composables {
         fa: Object<FA>,
         token_obj: Object<Token>,
         amount: u64
-    ) acquires Collection, Composable, References, Trait {
+    ) acquires Collection, References {
         // assert signer is the owner of the token object
         assert!(object::is_owner<Token>(token_obj, signer::address_of(signer_ref)), ENOT_OWNER);
         let token_obj_addr = object::object_address(&token_obj);
@@ -1084,7 +1076,7 @@ module townespace::composables {
         fa: Object<FA>,
         token_obj: Object<Token>,
         amount: u64
-    ) acquires Collection, Composable, References, Trait {
+    ) acquires Collection, References {
         // assert signer is the owner of the token object
         assert!(object::is_owner<Token>(token_obj, signer::address_of(signer_ref)), ENOT_OWNER);
         // assert Token is either composable or trait
@@ -1108,7 +1100,7 @@ module townespace::composables {
         composable_object: Object<Composable>,
         trait_object: Object<Trait>,
         new_uri: String
-    ) acquires Collection, References, Composable, Trait {
+    ) acquires Collection, Composable, References {
         let (trait_exists, index) = vector::index_of(&mut authorized_composable_mut_borrow(&composable_object, signer_ref).traits, &trait_object);
         assert!(trait_exists == true, ETRAIT_DOES_NOT_EXIST);
         // Enable ungated transfer for trait object
@@ -1291,13 +1283,6 @@ module townespace::composables {
         borrow_global<Collection>(object_address).supply_type
     }
 
-    // get mint price of a token
-    public fun get_base_mint_price<T: key>(object_address: address): u64 acquires Composable, Trait {
-        if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
-            borrow_global<Composable>(object_address).base_mint_price
-        } else { borrow_global<Trait>(object_address).base_mint_price }
-    }
-
     public fun get_trait_index(trait_object: Object<Trait>): u64 acquires Trait {
         let object_address = object::object_address(&trait_object);
         borrow_global<Trait>(object_address).index
@@ -1432,10 +1417,7 @@ module townespace::composables {
             );
             move composable;
             let composable = move_from<Composable>(object::object_address(&token));
-            let Composable {
-                traits: _,
-                base_mint_price: _,
-            } = composable;
+            let Composable { traits: _ } = composable;
             emit_token_burned_event(token_addr, type_info::type_name<Composable>());
         } else if (type_info::type_of<Type>() == type_info::type_of<Trait>()) {
             let trait = authorized_trait_borrow(&token, owner);
@@ -1445,11 +1427,7 @@ module townespace::composables {
             );
             move trait;
             let trait = move_from<Trait>(object::object_address(&token));
-            let Trait {
-                index: _,
-                base_mint_price: _
-            } = trait;
-            
+            let Trait { index: _ } = trait;
             emit_token_burned_event(token_addr, type_info::type_name<Trait>());
         } else { abort EUNKNOWN_TOKEN_TYPE };
         

@@ -1201,7 +1201,7 @@ module townespace::composables {
         borrow_global<Trait>(token_addr)
     }
 
-    inline fun borrow_refs<T: key>(token: &Object<T>): &References {
+    inline fun borrow_refs<T: key>(token: &Object<T>): &References acquires References {
         let token_addr = object::object_address(token);
         assert!(
             exists<References>(token_addr),
@@ -1316,6 +1316,10 @@ module townespace::composables {
 
     public fun is_mutable_uri<T: key>(token: Object<T>): bool acquires Collection {
         is_mutable_collection_token_uri(token::collection_object(token))
+    }
+
+    public fun get_token_signer<T: key>(token: Object<T>): signer acquires References {
+        object::generate_signer_for_extending(&borrow_refs(&token).extend_ref)
     }
 
     // --------

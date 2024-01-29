@@ -64,6 +64,8 @@ module townespace::composables {
     const ENOT_OWNER: u64 = 10;
     // The references does not exist.
     const EREFS_DOES_NOT_EXIST: u64 = 11;
+    // The digital asset does not exist.
+    const EDA_DOES_NOT_EXIST: u64 = 12;
 
     // TODO: add asserts functions here.
 
@@ -111,7 +113,14 @@ module townespace::composables {
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     // Storage state for traits
     struct Trait has key {
-        index: u64, // index from the vector
+        index: u64, // index in the traits vector
+        digital_assets: vector<Object<TokenV2>>    // TODO: come up with a better naming
+    }
+
+    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
+    // Storage state for traits
+    struct DA has key {
+        index: u64, // index in the digital_assets vector
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -550,6 +559,97 @@ module townespace::composables {
         );
     }
 
+    struct TokenMetadata has drop, store {
+        creator: address,
+        token_address: address,
+        name: String,
+        uri: String,
+        mutable_description: bool,
+        mutable_name: bool,
+        mutable_uri: bool,
+        mutable_properties: bool,
+        burnable: bool,
+        freezable: bool
+    }
+
+    inline fun token_metadata(
+        token_object: Object<TokenV2>
+    ): TokenMetadata acquires Collection, Composable, References, Trait {
+        let creator_addr = token::creator<TokenV2>(token_object);
+        let token_address = object::object_address(&token_object);
+        let name = token::name<TokenV2>(token_object);
+        let uri = token::uri<TokenV2>(token_object);
+        let mutable_description = is_mutable_description(token_object);
+        let mutable_name = is_mutable_name(token_object);
+        let mutable_uri = is_mutable_uri(token_object);
+        let mutable_properties = are_properties_mutable(token_object);
+        let burnable = is_burnable(token_object);
+        let freezable = are_collection_tokens_freezable(token::collection_object(token_object));
+
+        TokenMetadata {
+            creator: creator_addr,
+            token_address,
+            name,
+            uri,
+            mutable_description,
+            mutable_name,
+            mutable_uri,
+            mutable_properties,
+            burnable,
+            freezable
+        }
+    }
+
+    #[event]
+    struct DigitalAssetEquippedEvent has drop, store {
+        trait: TraitMetadata,
+        da: TokenMetadata,
+        index: u64,
+        new_uri: String
+    }
+    fun emit_digital_asset_equipped_event(
+        trait_object: Object<Trait>,
+        da_object: Object<TokenV2>,
+        index: u64,
+        new_uri: String
+    ) acquires Collection, References {
+        let trait_metadata = trait_metadata(trait_object);
+        let da_metadata = token_metadata(da_object);
+        event::emit<DigitalAssetEquippedEvent>(
+            DigitalAssetEquippedEvent {
+                trait: trait_metadata,
+                da: da_metadata,
+                index,
+                new_uri
+            }
+        );
+    }
+
+    #[event]
+    struct DigitalAssetUnequippedEvent has drop, store {
+        trait: TraitMetadata,
+        da: TokenMetadata,
+        index: u64,
+        new_uri: String
+    }
+    fun emit_digital_asset_unequipped_event(
+        trait_object: Object<Trait>,
+        da_object: Object<TokenV2>,
+        index: u64,
+        new_uri: String
+    ) acquires Collection, References {
+        let trait_metadata = trait_metadata(trait_object);
+        let da_metadata = token_metadata(da_object);
+        event::emit<DigitalAssetUnequippedEvent>(
+            DigitalAssetUnequippedEvent {
+                trait: trait_metadata,
+                da: da_metadata,
+                index,
+                new_uri
+            }
+        );
+    }
+
     // FA related
 
     #[event]
@@ -945,7 +1045,7 @@ module townespace::composables {
             // create the trait resource
             move_to(
                 &obj_signer, 
-                Trait { index }
+                Trait { index, digital_assets: vector::empty() }
             );
             // move refs resource under the token signer.
             move_to(&obj_signer, refs);
@@ -1008,7 +1108,7 @@ module townespace::composables {
         composable_object: Object<Composable>,
         trait_object: Object<Trait>,
         new_uri: String
-    ) acquires Collection, References, Composable, Trait {
+    ) acquires Collection, References, Composable, Trait, DA {
         // Assert ungated transfer enabled for the object token.
         assert!(object::ungated_transfer_allowed(trait_object) == true, EUNGATED_TRANSFER_DISABLED);
         // Add the object to the end of the vector
@@ -1019,30 +1119,93 @@ module townespace::composables {
         let trait_references = borrow_global_mut<References>(object::object_address(&trait_object));
         object::disable_ungated_transfer(&trait_references.transfer_ref);
         // Update the composable uri
-        update_composable_uri(signer_ref, composable_object, new_uri);
+        update_uri<Composable>(signer_ref, composable_object, new_uri);
         // emit event
         emit_trait_equipped_event(
             composable_object,
             trait_object,
-            get_trait_index(trait_object),
+            get_index<Trait>(trait_object),
             token::uri<Trait>(trait_object)
         );
     }
 
-    inline fun update_composable_uri(
+    // Compose a digital asset to a trait
+    public fun equip_digital_asset_to_trait(
+        signer_ref: &signer,
+        trait_object: Object<Trait>,
+        da_object: Object<TokenV2>,
+        new_uri: String
+    ) acquires Collection, References, Trait, DA {
+        // Assert ungated transfer enabled for the object token.
+        assert!(object::ungated_transfer_allowed(da_object) == true, EUNGATED_TRANSFER_DISABLED);
+        // Add the object to the end of the vector
+        vector::push_back<Object<TokenV2>>(&mut authorized_trait_mut_borrow(&trait_object, signer_ref).digital_assets, da_object);
+        // Transfer
+        object::transfer_to_object(signer_ref, da_object, trait_object);
+        // Disable ungated transfer for trait object
+        let trait_references = borrow_global_mut<References>(object::object_address(&trait_object));
+        object::disable_ungated_transfer(&trait_references.transfer_ref);
+        // Update the trait uri
+        update_uri<Trait>(signer_ref, trait_object, new_uri);
+        // emit event
+        emit_digital_asset_equipped_event(
+            trait_object,
+            da_object,
+            get_index<TokenV2>(da_object),
+            token::uri<TokenV2>(da_object)
+        );
+    }
+
+    // Decompose a digital asset from a trait
+    public fun unequip_digital_asset_from_trait(
+        signer_ref: &signer,
+        trait_object: Object<Trait>,
+        da_object: Object<TokenV2>,
+        new_uri: String
+    ) acquires Collection, References, Trait {
+        let (da_exists, index) = vector::index_of(&mut authorized_trait_mut_borrow(&trait_object, signer_ref).digital_assets, &da_object);
+        assert!(da_exists == true, EDA_DOES_NOT_EXIST);
+        // Enable ungated transfer for trait object
+        let trait_refs = borrow_global_mut<References>(object::object_address(&trait_object));
+        object::enable_ungated_transfer(&trait_refs.transfer_ref);
+        // Transfer trait object to owner
+        object::transfer(signer_ref, da_object, signer::address_of(signer_ref));
+        // Remove the object from the vector
+        vector::remove(&mut authorized_trait_mut_borrow(&trait_object, signer_ref).digital_assets, index);
+        // Update the trait uri
+        update_uri<Trait>(signer_ref, trait_object, new_uri);
+        // emit event
+        emit_digital_asset_unequipped_event(
+            trait_object,
+            da_object,
+            index,
+            token::uri<TokenV2>(da_object)
+        );
+    }
+
+    inline fun update_uri<T: key>(
         owner: &signer,
-        composable_obj: Object<Composable>,
+        token_obj: Object<T>,
         new_uri: String
     ) acquires Collection {
-        let old_uri = token::uri<Composable>(composable_obj);
-        let refs = authorized_borrow_refs(&composable_obj, owner);
+        let old_uri = token::uri<T>(token_obj);
+        let refs = authorized_borrow_refs(&token_obj, owner);
         token::set_uri(option::borrow(&refs.mutator_ref), new_uri);
-        emit_token_uri_updated_event(
-            object::object_address(&composable_obj),
-            type_info::type_name<Composable>(),
-            old_uri,
-            new_uri
-        );
+        if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
+            emit_token_uri_updated_event(
+                object::object_address(&token_obj),
+                type_info::type_name<Composable>(),
+                old_uri,
+                new_uri
+            );
+        } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
+            emit_token_uri_updated_event(
+                object::object_address(&token_obj),
+                type_info::type_name<Trait>(),
+                old_uri,
+                new_uri
+            );
+        } else { abort EUNKNOWN_TOKEN_TYPE };
     }
 
     // equip fa; transfer fa to a token; token can be either composable or trait
@@ -1111,7 +1274,7 @@ module townespace::composables {
         // Remove the object from the vector
         vector::remove(&mut authorized_composable_mut_borrow(&composable_object, signer_ref).traits, index);
         // Update the composable uri
-        update_composable_uri(signer_ref, composable_object, new_uri);
+        update_uri(signer_ref, composable_object, new_uri);
         // emit event
         emit_trait_unequipped_event(
             composable_object,
@@ -1283,9 +1446,13 @@ module townespace::composables {
         borrow_global<Collection>(object_address).supply_type
     }
 
-    public fun get_trait_index(trait_object: Object<Trait>): u64 acquires Trait {
-        let object_address = object::object_address(&trait_object);
-        borrow_global<Trait>(object_address).index
+    public fun get_index<T: key>(token_obj: Object<T>): u64 acquires Trait, DA {
+        let obj_addr = object::object_address(&token_obj);
+        if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
+            borrow_global<Trait>(obj_addr).index
+        } else if (type_info::type_of<T>() == type_info::type_of<TokenV2>()) {
+            borrow_global<DA>(obj_addr).index
+        } else { abort EUNKNOWN_TOKEN_TYPE }
     }
 
     public fun get_traits_from_composable(composable_object: Object<Composable>): vector<Object<Trait>> acquires Composable {
@@ -1431,7 +1598,7 @@ module townespace::composables {
             );
             move trait;
             let trait = move_from<Trait>(object::object_address(&token));
-            let Trait { index: _ } = trait;
+            let Trait { index: _, digital_assets: _ } = trait;
             emit_token_burned_event(token_addr, type_info::type_name<Trait>());
         } else { abort EUNKNOWN_TOKEN_TYPE };
         

@@ -16,6 +16,8 @@
         - Organize the functions
         - add "add_royalty_to_collection/token" function
         - when creating token common, check if vectors are not empty, if so, add the vectors instead of creating empty ones.
+        - tokens uri mutability is valid when tokens does not have children (aka list of tokens is empty)
+        - some functions can be generic.
 */
 
 module townespace::composables {
@@ -67,6 +69,8 @@ module townespace::composables {
     const EREFS_DOES_NOT_EXIST: u64 = 11;
     // The digital asset does not exist.
     const EDA_DOES_NOT_EXIST: u64 = 12;
+    // The process type is not recognised.
+    const EUNKNOWN_PROCESS_TYPE: u64 = 13;
 
     // TODO: add asserts functions here.
 
@@ -115,14 +119,16 @@ module townespace::composables {
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     // Storage state for traits
     struct Trait has key {
-        index: u64, // index in the traits vector
-        digital_assets: vector<Object<DA>>
+        parent: Option<address>, // address of parent token if equipped
+        index: u64, // index of the trait in the traits vector from composables
+        digital_assets: vector<Object<DA>> // digital assets that the trait holds
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    // Storage state for traits
+    // Storage state for digital assets
     struct DA has key {
-        index: u64, // index in the digital_assets vector
+        parent: Option<address>, // address of parent token if equipped
+        index: u64, // index of the da in the digital_assets vector from composables or traits
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -138,6 +144,10 @@ module townespace::composables {
     // Used to determine the naming style of the token
     struct Indexed has key {}
     struct Named has key {}
+
+    // Used to determine the type of the process
+    struct Equip has key {}
+    struct Unequip has key {}
 
     // ------
     // Events
@@ -1098,7 +1108,7 @@ module townespace::composables {
             // create the trait resource
             move_to(
                 &obj_signer, 
-                Trait { index, digital_assets: vector::empty() }
+                Trait { parent: option::none(), index, digital_assets: vector::empty() }
             );
             // move refs resource under the token signer.
             move_to(&obj_signer, refs);
@@ -1107,7 +1117,7 @@ module townespace::composables {
             // create the trait resource
             move_to(
                 &obj_signer, 
-                DA { index }
+                DA { parent: option::none(), index }
             );
             // move refs resource under the token signer.
             move_to(&obj_signer, refs);
@@ -1169,6 +1179,32 @@ module townespace::composables {
         constructor_ref
     }
 
+    // Update parent of a token; used when equipping or unequipping a token
+    inline fun update_parent<Parent: key, Child: key, Process: key>(
+        signer_ref: &signer,
+        parent_obj: Object<Parent>,
+        child_obj: Object<Child>
+    ) acquires Trait {
+        let parent_addr = object::object_address(&parent_obj);
+        if (type_info::type_of<Process>() == type_info::type_of<Equip>()) {
+            if (type_info::type_of<Child>() == type_info::type_of<Trait>()) {
+                let child = authorized_trait_mut_borrow(&child_obj, signer_ref);
+                child.parent = option::some(parent_addr);
+            } else if (type_info::type_of<Child>() == type_info::type_of<DA>()) {
+                let child = authorized_da_mut_borrow(&child_obj, signer_ref);
+                child.parent = option::some(parent_addr);
+            } else { abort EUNKNOWN_TOKEN_TYPE };
+        } else if (type_info::type_of<Process>() == type_info::type_of<Unequip>()) {
+            if (type_info::type_of<Child>() == type_info::type_of<Trait>()) {
+                let child = authorized_trait_mut_borrow(&child_obj, signer_ref);
+                child.parent = option::none();
+            } else if (type_info::type_of<Child>() == type_info::type_of<DA>()) {
+                let child = authorized_da_mut_borrow(&child_obj, signer_ref);
+                child.parent = option::none();
+            } else { abort EUNKNOWN_TOKEN_TYPE };
+        } else { abort EUNKNOWN_PROCESS_TYPE };
+    }
+
     // Compose trait to a composable token
     public fun equip_trait(
         signer_ref: &signer,
@@ -1180,6 +1216,8 @@ module townespace::composables {
         assert!(object::ungated_transfer_allowed(trait_object) == true, EUNGATED_TRANSFER_DISABLED);
         // Add the object to the end of the vector
         vector::push_back<Object<Trait>>(&mut authorized_composable_mut_borrow(&composable_object, signer_ref).traits, trait_object);
+        // Update parent
+        update_parent<Composable, Trait, Equip>(signer_ref, composable_object, trait_object);
         // Transfer
         object::transfer_to_object(signer_ref, trait_object, composable_object);
         // Disable ungated transfer for trait object
@@ -1207,6 +1245,8 @@ module townespace::composables {
         assert!(object::ungated_transfer_allowed(da_object) == true, EUNGATED_TRANSFER_DISABLED);
         // Add the object to the end of the vector
         vector::push_back<Object<DA>>(&mut authorized_composable_mut_borrow(&composable_object, signer_ref).digital_assets, da_object);
+        // Update parent
+        update_parent<Composable, DA, Equip>(signer_ref, composable_object, da_object);
         // Transfer
         object::transfer_to_object(signer_ref, da_object, composable_object);
         // Disable ungated transfer for trait object
@@ -1256,7 +1296,7 @@ module townespace::composables {
         composable_object: Object<Composable>,
         da_object: Object<DA>,
         new_uri: String
-    ) acquires Collection, References, Composable {
+    ) acquires Collection, References, Composable, Trait, DA {
         let (da_exists, index) = vector::index_of(&mut authorized_composable_mut_borrow(&composable_object, signer_ref).digital_assets, &da_object);
         assert!(da_exists == true, EDA_DOES_NOT_EXIST);
         // Enable ungated transfer for trait object
@@ -1266,6 +1306,8 @@ module townespace::composables {
         object::transfer(signer_ref, da_object, signer::address_of(signer_ref));
         // Remove the object from the vector
         vector::remove(&mut authorized_composable_mut_borrow(&composable_object, signer_ref).digital_assets, index);
+        // Update parent
+        update_parent<Composable, DA, Unequip>(signer_ref, composable_object, da_object);
         // Update the composable uri
         update_uri<Composable>(signer_ref, composable_object, new_uri);
         // emit event
@@ -1283,7 +1325,7 @@ module townespace::composables {
         trait_object: Object<Trait>,
         da_object: Object<DA>,
         new_uri: String
-    ) acquires Collection, References, Trait {
+    ) acquires Collection, References, Trait, DA {
         let (da_exists, index) = vector::index_of(&mut authorized_trait_mut_borrow(&trait_object, signer_ref).digital_assets, &da_object);
         assert!(da_exists == true, EDA_DOES_NOT_EXIST);
         // Enable ungated transfer for trait object
@@ -1293,6 +1335,8 @@ module townespace::composables {
         object::transfer(signer_ref, da_object, signer::address_of(signer_ref));
         // Remove the object from the vector
         vector::remove(&mut authorized_trait_mut_borrow(&trait_object, signer_ref).digital_assets, index);
+        // Update parent
+        update_parent<Trait, DA, Unequip>(signer_ref, trait_object, da_object);
         // Update the trait uri
         update_uri<Trait>(signer_ref, trait_object, new_uri);
         // emit event
@@ -1378,7 +1422,7 @@ module townespace::composables {
         );
     }
 
-    // Decompose a trait from a composable token. Tests panic.
+    // Decompose a trait from a composable token.
     public fun unequip_trait(
         signer_ref: &signer,
         composable_object: Object<Composable>,
@@ -1568,6 +1612,17 @@ module townespace::composables {
         borrow_global<Collection>(object_address).supply_type
     }
 
+    public fun get_parent_token<T: key>(token: Object<T>): address acquires Trait, DA {
+        let obj_addr = object::object_address(&token);
+        if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
+            let parent = borrow_global<Trait>(obj_addr).parent;
+            option::extract<address>(&mut parent)
+        } else if (type_info::type_of<T>() == type_info::type_of<DA>()) {
+            let parent = borrow_global<DA>(obj_addr).parent;
+            option::extract<address>(&mut parent)
+        } else { abort EUNKNOWN_TOKEN_TYPE }
+    }
+
     public fun get_index<T: key>(token_obj: Object<T>): u64 acquires Trait, DA {
         let obj_addr = object::object_address(&token_obj);
         if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
@@ -1671,6 +1726,34 @@ module townespace::composables {
         borrow_global_mut<Trait>(token_addr)
     }
 
+    inline fun authorized_da_borrow<T: key>(token: &Object<T>, owner: &signer): &DA {
+        let token_addr = object::object_address(token);
+        assert!(
+            exists<DA>(token_addr),
+            error::not_found(EDA_DOES_NOT_EXIST),
+        );
+
+        assert!(
+            object::is_owner(*token, signer::address_of(owner)),
+            error::permission_denied(ENOT_OWNER),
+        );
+        borrow_global<DA>(token_addr)
+    }
+
+    inline fun authorized_da_mut_borrow<T: key>(token: &Object<T>, owner: &signer): &mut DA {
+        let token_addr = object::object_address(token);
+        assert!(
+            exists<DA>(token_addr),
+            error::not_found(EDA_DOES_NOT_EXIST),
+        );
+
+        assert!(
+            object::is_owner(*token, signer::address_of(owner)),
+            error::permission_denied(ENOT_OWNER),
+        );
+        borrow_global_mut<DA>(token_addr)
+    }
+
     inline fun authorized_borrow_refs<T: key>(token: &Object<T>, owner: &signer): &References acquires References {
         let token_addr = object::object_address(token);
         assert!(
@@ -1698,7 +1781,7 @@ module townespace::composables {
     }
 
     // owner burns token based on type
-    public fun burn_token<Type: key>(owner: &signer, token: Object<Type>) acquires Composable, References, Trait {
+    public fun burn_token<Type: key>(owner: &signer, token: Object<Type>) acquires Composable, References, Trait, DA {
         // TODO: assert is a composable, trait or DA
         let token_addr = object::object_address(&token);
         let refs = authorized_borrow_refs(&token, owner);
@@ -1720,13 +1803,17 @@ module townespace::composables {
             );
             move trait;
             let trait = move_from<Trait>(object::object_address(&token));
-            let Trait { index: _, digital_assets: _ } = trait;
+            let Trait { parent: _, index: _, digital_assets: _ } = trait;
             emit_token_burned_event(token_addr, type_info::type_name<Trait>());
         } else if (type_info::type_of<Type>() == type_info::type_of<DA>()) {
+            let da = authorized_da_borrow(&token, owner);
             assert!(
                 option::is_some(&refs.burn_ref),
                 error::permission_denied(EDA_DOES_NOT_EXIST),
             );
+            move da;
+            let da = move_from<DA>(object::object_address(&token));
+            let DA { parent: _, index: _ } = da;
             emit_token_burned_event(token_addr, type_info::type_name<DA>());
         } else { abort EUNKNOWN_TOKEN_TYPE };
         
@@ -1861,6 +1948,7 @@ module townespace::composables {
         uri: String,
     ) acquires Collection, References {
         // assert signer is the owner of the token object
+        // TODO: assert trait does not have DAs inside, otherwise, it is not possible to update the uri.
         // TODO: is this needed
         assert!(object::is_owner<Trait>(trait_obj, signer::address_of(owner)), ENOT_OWNER);
         assert!(

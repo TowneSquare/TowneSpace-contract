@@ -143,10 +143,7 @@ module townespace::studio {
         // TODO: assert input sanitazation 
         core::equip_trait_internal(owner_signer, composable_object, trait_object);
         // Update uri
-        update_uri(
-            object::object_address(&composable_object),
-            new_uri
-            );
+        update_uri(owner_signer, composable_object, new_uri);
     }
 
     // Decompose one object
@@ -160,10 +157,7 @@ module townespace::studio {
         // TODO: assert owner
         core::unequip_trait_internal(owner_signer, composable_object, trait_object);
         // Update uri
-        update_uri(
-            object::object_address(&composable_object), 
-            new_uri
-            );
+        update_uri(owner_signer, composable_object, new_uri);
     }
 
     // Decompose an entire composable token
@@ -209,14 +203,16 @@ module townespace::studio {
     // --------
     // Composable Token
     inline fun update_uri(
-        composable_object_address: address,
+        owner_signer: &signer,
+        composable_object: Object<Composable>,
         new_uri: String
     ) {
         // TODO: asserts 
         core::update_uri_internal(
-            composable_object_address, 
+            owner_signer,
+            composable_object,
             new_uri
-            );
+        );
         // TODO: events
     }
 

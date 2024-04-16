@@ -16,11 +16,8 @@
 */
 
 module townespace::core {
-    use aptos_framework::fungible_asset::{FungibleStore}; 
-    use aptos_framework::object::{
-        Self, 
-        Object
-        };
+    use aptos_framework::fungible_asset::{FungibleStore};
+    use aptos_framework::object::{Self, Object};
     use aptos_std::type_info;
     use aptos_token_objects::collection;
     use aptos_token_objects::royalty;
@@ -31,6 +28,8 @@ module townespace::core {
     use std::signer;
     use std::string::{Self, String};
     use std::vector;
+    use minter::collection_components;
+    use minter::token_components;
 
     friend townespace::studio;
 
@@ -67,17 +66,7 @@ module townespace::core {
         name: String,
     }
 
-    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    // Storage state for token references
-    struct References has key {
-        burn_ref: token::BurnRef, // TODO: should be optional
-        extend_ref: object::ExtendRef,
-        mutator_ref: token::MutatorRef, // TODO: should be optional
-        property_mutator_ref: property_map::MutatorRef, 
-        transfer_ref: object::TransferRef
-    }
-
-    // ------------------   
+    // ------------------
     // Internal Functions
     // ------------------
 
@@ -88,14 +77,13 @@ module townespace::core {
         max_supply: Option<u64>, // if the collection is set to haved a fixed supply.
         name: String,
         symbol: String,
-        uri: String, 
+        uri: String,
         royalty_numerator: u64,
         royalty_denominator: u64
     ): Object<Collection> {
         let royalty = royalty::create(royalty_numerator, royalty_denominator, signer::address_of(creator_signer));
-        if (type_info::type_of<T>() == type_info::type_of<collection::FixedSupply>()) {
-            // constructor reference, needed to generate the other references.
-            let constructor_ref = collection::create_fixed_collection(
+        let constructor_ref = if (type_info::type_of<T>() == type_info::type_of<collection::FixedSupply>()) {
+            collection::create_fixed_collection(
                 creator_signer,
                 description,
                 option::extract(&mut max_supply),
@@ -103,38 +91,29 @@ module townespace::core {
                 // payee address is the creator by default, it can be changed after creation.
                 option::some(royalty),
                 uri
-            );
-
-            // create collection resource and move it to the resource account.
-            // Also needed later for indexing.
-            let collection_signer = object::generate_signer(&constructor_ref);
-            let collection = Collection {
-                name: name,
-                symbol: symbol,
-                type: string::utf8(b"fixed")
-            };
-            move_to(&collection_signer, collection);
-            object::object_from_constructor_ref(&constructor_ref)
-        // If type is not recognised, will create a collection with unlimited supply.
+            )
+            // If type is not recognised, will create a collection with unlimited supply.
         } else {
-            let constructor_ref = collection::create_unlimited_collection(
+            collection::create_unlimited_collection(
                 creator_signer,
                 description,
                 name,
                 option::some(royalty),
                 uri
-            );
-            // create collection resource and move it to the resource account.
-            // Also needed later for indexing.
-            let collection_signer = object::generate_signer(&constructor_ref);
-            let collection = Collection {
-                name: name,
-                symbol: symbol,
-                type: string::utf8(b"unlimited")
-            };
-            move_to(&collection_signer, collection);
-            object::object_from_constructor_ref(&constructor_ref)
-        }
+            )
+        };
+        collection_components::create_refs_and_properties(&constructor_ref);
+
+        // create collection resource and move it to the resource account.
+        // Also needed later for indexing.
+        let collection_signer = object::generate_signer(&constructor_ref);
+        let collection = Collection {
+            name: name,
+            symbol: symbol,
+            type: string::utf8(b"fixed")
+        };
+        move_to(&collection_signer, collection);
+        object::object_from_constructor_ref(&constructor_ref)
     }
 
     // Create token
@@ -160,88 +139,64 @@ module townespace::core {
         string::append_utf8(&mut token_name, *string::bytes(&u64_to_string(num_type)));
 
         let royalty = royalty::create(royalty_numerator, royalty_denominator, signer::address_of(creator_signer));
-        let constructor_ref = token::create_named_token(
+        let constructor_ref = &token::create_named_token(
             creator_signer,
             collection_name,
             description,
             name,
-            option::some(royalty), 
+            option::some(royalty),
             uri
         );
+        token_components::create_refs(constructor_ref);
 
-        let burn_ref = token::generate_burn_ref(&constructor_ref);
-        let extend_ref = object::generate_extend_ref(&constructor_ref);
-        let mutator_ref = token::generate_mutator_ref(&constructor_ref);
-        let property_mutator_ref = property_map::generate_mutator_ref(&constructor_ref);
-        let transfer_ref = object::generate_transfer_ref(&constructor_ref);
-
-        let token_signer = object::generate_signer(&constructor_ref);
-
-        // create refs resource and move it to the resource account.
-        let references = References {
-            burn_ref: burn_ref,
-            extend_ref: extend_ref,
-            mutator_ref: mutator_ref,
-            property_mutator_ref: property_mutator_ref,
-            transfer_ref: transfer_ref
-        };
-        move_to(&token_signer, references);
+        let token_signer = object::generate_signer(constructor_ref);
         // if type is composable
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             let composable = Composable {
                 name: token_name,
-                traits: traits,
-                coins: coins, 
+                traits,
+                coins,
             };
             move_to(&token_signer, composable);
             // TODO if there are coins.
-        // if type is trait
+            // if type is trait
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             let trait = Trait {
-                type: type,
-                name: token_name
+                type,
+                name: token_name,
             };
             move_to(&token_signer, trait);
 
             // Add properties to property map
             if (
-                option::is_some(&property_keys) 
-                && option::is_some(&property_types) 
-                && option::is_some(&property_values) == true
-                ){
-                    let (
-                    unwrapped_property_keys,
-                    unwrapped_property_types,
-                    unwrapped_property_values
-                    ) = (
-                        option::extract(&mut property_keys),
-                        option::extract(&mut property_types),
-                        option::extract(&mut property_values)
-                        );
-                    let properties = property_map::prepare_input(
-                        unwrapped_property_keys,
-                        unwrapped_property_types,
-                        unwrapped_property_values
-                        );
-                    property_map::init(&constructor_ref, properties);
-                }
+                option::is_some(&property_keys)
+                    && option::is_some(&property_types)
+                    && option::is_some(&property_values)
+            ) {
+                let properties = property_map::prepare_input(
+                    option::extract(&mut property_keys),
+                    option::extract(&mut property_types),
+                    option::extract(&mut property_values),
+                );
+                property_map::init(constructor_ref, properties);
+            }
         } else {
             // if type is neither composable nor trait.
             assert!(false, E_TYPE_NOT_RECOGNIZED);
-        }; 
-        object::object_from_constructor_ref(&constructor_ref)
-    }   
+        };
+
+        object::object_from_constructor_ref(constructor_ref)
+    }
 
     // Compose trait to a composable token
     public(friend) fun equip_trait_internal(
         owner_signer: &signer,
         composable_object: Object<Composable>,
-        trait_object: Object<Trait>
-    ) acquires Composable, References {
-        // Composable 
+        trait_object: Object<Trait>,
+    ) acquires Composable {
+        // Composable
         let composable_resource = borrow_global_mut<Composable>(object::object_address(&composable_object));
         // Trait
-        let trait_references = borrow_global_mut<References>(object::object_address(&trait_object));
         // Add the object to the end of the vector
         vector::push_back<Object<Trait>>(&mut composable_resource.traits, trait_object);
         // Assert ungated transfer enabled for the object token.
@@ -249,7 +204,7 @@ module townespace::core {
         // Transfer
         object::transfer_to_object(owner_signer, trait_object, composable_object);
         // Disable ungated transfer for trait object
-        object::disable_ungated_transfer(&trait_references.transfer_ref);
+        token_components::freeze_transfer(owner_signer, object::convert(trait_object));
     }
 
     // Decompose a trait from a composable token. Tests panic.
@@ -257,15 +212,14 @@ module townespace::core {
         owner_signer: &signer,
         composable_object: Object<Composable>,
         trait_object: Object<Trait>
-    ) acquires Composable, References {
+    ) acquires Composable {
         // Composable
         let composable_resource = borrow_global_mut<Composable>(object::object_address(&composable_object));
         // Trait
-        let trait_references = borrow_global_mut<References>(object::object_address(&trait_object));
         let (trait_exists, index) = vector::index_of(&composable_resource.traits, &trait_object);
         assert!(trait_exists == true, 10);
         // Enable ungated transfer for trait object
-        object::enable_ungated_transfer(&trait_references.transfer_ref);
+        token_components::unfreeze_transfer(owner_signer, object::convert(trait_object));
         // Transfer trait object to owner
         object::transfer(owner_signer, trait_object, signer::address_of(owner_signer));
         // Remove the object from the vector
@@ -281,15 +235,10 @@ module townespace::core {
     // --------------
     // View Functions
     // --------------
-    inline fun borrow<T: key>(
-        object: Object<T>
-        ): &T acquires Collection, Composable, Trait {
-            let object_address = object::object_address(&object);
-            assert!(
-                exists<T>(object_address),
-                89,
-            );
-            borrow_global<T>(object_address)
+    inline fun borrow<T: key>(object: Object<T>): &T {
+        let object_address = object::object_address(&object);
+        assert!(exists<T>(object_address), 89);
+        borrow_global<T>(object_address)
     }
 
     // collection
@@ -311,7 +260,7 @@ module townespace::core {
     public fun get_traits(
         composable_object: Object<Composable>
     ): vector<Object<Trait>> acquires Composable {
-        borrow<Composable>(composable_object).traits  
+        borrow<Composable>(composable_object).traits
     }
 
     // --------
@@ -320,12 +269,11 @@ module townespace::core {
 
     // Change uri
     public(friend) fun update_uri_internal(
-        composable_object_address: address,
+        owner_signer: &signer,
+        composable_object: Object<Composable>,
         new_uri: String
-    ) acquires References {
-        let references = borrow_global_mut<References>(composable_object_address);
-        let mutator_reference = &references.mutator_ref;
-        token::set_uri(mutator_reference, new_uri);
+    ) {
+        token_components::set_uri(owner_signer, object::convert(composable_object), new_uri);
     }
 
     // type casting; cloned from dynamic_aptoads.move
@@ -340,23 +288,23 @@ module townespace::core {
       };
       vector::reverse(&mut buffer);
       string::utf8(buffer)
-    }    
+    } 
 
     #[test_only]
     use aptos_token_objects::collection::{/*FixedSupply, */UnlimitedSupply};
 
     #[test(creator = @0x123)]
-    fun test(creator: &signer) acquires Composable, References {
+    fun test(creator: &signer) acquires Composable {
         create_collection_internal<UnlimitedSupply>(
             creator,
-            string::utf8(b"test"), 
-            option::none(), 
-            string::utf8(b"test"), 
             string::utf8(b"test"),
-            string::utf8(b"test"), 
+            option::none(),
+            string::utf8(b"test"),
+            string::utf8(b"test"),
+            string::utf8(b"test"),
             1,
             2
-            );
+        );
         let composable_object = mint_token_internal<Composable>(
             creator,
             string::utf8(b"test"),
@@ -400,7 +348,7 @@ module townespace::core {
         assert!(vector::contains(&composable_resource.traits, &trait_object) == true, 4234);
         unequip_trait_internal(creator, composable_object, trait_object);
         // assert the token is not in the composable token anymore
-        assert!(object::is_owner(trait_object, composable_address) == false, 5234);        
+        assert!(object::is_owner(trait_object, composable_address) == false, 5234);
         // assert the trait object is being transferred to the creator
         assert!(object::is_owner(trait_object, signer::address_of(creator)) == true, 5234);
     }

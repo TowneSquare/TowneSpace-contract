@@ -4,7 +4,7 @@ version = '0.0.2'
 
 [dependencies.TokenMinter]
 git = 'https://github.com/aptos-labs/token-minter.git'
-rev = 'b340fe9bc71449c3f9bb24f17c918c3b84b681ab'
+rev = 'main'
 subdir = 'token-minter/'
 
 [addresses]

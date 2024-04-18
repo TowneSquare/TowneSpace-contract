@@ -5,6 +5,8 @@ authors = ["lay (Aladeen)"]
 
 [addresses]
 townespace = "04d8dd898c13ab06a4897d2fdedb478cf7ac4d3e530d1daa5741c9b9d9ea15ee"
+admin = '0x07ff0308d16a5041ace8e7e306a60b2946b6a4aee0e7e923b8f20e49bf3508ce'
+minter = '_'
 
 [dev-addresses]
 
@@ -12,11 +14,3 @@ townespace = "04d8dd898c13ab06a4897d2fdedb478cf7ac4d3e530d1daa5741c9b9d9ea15ee"
 git = 'https://github.com/aptos-labs/token-minter.git'
 rev = 'main'
 subdir = 'token-minter/'
-
-[addresses]
-townespace = '0x07ff0308d16a5041ace8e7e306a60b2946b6a4aee0e7e923b8f20e49bf3508ce'
-admin = '0x07ff0308d16a5041ace8e7e306a60b2946b6a4aee0e7e923b8f20e49bf3508ce'
-minter = '_'
-
-[dev-addresses]
-minter = "0x123"

@@ -1,0 +1,27 @@
+[package]
+name = "Examples"
+version = "1.0.0"
+authors = ["lay (Aladeen)"]
+
+[addresses]
+townespace = "0x04d8dd898c13ab06a4897d2fdedb478cf7ac4d3e530d1daa5741c9b9d9ea15ee"
+examples = "effb9356ede780467b845c6ae6ec90592b5293f44392ddb39b1776ba72f64a83"
+
+[dev-addresses]
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dependencies.Composables]
+git = "https://github.com/TowneSquare/TowneSpace-contract"
+rev = "devnet"
+subdir = "composables"
+
+[dependencies.Studio-alpha]
+git = "https://github.com/TowneSquare/TowneSpace-contract"
+rev = "devnet"
+subdir = "studio"
+
+[dev-dependencies]

@@ -1,6 +1,12 @@
 [package]
-name = 'studio'
-version = '0.0.2'
+name = "Studio-alpha"
+version = "1.0.0"
+authors = ["lay (Aladeen)"]
+
+[addresses]
+townespace = "04d8dd898c13ab06a4897d2fdedb478cf7ac4d3e530d1daa5741c9b9d9ea15ee"
+
+[dev-addresses]
 
 [dependencies.TokenMinter]
 git = 'https://github.com/aptos-labs/token-minter.git'

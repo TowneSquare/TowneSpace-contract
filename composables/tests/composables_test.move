@@ -2,15 +2,12 @@
 module townespace::composables_test {
 
     use aptos_framework::account;
-    use aptos_framework::fungible_asset::{Self, FungibleStore}; 
-    use aptos_framework::object::{Self, Object};
-    use aptos_framework::primary_fungible_store;
+    use aptos_framework::object;
     use aptos_std::debug;
     use aptos_token_objects::collection::{FixedSupply, UnlimitedSupply};
-    use std::option::{Self, Option};
+    use std::option;
     use std::signer;
-    use std::string::{Self, String};
-    use std::vector;
+    use std::string;
 
     use townespace::composables::{Self, Collection, Composable, Trait};
     use townespace::test_utils;
@@ -70,7 +67,7 @@ module townespace::composables_test {
             COMPOSABLE_1_NAME
         );
 
-        let composable_obj = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
+        // let composable_obj = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
         // TODO: check that the composable is created correctly
         // TODO: check events are emited correctly
     }
@@ -83,7 +80,7 @@ module townespace::composables_test {
             COLLECTION_1_NAME, 
             option::some(100)
         );
-        let collection_obj = object::object_from_constructor_ref<Collection>(&collection_constructor_ref);
+        // let collection_obj = object::object_from_constructor_ref<Collection>(&collection_constructor_ref);
         
         let trait_constructor_ref = test_utils::create_named_trait_token_helper(
             creator,
@@ -91,7 +88,7 @@ module townespace::composables_test {
             TRAIT_1_NAME
         );
 
-        let trait_obj = object::object_from_constructor_ref<Trait>(&trait_constructor_ref);
+        // let trait_obj = object::object_from_constructor_ref<Trait>(&trait_constructor_ref);
         // TODO: check that the trait is created correctly
         // TODO: check events are emited correctly
     }
@@ -120,7 +117,7 @@ module townespace::composables_test {
 
         let composable_obj = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
         let trait_obj = object::object_from_constructor_ref<Trait>(&trait_constructor_ref);
-        let collection_obj = object::object_from_constructor_ref<Collection>(&collection_constructor_ref);
+        // let collection_obj = object::object_from_constructor_ref<Collection>(&collection_constructor_ref);
 
         // equip the trait to the composable
         let uri_after_equipping_trait = string::utf8(b"URI after equipping trait");
@@ -167,7 +164,7 @@ module townespace::composables_test {
         let composable_obj = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
         let trait_obj = object::object_from_constructor_ref<Trait>(&trait_constructor_ref);
         let collection_1_obj = object::object_from_constructor_ref<Collection>(&collection_1_constructor_ref);
-        let collection_2_obj = object::object_from_constructor_ref<Collection>(&collection_2_constructor_ref);
+        // let collection_2_obj = object::object_from_constructor_ref<Collection>(&collection_2_constructor_ref);
 
         // debug::print<address>(&object::owner<Collection>(collection_1_obj));
         // debug::print<address>(&object::owner<Composable>(composable_obj));
@@ -205,7 +202,7 @@ module townespace::composables_test {
 
         let composable_obj = object::object_from_constructor_ref<Composable>(&composable_constructor_ref);
         let trait_obj = object::object_from_constructor_ref<Trait>(&trait_constructor_ref);
-        let collection_obj = object::object_from_constructor_ref<Collection>(&collection_constructor_ref);
+        // let collection_obj = object::object_from_constructor_ref<Collection>(&collection_constructor_ref);
 
         // transfer composable to bob
         let composable_token_addr = object::object_address(&composable_obj);

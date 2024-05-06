@@ -1,0 +1,15 @@
+[package]
+name = "Studio"
+version = "1.0.0"
+authors = ["lay (Aladeen)"]
+
+[addresses]
+townespace = "0x123"
+
+[dev-addresses]
+
+[dependencies.ComposableToken]
+local = "./ComposableToken"
+
+[dependencies.TokenMinter]
+local = "./TokenMinter"

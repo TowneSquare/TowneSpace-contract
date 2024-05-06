@@ -2,4 +2,8 @@
 build
 .coverage_map.mvcov
 .trace
-packages
+
+# packages
+
+ComposableToken
+TokenMinter

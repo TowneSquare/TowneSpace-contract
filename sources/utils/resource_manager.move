@@ -23,7 +23,7 @@ module townespace::resource_manager {
     /// This function is invoked only when this resource is deployed the first time.
     public entry fun initialize(deployer: &signer) {
         let deployer_addr = signer::address_of(deployer);
-        assert!(signer::address_of(deployer) == @composable_token, 1);
+        assert!(signer::address_of(deployer) == @townespace, 1);
         if (!exists<PermissionConfig>(deployer_addr)) {
             let (resource_signer, signer_cap) = account::create_resource_account(deployer, b"composable_token");
             let resource_addr = signer::address_of(&resource_signer);
@@ -40,13 +40,13 @@ module townespace::resource_manager {
     /// Can be called by friended modules to obtain the resource account signer.
     /// Function will panic if the module is not friended or does not exist.
     public(friend) fun resource_signer(): signer acquires PermissionConfig {
-        let signer_cap = &borrow_global<PermissionConfig>(@composable_token).signer_cap;
+        let signer_cap = &borrow_global<PermissionConfig>(@townespace).signer_cap;
         account::create_signer_with_capability(signer_cap)
     }
 
     #[view]
     public fun resource_address(): address acquires PermissionConfig {
-        borrow_global<PermissionConfig>(@composable_token).resource_addr
+        borrow_global<PermissionConfig>(@townespace).resource_addr
     }
 
     #[test_only]

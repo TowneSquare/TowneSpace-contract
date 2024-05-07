@@ -360,7 +360,6 @@ module townespace::batch_mint_v2 {
     /// Helper function for getting the mint_price of a token
     inline fun mint_price<T: key>(
         mint_info: &mut MintInfo,
-        mint_info_obj_addr: address,
         token: Object<T>
     ): u64 acquires MintInfo {
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
@@ -395,7 +394,7 @@ module townespace::batch_mint_v2 {
             let composable = object::convert<T, Composable>(object::address_to_object(token_addr));
             smart_table::destroy(pool);
             // get mint price
-            let mint_price = mint_price<Composable>(mint_info, mint_info_obj_addr, object::address_to_object<Composable>(token_addr));
+            let mint_price = mint_price<Composable>(mint_info, object::address_to_object<Composable>(token_addr));
             assert!(coin::balance<APT>(signer_addr) >= mint_price, EINSUFFICIENT_FUNDS);
             (token_addr, smart_table::remove(&mut mint_info.composable_token_pool, composable))
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
@@ -406,7 +405,7 @@ module townespace::batch_mint_v2 {
             let trait = object::convert<T, Trait>(object::address_to_object(token_addr));
             smart_table::destroy(pool);
             // get mint price
-            let mint_price = mint_price<Trait>(mint_info, mint_info_obj_addr, object::address_to_object<Trait>(token_addr));
+            let mint_price = mint_price<Trait>(mint_info, object::address_to_object<Trait>(token_addr));
             assert!(coin::balance<APT>(signer_addr) >= mint_price, EINSUFFICIENT_FUNDS);
             (token_addr, smart_table::remove(&mut mint_info.trait_pool, trait))
         } else {
@@ -417,7 +416,7 @@ module townespace::batch_mint_v2 {
             let da = object::convert<T, DA>(object::address_to_object(token_addr));
             smart_table::destroy(pool);
             // get mint price
-            let mint_price = mint_price<DA>(mint_info, mint_info_obj_addr, object::address_to_object<DA>(token_addr));
+            let mint_price = mint_price<DA>(mint_info, object::address_to_object<DA>(token_addr));
             assert!(coin::balance<APT>(signer_addr) >= mint_price, EINSUFFICIENT_FUNDS);
             (token_addr, smart_table::remove(&mut mint_info.da_pool, da))
         };

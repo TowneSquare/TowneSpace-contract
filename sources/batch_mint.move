@@ -308,9 +308,6 @@ module townespace::batch_mint {
     // ----------
 
     #[test_only]
-    use aptos_std::vector;
-
-    #[test_only]
     public fun init_test(signer_ref: &signer) {
         // assert that the signer is the owner of the module
         assert!(signer::address_of(signer_ref) == @townespace, ENOT_ADMIN);

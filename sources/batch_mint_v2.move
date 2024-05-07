@@ -143,7 +143,7 @@ module townespace::batch_mint_v2 {
     // ----------------
 
     /// Helper function for creating tokens for minting
-    public inline fun create_tokens_for_mint_internal<T: key>(
+    public fun create_tokens_for_mint_internal<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
         description: String,
@@ -377,7 +377,7 @@ module townespace::batch_mint_v2 {
 
     /// Helper function for minting a token
     /// Returns the address of the minted token and the mint price
-    public inline fun mint_token<T: key>(signer_ref: &signer, mint_info_obj_addr: address): (address, u64) acquires MintInfo {
+    public fun mint_token<T: key>(signer_ref: &signer, mint_info_obj_addr: address): (address, u64) acquires MintInfo {
         let signer_addr = signer::address_of(signer_ref);
         assert!(
             type_info::type_of<T>() == type_info::type_of<Composable>()
@@ -464,7 +464,7 @@ module townespace::batch_mint_v2 {
     use aptos_token_objects::collection::{FixedSupply};
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
-    fun test_nft_e2e(std: &signer, creator: &signer, minter: &signer) acquires MintInfo {
+    fun test_e2e(std: &signer, creator: &signer, minter: &signer) acquires MintInfo {
         let input_mint_price = 1000;
 
         let (creator_addr, minter_addr) = common::setup_test(std, creator, minter);

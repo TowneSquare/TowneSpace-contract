@@ -48,7 +48,4 @@ module townespace::resource_manager {
     public fun resource_address(): address acquires PermissionConfig {
         borrow_global<PermissionConfig>(@townespace).resource_addr
     }
-
-    #[test_only]
-    friend composable_token::test_utils;
 }

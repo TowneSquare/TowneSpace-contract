@@ -75,6 +75,12 @@ module townespace::batch_mint_v2 {
         tokens: vector<address>,
     }
 
+    #[event]
+    struct TokenMinted has drop, store {
+        tokens: vector<address>,
+        mint_prices: vector<u64>,
+    }
+
     /// Entry Function to create tokens for minting
     public entry fun create_tokens_for_mint<T: key>(
         signer_ref: &signer,
@@ -121,7 +127,15 @@ module townespace::batch_mint_v2 {
         event::emit(TokensForMintCreated { tokens });
     }
 
-    /// TODO: Entry Function to mint more tokens
+    /// Entry Function to mint tokens
+    public entry fun mint_tokens<T: key>(
+        signer_ref: &signer,
+        mint_info_obj_addr: address,
+        count: u64
+    ) acquires MintInfo {
+        let (minted_tokens, mint_prices) = mint_batch_tokens<T>(signer_ref, mint_info_obj_addr, count);
+        event::emit(TokenMinted { tokens: minted_tokens, mint_prices });
+    }
     
 
     // ----------------

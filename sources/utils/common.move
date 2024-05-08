@@ -12,7 +12,7 @@ module townespace::common {
     use aptos_framework::timestamp;
     use aptos_framework::transaction_context;
 
-    friend townespace::batch_mint_v2;
+    friend townespace::batch_mint;
 
 
     /// Common logic for creating sticky object for the liquid NFTs

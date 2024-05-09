@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = ["lay (Aladeen)"]
 
 [addresses]
-townespace = "0x632029026c1174518a2945d77d7591b9c5981dd390dded5de019fa81d71a2e07"
+townespace = "0xe12419559a1285d19b3419ca1561a56b43b79a9ded42e06156f66f70db662950"
 
 [dev-addresses]
 

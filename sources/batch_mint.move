@@ -90,6 +90,7 @@ module townespace::batch_mint {
         collection: Object<Collection>,
         description: String,
         name: String,
+        uri_with_index_prefix: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
         royalty_numerator: Option<u64>,
@@ -106,6 +107,7 @@ module townespace::batch_mint {
             collection,
             description,
             name,
+            uri_with_index_prefix,
             name_with_index_prefix,
             name_with_index_suffix,
             royalty_numerator,
@@ -151,6 +153,7 @@ module townespace::batch_mint {
         collection: Object<Collection>,
         description: String,
         name: String,
+        uri_with_index_prefix: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
         royalty_numerator: Option<u64>,
@@ -181,6 +184,7 @@ module townespace::batch_mint {
                 collection,
                 description,
                 name,
+                uri_with_index_prefix,
                 name_with_index_prefix,
                 name_with_index_suffix,
                 royalty_numerator,
@@ -216,6 +220,7 @@ module townespace::batch_mint {
                 collection,
                 description,
                 name,
+                uri_with_index_prefix,
                 name_with_index_prefix,
                 name_with_index_suffix,
                 royalty_numerator,
@@ -251,6 +256,7 @@ module townespace::batch_mint {
                 collection,
                 description,
                 name,
+                uri_with_index_prefix,
                 name_with_index_prefix,
                 name_with_index_suffix,
                 royalty_numerator,
@@ -283,12 +289,13 @@ module townespace::batch_mint {
     }
 
     /// Helper function for creating tokens
-    inline fun create_tokens_internal<T: key>(
+    fun create_tokens_internal<T: key>(
         signer_ref: &signer,
         mint_info_obj_addr: address,
         collection: Object<Collection>,
         description: String,
         name: String,
+        uri_with_index_prefix: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
         royalty_numerator: Option<u64>,
@@ -307,13 +314,16 @@ module townespace::batch_mint {
         let last_index = first_index + token_count;
         for (i in first_index..last_index) {
             let token_uri = folder_uri;
-            // folder_uri + "/" + "prefix" + i + ".png"
+            // token uri: folder_uri + "/" + "prefix" + "%23" + i + ".png"
             string::append_utf8(&mut token_uri, b"/");
-            let prefix = *vector::borrow<String>(&name_with_index_prefix, i);
+            let prefix = *vector::borrow<String>(&uri_with_index_prefix, i);
             let suffix = *vector::borrow<String>(&name_with_index_suffix, i);
             string::append(&mut token_uri, prefix);
+            string::append_utf8(&mut token_uri, b"%23");    // %23 is the ascii code for #
             string::append(&mut token_uri, string_utils::to_string(&i));
             string::append_utf8(&mut token_uri, b".png");
+
+            // token name: "prefix" + "#" + i + "suffix" 
 
             let (constructor) = composable_token::create_token<T, Indexed>(
                 signer_ref,
@@ -345,7 +355,7 @@ module townespace::batch_mint {
     }
 
     /// Gets Keys from a smart table and returns a new smart table with with the pair <u64, address> and u64 is the index
-    inline fun indexed_tokens<T: key> (
+    fun indexed_tokens<T: key> (
         smart_table: &SmartTable<Object<T>, u64>
     ): SmartTable<u64, address> {
         let indexed_tokens = smart_table::new<u64, address>();
@@ -440,7 +450,7 @@ module townespace::batch_mint {
     }
 
     /// Helper function for minting a batch of tokens
-    public inline fun mint_batch_tokens<T: key>(
+    public fun mint_batch_tokens<T: key>(
         signer_ref: &signer,
         mint_info_obj_addr: address,
         count: u64
@@ -458,6 +468,35 @@ module townespace::batch_mint {
 
     /// TODO: add tokens to the mint info
     
+    
+    // --------------
+    // View Functions
+    // --------------
+
+    #[view]
+    /// Get a list of tokens available for minting
+    public fun tokens_for_mint<T: key>(
+        mint_info_obj_addr: address
+    ): vector<address> acquires MintInfo {
+        let mint_info = borrow_global_mut<MintInfo>(mint_info_obj_addr);
+        let tokens = if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
+            indexed_tokens<Composable>(&mint_info.composable_token_pool)
+        } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
+            indexed_tokens<Trait>(&mint_info.trait_pool)
+        } else {
+            indexed_tokens<DA>(&mint_info.da_pool)
+        };
+        let token_addresses = vector::empty<address>();
+
+        for (i in 0..smart_table::length<u64, address>(&tokens)) {
+            let token_addr = smart_table::remove<u64, address>(&mut tokens, i);
+            vector::push_back(&mut token_addresses, token_addr);
+        };
+        
+        smart_table::destroy(tokens);
+        token_addresses
+    }
+    
 
     // ------------
     // Unit Testing
@@ -467,6 +506,8 @@ module townespace::batch_mint {
     use std::debug;
     #[test_only]
     use aptos_token_objects::collection::{FixedSupply};
+    #[test_only]
+    use aptos_token_objects::token;
     #[test_only]
     const PREFIX: vector<u8> = b"Prefix"; 
     #[test_only]
@@ -507,6 +548,7 @@ module townespace::batch_mint {
             string::utf8(b"Description"),
             string::utf8(b"Name"),
             vector[string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX)],
+            vector[string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX)],
             vector[string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX)],
             option::none(),
             option::none(),
@@ -523,11 +565,23 @@ module townespace::batch_mint {
 
 
         // assert the owner is the minter
-        let token = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
-        assert!(object::is_owner(token, minter_addr), 1);
+        let token_0 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
+        let token_1 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
+        let token_2 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
+        let token_3 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
+
+        assert!(object::is_owner(token_0, minter_addr), 1);
+        assert!(object::is_owner(token_1, minter_addr), 1);
+        assert!(object::is_owner(token_2, minter_addr), 1);
+        assert!(object::is_owner(token_3, minter_addr), 1);
+
         // assert the mint price is sent to the owner
         let creator_balance_after_mint = creator_balance_before_mint + (input_mint_price * 4);
         // debug::print<u64>(&coin::balance<APT>(creator_addr));
         assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 2);
+
+        // get one token and print its name and uri
+        debug::print<String>(&token::name<Composable>(token_0));
+        debug::print<String>(&token::uri<Composable>(token_0));
     }
 }

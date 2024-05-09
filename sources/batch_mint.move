@@ -316,14 +316,16 @@ module townespace::batch_mint {
             let token_uri = folder_uri;
             // token uri: folder_uri + "/" + "prefix" + "%23" + i + ".png"
             string::append_utf8(&mut token_uri, b"/");
-            let prefix = *vector::borrow<String>(&uri_with_index_prefix, i);
+            let uri_prefix = *vector::borrow<String>(&uri_with_index_prefix, i);
+            let prefix = *vector::borrow<String>(&name_with_index_prefix, i);
             let suffix = *vector::borrow<String>(&name_with_index_suffix, i);
-            string::append(&mut token_uri, prefix);
+            string::append(&mut token_uri, uri_prefix);
             string::append_utf8(&mut token_uri, b"%23");    // %23 is the ascii code for #
             string::append(&mut token_uri, string_utils::to_string(&i));
             string::append_utf8(&mut token_uri, b".png");
 
             // token name: "prefix" + "#" + i + "suffix" 
+
 
             let (constructor) = composable_token::create_token<T, Indexed>(
                 signer_ref,
@@ -492,7 +494,7 @@ module townespace::batch_mint {
             let token_addr = smart_table::remove<u64, address>(&mut tokens, i);
             vector::push_back(&mut token_addresses, token_addr);
         };
-        
+
         smart_table::destroy(tokens);
         token_addresses
     }
@@ -509,9 +511,11 @@ module townespace::batch_mint {
     #[test_only]
     use aptos_token_objects::token;
     #[test_only]
-    const PREFIX: vector<u8> = b"Prefix"; 
+    const URI_PREFIX: vector<u8> = b"URI%20Prefix%20";
     #[test_only]
-    const SUFFIX : vector<u8> = b"Suffix";
+    const PREFIX: vector<u8> = b"Prefix #"; 
+    #[test_only]
+    const SUFFIX : vector<u8> = b" Suffix";
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
     fun test_e2e(std: &signer, creator: &signer, minter: &signer) acquires MintInfo {
@@ -547,7 +551,7 @@ module townespace::batch_mint {
             object::object_from_constructor_ref(&collection_constructor_ref),
             string::utf8(b"Description"),
             string::utf8(b"Name"),
-            vector[string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX)],
+            vector[string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX)],
             vector[string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX)],
             vector[string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX)],
             option::none(),

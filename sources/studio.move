@@ -10,16 +10,23 @@
 
 module townespace::studio {
 
+    use aptos_framework::event;
     use aptos_framework::object::{Self, Object};
-
     use aptos_token_objects::collection;
-
     use composable_token::composable_token::{Self, Collection, Indexed};
-
     use std::option::{Self, Option};
     use std::string::{Self, String};
     use std::string_utils;
     use std::vector;
+
+    // ------
+    // Events
+    // ------
+
+    #[event]
+    struct TokensCreated has drop, store {
+        tokens_addr: vector<address>
+    }
 
     /// Mint a batch of tokens
     entry fun mint_tokens<T: key>(
@@ -52,6 +59,8 @@ module townespace::studio {
             folder_uri,
             token_count
         );
+
+        event::emit( TokensCreated { tokens_addr } );
     }
     
     inline fun create_tokens<T: key>(

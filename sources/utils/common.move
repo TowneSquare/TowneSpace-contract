@@ -12,7 +12,7 @@ module townespace::common {
     use aptos_framework::timestamp;
     use aptos_framework::transaction_context;
 
-    friend townespace::batch_mint;
+    friend townespace::random_mint;
 
 
     /// Common logic for creating sticky object for the liquid NFTs
@@ -47,8 +47,6 @@ module townespace::common {
 
     #[test_only]
     use aptos_framework::account::create_account_for_test;
-    #[test_only]
-    use aptos_framework::genesis;
     #[test_only]
     use std::signer;
     #[test_only]

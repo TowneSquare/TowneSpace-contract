@@ -131,9 +131,6 @@ module townespace::token_migrate {
         (token_id, object::object_address<token_v2::Token>(&new_token_obj))
     }
         
-
-    #[test_only]
-    use std::features;
     #[test_only]
     use std::bcs;
     #[test_only]
@@ -209,7 +206,6 @@ module townespace::token_migrate {
     #[test(std = @0x1, ts = @townespace, creator = @0x456, alice = @0x123)]
     // test migration of a token v1 to v2
     fun test_migration(
-        std: &signer,
         alice: &signer,
         ts: &signer,
         creator: &signer,

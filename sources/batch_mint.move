@@ -1,10 +1,13 @@
 /*
 
     TODO: 
-        - iteration when adding token mints needs a revisit
+        - smart tables holding the tokens to mint must have size pre-defined?
+        - create tokens ready for mint can be the same as in unveil
+        - refactor module name; must be more accurate
+        - Add a global storage for the tracking tokens supply per type
 */
 
-module townespace::batch_mint {
+module townespace::random_mint {
 
     use aptos_framework::aptos_coin::{AptosCoin as APT};
     use aptos_framework::coin;
@@ -28,6 +31,7 @@ module townespace::batch_mint {
         Collection
     };
     use townespace::common;
+    use minter::transfer_token;
 
     // ------
     // Errors
@@ -47,7 +51,7 @@ module townespace::batch_mint {
     // ---------
 
     /// Global storage for the minting metadata
-    struct MintInfo has key {
+    struct MintInfo<phantom T> has key {
         /// The address of the owner
         owner_addr: address,
         /// The collection associated with the tokens to be minted
@@ -55,12 +59,10 @@ module townespace::batch_mint {
         /// Used for transferring objects
         extend_ref: ExtendRef,
         /// The list of all composables locked up in the contract along with their mint prices
-        composable_token_pool: SmartTable<Object<Composable>, u64>,
-        /// The list of all traits locked up in the contract along with their mint prices
-        trait_pool: SmartTable<Object<Trait>, u64>,
-        /// The list of all DAs locked up in the contract along with their mint prices
-        da_pool: SmartTable<Object<DA>, u64>,
+        token_pool: SmartTable<Object<T>, u64>,
     }
+
+    
 
     // ------
     // Events
@@ -85,7 +87,7 @@ module townespace::batch_mint {
     }
 
     /// Entry Function to create tokens for minting
-    public entry fun create_tokens_for_mint<T: key>(
+    public entry fun create_tokens_for_mint<T: key, store>(
         signer_ref: &signer,
         collection: Object<Collection>,
         description: String,
@@ -102,7 +104,7 @@ module townespace::batch_mint {
         folder_uri: String,
         mint_price: vector<u64>
     ) { 
-        let (tokens, mint_info_obj) = create_tokens_for_mint_internal<T>(
+        let (tokens, mint_info_obj, _) = create_tokens_for_mint_internal<T>(
             signer_ref,
             collection,
             description,
@@ -186,6 +188,96 @@ module townespace::batch_mint {
     // Helper functions
     // ----------------
 
+    /// Helper function for creating composable tokens for minting with trait tokens bound to them
+    public fun create_composable_tokens_with_soulbound_traits_for_mint_internal<T>(
+        signer_ref: &signer,
+        collection: Object<Collection>,
+        description: String,
+        name: String,
+        // trait token related fields
+        trait_uri_with_index_prefix: vector<String>,
+        trait_name_with_index_prefix: vector<String>,
+        trait_name_with_index_suffix: vector<String>,
+        // composable token related fields
+        uri_with_index_prefix: vector<String>,
+        name_with_index_prefix: vector<String>,
+        name_with_index_suffix: vector<String>,
+        royalty_numerator: Option<u64>,
+        royalty_denominator: Option<u64>,
+        property_keys: vector<String>,
+        property_types: vector<String>,
+        property_values: vector<vector<u8>>,
+        folder_uri: String,
+        token_count: u64,
+        mint_price: vector<u64>,
+    ): (vector<address>, vector<address>, Object<MintInfo<T>>, vector<object::ConstructorRef>) {
+        // assert token_count is matched with mint_price
+        assert!(vector::length(&mint_price) == token_count, ELENGTH_MISMATCH);
+        
+        // Build the object to hold the liquid token
+        // This must be a sticky object (a non-deleteable object) to be fungible
+        let (
+            _, 
+            extend_ref, 
+            object_signer, 
+            obj_addr
+        ) = common::create_sticky_object(signer::address_of(signer_ref));
+        // create composable tokens
+        let (tokens, tokens_addr, constructor_refs) = create_tokens_internal<Composable>(
+            signer_ref,
+            obj_addr,
+            collection,
+            description,
+            name,
+            uri_with_index_prefix,
+            name_with_index_prefix,
+            name_with_index_suffix,
+            royalty_numerator,
+            royalty_denominator,
+            property_keys,
+            property_types,
+            property_values,
+            folder_uri,
+            token_count,
+        );
+        // create trait tokens
+        let (_, trait_tokens_addr, trait_constructor_refs) = create_tokens_without_mint_pool<Trait>(
+            signer_ref,
+            collection,
+            description,
+            name,
+            trait_uri_with_index_prefix,
+            trait_name_with_index_prefix,
+            trait_name_with_index_suffix,
+            royalty_numerator,
+            royalty_denominator,
+            property_keys,
+            property_types,
+            property_values,
+            folder_uri,
+            token_count
+        );
+        // soulbind the trait tokens to the composable tokens
+        vector::zip(tokens_addr, trait_constructor_refs, |composable_addr, trait_constructor_ref| {
+            transfer_token::transfer_soulbound(composable_addr, &trait_constructor_ref);
+        });
+        let token_pool = smart_table::new<Object<Composable>, u64>();
+        // add tokens and mint_price to the composable_token_pool
+        smart_table::add_all(&mut token_pool, tokens, mint_price);
+        // Add the Metadata
+        move_to(
+            &object_signer, 
+                MintInfo<Composable> {
+                    owner_addr: signer::address_of(signer_ref),
+                    collection, 
+                    extend_ref,
+                    token_pool,
+                }
+        );
+
+        (tokens_addr, trait_tokens_addr, object::address_to_object(obj_addr), constructor_refs)
+    }
+
     /// Helper function for creating tokens for minting
     public fun create_tokens_for_mint_internal<T: key>(
         signer_ref: &signer,
@@ -203,7 +295,7 @@ module townespace::batch_mint {
         folder_uri: String,
         token_count: u64,
         mint_price: vector<u64>
-    ): (vector<address>, Object<MintInfo>) {
+    ): (vector<address>, Object<MintInfo<T>>, vector<object::ConstructorRef>) {
         // assert token_count is matched with mint_price
         assert!(vector::length(&mint_price) == token_count, ELENGTH_MISMATCH);
 
@@ -215,9 +307,9 @@ module townespace::batch_mint {
             object_signer, 
             obj_addr
         ) = common::create_sticky_object(signer::address_of(signer_ref));
-        let tokens_addr = if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
+        let (tokens_addr, constructor_ref) = if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             // create tokens
-            let (tokens, tokens_addr) = create_tokens_internal<Composable>(
+            let (tokens, tokens_addr, constructors_ref) = create_tokens_internal<Composable>(
                 signer_ref,
                 obj_addr,
                 collection,
@@ -244,16 +336,14 @@ module townespace::batch_mint {
                         owner_addr: signer::address_of(signer_ref),
                         collection, 
                         extend_ref, 
-                        composable_token_pool,
-                        trait_pool: smart_table::new<Object<Trait>, u64>(),
-                        da_pool: smart_table::new<Object<DA>, u64>()
+                        token_pool: composable_token_pool,
                     }
             );
 
-            tokens_addr
+            (tokens_addr, constructors_ref)
         
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
-            let (tokens, tokens_addr) = create_tokens_internal<Trait>(
+            let (tokens, tokens_addr, constructors_ref) = create_tokens_internal<Trait>(
                 signer_ref,
                 obj_addr,
                 collection,
@@ -270,26 +360,24 @@ module townespace::batch_mint {
                 folder_uri,
                 token_count
             );
-            let trait_pool = smart_table::new();
+            let trait_token_pool = smart_table::new();
             // add tokens and mint_price to the trait_pool
-            smart_table::add_all(&mut trait_pool, tokens, mint_price);
+            smart_table::add_all(&mut trait_token_pool, tokens, mint_price);
             // Add the Metadata
             move_to(
                 &object_signer, 
-                    MintInfo {
+                    MintInfo<Trait> {
                         owner_addr: signer::address_of(signer_ref),
                         collection, 
                         extend_ref, 
-                        composable_token_pool: smart_table::new<Object<Composable>, u64>(),
-                        trait_pool,
-                        da_pool: smart_table::new<Object<DA>, u64>()
+                        token_pool: trait_token_pool,
                     }
             );
 
-            tokens_addr
+            (tokens_addr, constructors_ref)
         } else {
             let da_pool = smart_table::new<Object<DA>, u64>();
-            let (tokens, tokens_addr) = create_tokens_internal<DA>(
+            let (tokens, tokens_addr, constructor_ref) = create_tokens_internal<DA>(
                 signer_ref,
                 obj_addr,
                 collection,
@@ -311,20 +399,18 @@ module townespace::batch_mint {
             // Add the Metadata
             move_to(
                 &object_signer, 
-                    MintInfo {
+                    MintInfo<DA> {
                         owner_addr: signer::address_of(signer_ref),
                         collection, 
                         extend_ref, 
-                        composable_token_pool: smart_table::new<Object<Composable>, u64>(),
-                        trait_pool: smart_table::new<Object<Trait>, u64>(),
-                        da_pool
+                        token_pool: da_pool,
                     }
             );
 
-            tokens_addr
+            (tokens_addr, constructor_ref)
         };
         // tokens objects, tokens addresses, object address holding the mint info
-        (tokens_addr, object::address_to_object(obj_addr))
+        (tokens_addr, object::address_to_object(obj_addr), constructor_ref)
     }
 
     /// Helper function for creating tokens
@@ -344,9 +430,76 @@ module townespace::batch_mint {
         property_values: vector<vector<u8>>,
         folder_uri: String,
         token_count: u64,
-    ): (vector<Object<T>>, vector<address>) {
+    ): (vector<Object<T>>, vector<address>, vector<object::ConstructorRef>) {
         let tokens = vector::empty<Object<T>>();
         let tokens_addr = vector::empty();
+        let constructors = vector::empty<object::ConstructorRef>();
+
+        // mint tokens
+        for (i in 0..token_count) {
+            let token_index = *option::borrow(&collection::count(collection)) + 1;
+            let token_uri = folder_uri;
+            // token uri: folder_uri + "/" + "prefix" + "%23" + i + ".png"
+            string::append_utf8(&mut token_uri, b"/");
+            let uri_prefix = *vector::borrow<String>(&uri_with_index_prefix, i);
+            let prefix = *vector::borrow<String>(&name_with_index_prefix, i);
+            let suffix = *vector::borrow<String>(&name_with_index_suffix, i);
+            string::append(&mut token_uri, uri_prefix);
+            string::append_utf8(&mut token_uri, b"%23");    // %23 is the ascii code for #
+            string::append(&mut token_uri, string_utils::to_string(&token_index));
+            string::append_utf8(&mut token_uri, b".png");
+
+            let (constructor) = composable_token::create_token<T, Indexed>(
+                signer_ref,
+                collection,
+                description,
+                name,
+                prefix,
+                suffix,
+                token_uri,
+                royalty_numerator,
+                royalty_denominator,
+                property_keys,
+                property_types,
+                property_values
+            );
+
+            // transfer the token to mint info object
+            composable_token::transfer_token<T>(
+                signer_ref,
+                object::object_from_constructor_ref(&constructor), 
+                mint_info_obj_addr
+            );
+
+            // update the vectors
+            vector::push_back(&mut tokens, object::object_from_constructor_ref<T>(&constructor));
+            vector::push_back(&mut tokens_addr, object::address_from_constructor_ref(&constructor));
+            vector::push_back(&mut constructors, constructor);
+        };
+
+        (tokens, tokens_addr, constructors)
+    }
+
+    /// Helper function to create tokens without a mint pool
+    fun create_tokens_without_mint_pool<T: key>(
+        signer_ref: &signer,
+        collection: Object<Collection>,
+        description: String,
+        name: String,
+        uri_with_index_prefix: vector<String>,
+        name_with_index_prefix: vector<String>,
+        name_with_index_suffix: vector<String>,
+        royalty_numerator: Option<u64>,
+        royalty_denominator: Option<u64>,
+        property_keys: vector<String>,
+        property_types: vector<String>,
+        property_values: vector<vector<u8>>,
+        folder_uri: String,
+        token_count: u64,
+    ): (vector<Object<T>>, vector<address>, vector<object::ConstructorRef>) {
+        let tokens = vector::empty<Object<T>>();
+        let tokens_addr = vector::empty();
+        let constructors = vector::empty<object::ConstructorRef>();
 
         // mint tokens
         for (i in 0..token_count) {
@@ -377,18 +530,13 @@ module townespace::batch_mint {
                 property_values
             );
 
+            // update the vectors
             vector::push_back(&mut tokens, object::object_from_constructor_ref<T>(&constructor));
             vector::push_back(&mut tokens_addr, object::address_from_constructor_ref(&constructor));
-
-            // transfer the token to mint info object
-            composable_token::transfer_token<T>(
-                signer_ref,
-                object::object_from_constructor_ref(&constructor), 
-                mint_info_obj_addr
-            );
+            vector::push_back(&mut constructors, constructor);
         };
 
-        (tokens, tokens_addr)
+        (tokens, tokens_addr, constructors)
     }
 
     /// Gets Keys from a smart table and returns a new smart table with with the pair <u64, address> and u64 is the index
@@ -412,18 +560,49 @@ module townespace::batch_mint {
 
     /// Helper function for getting the mint_price of a token
     inline fun mint_price<T: key>(
-        mint_info: &mut MintInfo,
+        mint_info_obj_addr: address,
         token: Object<T>
     ): u64 acquires MintInfo {
         if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             let composable_token = object::convert<T, Composable>(token);
-            *smart_table::borrow<Object<Composable>, u64>(&mint_info.composable_token_pool, composable_token)
+            let mint_info = borrow_global<MintInfo<Composable>>(mint_info_obj_addr);
+            *smart_table::borrow<Object<Composable>, u64>(&mint_info.token_pool, composable_token)
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
+            let mint_info = borrow_global<MintInfo<Trait>>(mint_info_obj_addr);
             let trait = object::convert<T, Trait>(token);
-            *smart_table::borrow<Object<Trait>, u64>(&mint_info.trait_pool, trait)
+            *smart_table::borrow<Object<Trait>, u64>(&mint_info.token_pool, trait)
         } else {
+            let mint_info = borrow_global<MintInfo<DA>>(mint_info_obj_addr);
             let da = object::convert<T, DA>(token);
-            *smart_table::borrow<Object<DA>, u64>(&mint_info.da_pool, da)
+            *smart_table::borrow<Object<DA>, u64>(&mint_info.token_pool, da)
+        }
+    }
+
+    /// Helper function for getting a random token from a smart table
+    inline fun random_token<T: key>(
+        mint_info_obj_addr: address
+    ): address {
+        if(type_info::type_of<T>() == type_info::type_of<Composable>()) {
+            let mint_info = borrow_global_mut<MintInfo<Composable>>(mint_info_obj_addr);
+            let pool = indexed_tokens<Composable>(&mint_info.token_pool);
+            let i = common::pseudorandom_u64(smart_table::length<u64, address>(&pool));
+            let token_addr = *smart_table::borrow<u64, address>(&pool, i);
+            smart_table::destroy(pool);
+            token_addr
+        } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
+            let mint_info = borrow_global_mut<MintInfo<Trait>>(mint_info_obj_addr);
+            let pool = indexed_tokens<Trait>(&mint_info.token_pool);
+            let i = common::pseudorandom_u64(smart_table::length<u64, address>(&pool));
+            let token_addr = *smart_table::borrow<u64, address>(&pool, i);
+            smart_table::destroy(pool);
+            token_addr
+        } else {
+            let mint_info = borrow_global_mut<MintInfo<DA>>(mint_info_obj_addr);
+            let pool = indexed_tokens<DA>(&mint_info.token_pool);
+            let i = common::pseudorandom_u64(smart_table::length<u64, address>(&pool));
+            let token_addr = *smart_table::borrow<u64, address>(&pool, i);
+            smart_table::destroy(pool);
+            token_addr
         }
     }
 
@@ -438,42 +617,36 @@ module townespace::batch_mint {
             ETYPE_NOT_RECOGNIZED
         );
         // remove the token from the mint info
-        let mint_info = borrow_global_mut<MintInfo>(mint_info_obj_addr);
         let (token_addr, mint_price) = if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
-            // get random token from the composable_token_pool
-            let pool = indexed_tokens<Composable>(&mint_info.composable_token_pool);
-            let i = common::pseudorandom_u64(smart_table::length<u64, address>(&pool));
-            let token_addr = *smart_table::borrow<u64, address>(&pool, i);
-            let composable = object::convert<T, Composable>(object::address_to_object(token_addr));
-            smart_table::destroy(pool);
+            // get random token from the token_pool
+            let token_addr = random_token<Composable>(mint_info_obj_addr);
             // get mint price
-            let mint_price = mint_price<Composable>(mint_info, object::address_to_object<Composable>(token_addr));
+            let composable = object::address_to_object<Composable>(token_addr);
+            let mint_price = mint_price<Composable>(mint_info_obj_addr, object::address_to_object<Composable>(token_addr));
             assert!(coin::balance<APT>(signer_addr) >= mint_price, EINSUFFICIENT_FUNDS);
-            (token_addr, smart_table::remove(&mut mint_info.composable_token_pool, composable))
+            let mint_info = borrow_global_mut<MintInfo<Composable>>(mint_info_obj_addr);
+            (token_addr, smart_table::remove(&mut mint_info.token_pool, composable))
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
             // get random token from the trait_pool
-            let pool = indexed_tokens<Trait>(&mint_info.trait_pool);
-            let i = common::pseudorandom_u64(smart_table::length<u64, address>(&pool));
-            let token_addr = *smart_table::borrow<u64, address>(&pool, i);
-            let trait = object::convert<T, Trait>(object::address_to_object(token_addr));
-            smart_table::destroy(pool);
+            let token_addr = random_token<Trait>(mint_info_obj_addr);
             // get mint price
-            let mint_price = mint_price<Trait>(mint_info, object::address_to_object<Trait>(token_addr));
+            let trait = object::address_to_object<Trait>(token_addr);
+            let mint_price = mint_price<Trait>(mint_info_obj_addr, object::address_to_object<Trait>(token_addr));
             assert!(coin::balance<APT>(signer_addr) >= mint_price, EINSUFFICIENT_FUNDS);
-            (token_addr, smart_table::remove(&mut mint_info.trait_pool, trait))
+            let mint_info = borrow_global_mut<MintInfo<Trait>>(mint_info_obj_addr);
+            (token_addr, smart_table::remove(&mut mint_info.token_pool, trait))
         } else {
             // get random token from the da_pool
-            let pool = indexed_tokens<DA>(&mint_info.da_pool);
-            let i = common::pseudorandom_u64(smart_table::length<u64, address>(&pool));
-            let token_addr = *smart_table::borrow<u64, address>(&pool, i);
-            let da = object::convert<T, DA>(object::address_to_object(token_addr));
-            smart_table::destroy(pool);
+            let token_addr = random_token<DA>(mint_info_obj_addr);
             // get mint price
-            let mint_price = mint_price<DA>(mint_info, object::address_to_object<DA>(token_addr));
+            let da = object::address_to_object<DA>(token_addr);
+            let mint_price = mint_price<DA>(mint_info_obj_addr, object::address_to_object<DA>(token_addr));
             assert!(coin::balance<APT>(signer_addr) >= mint_price, EINSUFFICIENT_FUNDS);
-            (token_addr, smart_table::remove(&mut mint_info.da_pool, da))
+            let mint_info = borrow_global_mut<MintInfo<DA>>(mint_info_obj_addr);
+            (token_addr, smart_table::remove(&mut mint_info.token_pool, da))
         };
         // transfer composable from resource acc to the minter
+        let mint_info = borrow_global<MintInfo<T>>(mint_info_obj_addr);
         let obj_signer = object::generate_signer_for_extending(&mint_info.extend_ref);
         composable_token::transfer_token<T>(
             &obj_signer, 
@@ -522,12 +695,12 @@ module townespace::batch_mint {
         token_count: u64,
         mint_price: vector<u64>
     ): vector<address> acquires MintInfo {
-        let mint_info = borrow_global_mut<MintInfo>(mint_info_obj_addr);
         
         // creates tokens
         let tokens_addr = if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
+            let mint_info = borrow_global_mut<MintInfo<Composable>>(mint_info_obj_addr);
             // create tokens
-            let (tokens, tokens_addr) = create_tokens_internal<Composable>(
+            let (tokens, tokens_addr, _) = create_tokens_internal<Composable>(
                 signer_ref,
                 mint_info_obj_addr,
                 collection,
@@ -544,12 +717,14 @@ module townespace::batch_mint {
                 folder_uri,
                 token_count,
             );
-            // add tokens and mint_price to the composable_token_pool
-            smart_table::add_all(&mut mint_info.composable_token_pool, tokens, mint_price);
+            // add tokens and mint_price to the token_pool
+            smart_table::add_all(&mut mint_info.token_pool, tokens, mint_price);
 
             tokens_addr
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
-            let (tokens, tokens_addr) = create_tokens_internal<Trait>(
+            let mint_info = borrow_global_mut<MintInfo<Trait>>(mint_info_obj_addr);
+            // create tokens
+            let (tokens, tokens_addr, _) = create_tokens_internal<Trait>(
                 signer_ref,
                 mint_info_obj_addr,
                 collection,
@@ -567,11 +742,13 @@ module townespace::batch_mint {
                 token_count
             );
             // add tokens and mint_price to the trait_pool
-            smart_table::add_all(&mut mint_info.trait_pool, tokens, mint_price);
+            smart_table::add_all(&mut mint_info.token_pool, tokens, mint_price);
 
             tokens_addr
         } else {
-            let (tokens, tokens_addr) = create_tokens_internal<DA>(
+            let mint_info = borrow_global_mut<MintInfo<DA>>(mint_info_obj_addr);
+            // create tokens
+            let (tokens, tokens_addr, _) = create_tokens_internal<DA>(
                 signer_ref,
                 mint_info_obj_addr,
                 collection,
@@ -590,7 +767,7 @@ module townespace::batch_mint {
             );
 
             // add tokens and mint_price to the da_pool
-            smart_table::add_all(&mut mint_info.da_pool, tokens, mint_price);
+            smart_table::add_all(&mut mint_info.token_pool, tokens, mint_price);
 
             tokens_addr
         };
@@ -604,7 +781,7 @@ module townespace::batch_mint {
         // emit event
         event::emit(TokensForMintCreated { tokens: tokens_addr });
 
-        tokens_addr  
+        tokens_addr
     }
     
     
@@ -617,13 +794,15 @@ module townespace::batch_mint {
     public fun tokens_for_mint<T: key>(
         mint_info_obj_addr: address
     ): vector<address> acquires MintInfo {
-        let mint_info = borrow_global_mut<MintInfo>(mint_info_obj_addr);
         let tokens = if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
-            indexed_tokens<Composable>(&mint_info.composable_token_pool)
+            let mint_info = borrow_global_mut<MintInfo<Composable>>(mint_info_obj_addr);
+            indexed_tokens<Composable>(&mint_info.token_pool)
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
-            indexed_tokens<Trait>(&mint_info.trait_pool)
+            let mint_info = borrow_global_mut<MintInfo<Trait>>(mint_info_obj_addr);
+            indexed_tokens<Trait>(&mint_info.token_pool)
         } else {
-            indexed_tokens<DA>(&mint_info.da_pool)
+            let mint_info = borrow_global_mut<MintInfo<DA>>(mint_info_obj_addr);
+            indexed_tokens<DA>(&mint_info.token_pool)
         };
         let token_addresses = vector::empty<address>();
 
@@ -648,7 +827,7 @@ module townespace::batch_mint {
     #[test_only]
     use aptos_token_objects::token;
     #[test_only]
-    const URI_PREFIX: vector<u8> = b"URI%20Prefix%20";
+    const URI_PREFIX: vector<u8> = b"Token%20Name%20Prefix%20";
     #[test_only]
     const PREFIX: vector<u8> = b"Prefix #"; 
     #[test_only]
@@ -683,7 +862,7 @@ module townespace::batch_mint {
         );
 
         // creator creates tokens for minting
-        let (tokens, mint_info_obj) = create_tokens_for_mint_internal<Composable>(
+        let (_, mint_info_obj, _) = create_tokens_for_mint_internal<Composable>(
             creator,
             object::object_from_constructor_ref(&collection_constructor_ref),
             string::utf8(b"Description"),
@@ -702,7 +881,7 @@ module townespace::batch_mint {
         );
 
         // minter mints tokens
-        let (minted_tokens, mint_prices) = mint_batch_tokens<Composable>(minter, object::object_address(&mint_info_obj), 4);
+        let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, object::object_address<MintInfo<Composable>>(&mint_info_obj), 4);
 
         // assert the owner is the minter
         let token_0 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
@@ -720,22 +899,22 @@ module townespace::batch_mint {
         // debug::print<u64>(&coin::balance<APT>(creator_addr));
         assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 2);
 
-        // get one token and print its name and uri
-        debug::print<String>(&token::name<Composable>(token_0));
-        debug::print<String>(&token::name<Composable>(token_1));
-        debug::print<String>(&token::name<Composable>(token_2));
-        debug::print<String>(&token::name<Composable>(token_3));
+        // // get one token and print its name and uri
+        // debug::print<String>(&token::name<Composable>(token_0));
+        // debug::print<String>(&token::name<Composable>(token_1));
+        // debug::print<String>(&token::name<Composable>(token_2));
+        // debug::print<String>(&token::name<Composable>(token_3));
 
-        debug::print<String>(&token::uri<Composable>(token_0));
-        debug::print<String>(&token::uri<Composable>(token_1));
-        debug::print<String>(&token::uri<Composable>(token_2));
-        debug::print<String>(&token::uri<Composable>(token_3));
+        // debug::print<String>(&token::uri<Composable>(token_0));
+        // debug::print<String>(&token::uri<Composable>(token_1));
+        // debug::print<String>(&token::uri<Composable>(token_2));
+        // debug::print<String>(&token::uri<Composable>(token_3));
 
         // create more tokens for minting
-        let tokens_addr = add_tokens_for_mint_internal<Composable>(
+        add_tokens_for_mint_internal<Composable>(
             creator,
             object::object_from_constructor_ref(&collection_constructor_ref),
-            object::object_address(&mint_info_obj),
+            object::object_address<MintInfo<Composable>>(&mint_info_obj),
             string::utf8(b"Description"),
             string::utf8(b"Name"),
             vector[string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX)],
@@ -746,13 +925,13 @@ module townespace::batch_mint {
             vector[],
             vector[],
             vector[],
-            string::utf8(b"Folder URI"),
+            string::utf8(b"Folder%20URI"),
             4,
             vector[input_mint_price, input_mint_price, input_mint_price, input_mint_price]
         );
 
         // mint the newly created tokens
-        let (minted_tokens, mint_prices) = mint_batch_tokens<Composable>(minter, object::object_address(&mint_info_obj), 4);
+        let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, object::object_address<MintInfo<Composable>>(&mint_info_obj), 4);
 
         // assert the owner is the minter
         let token_4 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
@@ -774,5 +953,120 @@ module townespace::batch_mint {
         debug::print<String>(&token::name<Composable>(token_5));
         debug::print<String>(&token::name<Composable>(token_6));
         debug::print<String>(&token::name<Composable>(token_7));
+    }
+
+    #[test_only]
+    const TRAIT_URI_PREFIX: vector<u8> = b"Trait%20Name%20Prefix%20";
+    #[test_only]
+    const TRAIT_PREFIX: vector<u8> = b"Trait Prefix #";
+    #[test_only]
+    const TRAIT_SUFFIX : vector<u8> = b" Trait Suffix";
+    #[test(std = @0x1, creator = @0x111, minter = @0x222)]
+    /// Test the minting of composable tokens with soulbound traits
+    fun test_composable_tokens_with_soulbound_traits(std: &signer, creator: &signer, minter: &signer) acquires MintInfo {
+        let input_mint_price = 1000;
+
+        let (creator_addr, minter_addr) = common::setup_test(std, creator, minter);
+        let creator_balance_before_mint = coin::balance<APT>(signer::address_of(creator));
+
+        // creator creates a collection
+        let collection_constructor_ref = composable_token::create_collection<FixedSupply>(
+            creator,
+            string::utf8(b"Collection Description"),
+            option::some(100),
+            string::utf8(b"Collection Name"),
+            string::utf8(b"Collection Symbol"),
+            string::utf8(b"Collection URI"),
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            option::none(),
+            option::none(),
+        );
+
+        // creator creates composable tokens with soulbound traits
+        let (composable_tokens_addresses, trait_tokens_addresses, mint_info_obj, _) = create_composable_tokens_with_soulbound_traits_for_mint_internal(
+            creator,
+            object::object_from_constructor_ref(&collection_constructor_ref),
+            string::utf8(b"Description"),
+            string::utf8(b"Name"),
+            // trait token related fields
+            vector[string::utf8(TRAIT_URI_PREFIX), string::utf8(TRAIT_URI_PREFIX), string::utf8(TRAIT_URI_PREFIX), string::utf8(TRAIT_URI_PREFIX)],
+            vector[string::utf8(TRAIT_PREFIX), string::utf8(TRAIT_PREFIX), string::utf8(TRAIT_PREFIX), string::utf8(TRAIT_PREFIX)],
+            vector[string::utf8(TRAIT_SUFFIX), string::utf8(TRAIT_SUFFIX), string::utf8(TRAIT_SUFFIX), string::utf8(TRAIT_SUFFIX)],
+            // composable token related fields
+            vector[string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX)],
+            vector[string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX)],
+            vector[string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX)],
+            option::none(),
+            option::none(),
+            vector[],
+            vector[],
+            vector[],
+            string::utf8(b"Folder%20URI"),
+            4,
+            vector[input_mint_price, input_mint_price, input_mint_price, input_mint_price]
+        );
+
+        // assert trait tokens are soulbound to the composable tokens
+        let trait_token_0 = object::address_to_object<Trait>(*vector::borrow(&trait_tokens_addresses, 0));
+        let trait_token_1 = object::address_to_object<Trait>(*vector::borrow(&trait_tokens_addresses, 1));
+        let trait_token_2 = object::address_to_object<Trait>(*vector::borrow(&trait_tokens_addresses, 2));
+        let trait_token_3 = object::address_to_object<Trait>(*vector::borrow(&trait_tokens_addresses, 3));
+
+        let composable_token_0 = object::address_to_object<Composable>(*vector::borrow(&composable_tokens_addresses, 0));
+        let composable_token_1 = object::address_to_object<Composable>(*vector::borrow(&composable_tokens_addresses, 1));
+        let composable_token_2 = object::address_to_object<Composable>(*vector::borrow(&composable_tokens_addresses, 2));
+        let composable_token_3 = object::address_to_object<Composable>(*vector::borrow(&composable_tokens_addresses, 3));
+
+        assert!(object::is_owner(trait_token_0, *vector::borrow(&composable_tokens_addresses, 0)), 1);
+        assert!(object::is_owner(trait_token_1, *vector::borrow(&composable_tokens_addresses, 1)), 1);
+        assert!(object::is_owner(trait_token_2, *vector::borrow(&composable_tokens_addresses, 2)), 1);
+        assert!(object::is_owner(trait_token_3, *vector::borrow(&composable_tokens_addresses, 3)), 1);
+
+        // minter mints tokens
+        let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, object::object_address<MintInfo<Composable>>(&mint_info_obj), 4);
+
+        // assert the owner is the minter
+        let token_0 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
+        let token_1 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
+        let token_2 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
+        let token_3 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
+        assert!(object::is_owner(token_0, minter_addr), 1);
+        assert!(object::is_owner(token_1, minter_addr), 1);
+        assert!(object::is_owner(token_2, minter_addr), 1);
+        assert!(object::is_owner(token_3, minter_addr), 1);
+
+        // assert the mint price is sent to the owner
+        let creator_balance_after_mint = creator_balance_before_mint + (input_mint_price * 4);
+        assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 2);
+
+        // get tokens and print their names 
+        debug::print<String>(&token::name<Trait>(trait_token_0));
+        debug::print<String>(&token::name<Trait>(trait_token_1));
+        debug::print<String>(&token::name<Trait>(trait_token_2));
+        debug::print<String>(&token::name<Trait>(trait_token_3));
+
+        debug::print<String>(&token::name<Composable>(composable_token_0));
+        debug::print<String>(&token::name<Composable>(composable_token_1));
+        debug::print<String>(&token::name<Composable>(composable_token_2));
+        debug::print<String>(&token::name<Composable>(composable_token_3));
+
+        // print uris
+        debug::print<String>(&token::uri<Trait>(trait_token_0));
+        debug::print<String>(&token::uri<Trait>(trait_token_1));
+        debug::print<String>(&token::uri<Trait>(trait_token_2));
+        debug::print<String>(&token::uri<Trait>(trait_token_3));
+
+        debug::print<String>(&token::uri<Composable>(composable_token_0));
+        debug::print<String>(&token::uri<Composable>(composable_token_1));
+        debug::print<String>(&token::uri<Composable>(composable_token_2));
+        debug::print<String>(&token::uri<Composable>(composable_token_3));
     }
 }

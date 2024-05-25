@@ -8,7 +8,7 @@ module townespace::resource_manager {
     use aptos_framework::account::{Self, SignerCapability};
     use std::signer;
 
-    friend townespace::batch_mint;
+    friend townespace::random_mint;
     friend townespace::token_migrate;
 
     /// Stores permission config such as SignerCapability for controlling the resource account.

@@ -128,6 +128,51 @@ module townespace::random_mint {
         event::emit(TokensForMintCreated { tokens });
     }
 
+    /// Entry Function to create composable tokens with soulbound traits for minting
+    public entry fun create_composable_tokens_with_soulbound_traits_for_mint<T: key>(
+        signer_ref: &signer,
+        collection: Object<Collection>,
+        description: String,
+        trait_type: String,
+        composable_type: String,
+        royalty_numerator: Option<u64>,
+        royalty_denominator: Option<u64>,
+        property_keys: vector<String>,
+        property_types: vector<String>,
+        property_values: vector<vector<u8>>,
+        folder_uri: String,
+        token_count: u64,
+        mint_price: u64
+    ) {
+        let (composable_tokens, trait_tokens, mint_info_obj, _) = create_composable_tokens_with_soulbound_traits_for_mint_internal<T>(
+            signer_ref,
+            collection,
+            description,
+            trait_type,
+            composable_type,
+            royalty_numerator,
+            royalty_denominator,
+            property_keys,
+            property_types,
+            property_values,
+            folder_uri,
+            token_count,
+            mint_price
+        );
+
+        // emit events
+        event::emit(
+            MintInfoInitialized {
+                collection: object::object_address(&collection),
+                mint_info_object_address: object::object_address(&mint_info_obj),
+                owner_addr: signer::address_of(signer_ref)
+            }
+        );
+
+        event::emit(TokensForMintCreated { tokens: composable_tokens });
+        event::emit(TokensForMintCreated { tokens: trait_tokens });
+    }
+
     /// Entry Function to mint tokens
     public entry fun mint_tokens<T: key>(
         signer_ref: &signer,

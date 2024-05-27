@@ -92,9 +92,7 @@ module townespace::random_mint {
         collection: Object<Collection>,
         description: String,
         name: String,
-        uri_with_index_prefix: vector<String>,
-        name_with_index_prefix: vector<String>,
-        name_with_index_suffix: vector<String>,
+        type: String,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
         property_keys: vector<String>,
@@ -102,16 +100,14 @@ module townespace::random_mint {
         property_values: vector<vector<u8>>,
         token_count: u64,
         folder_uri: String,
-        mint_price: vector<u64>
+        mint_price: u64
     ) { 
         let (tokens, mint_info_obj, _) = create_tokens_for_mint_internal<T>(
             signer_ref,
             collection,
             description,
             name,
-            uri_with_index_prefix,
-            name_with_index_prefix,
-            name_with_index_suffix,
+            type,
             royalty_numerator,
             royalty_denominator,
             property_keys,
@@ -151,9 +147,7 @@ module townespace::random_mint {
         mint_info_obj_addr: address,
         description: String,
         name: String,
-        uri_with_index_prefix: vector<String>,
-        name_with_index_prefix: vector<String>,
-        name_with_index_suffix: vector<String>,
+        type: String,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
         property_keys: vector<String>,
@@ -161,7 +155,7 @@ module townespace::random_mint {
         property_values: vector<vector<u8>>,
         folder_uri: String,
         token_count: u64,
-        mint_price: vector<u64>
+        mint_price: u64
     ) acquires MintInfo {
         add_tokens_for_mint_internal<T>(
             signer_ref,
@@ -169,9 +163,7 @@ module townespace::random_mint {
             mint_info_obj_addr,
             description,
             name,
-            uri_with_index_prefix,
-            name_with_index_prefix,
-            name_with_index_suffix,
+            type,
             royalty_numerator,
             royalty_denominator,
             property_keys,
@@ -193,15 +185,12 @@ module townespace::random_mint {
         signer_ref: &signer,
         collection: Object<Collection>,
         description: String,
-        name: String,
         // trait token related fields
-        trait_uri_with_index_prefix: vector<String>,
-        trait_name_with_index_prefix: vector<String>,
-        trait_name_with_index_suffix: vector<String>,
+        trait_name: String,
+        trait_type: String,
         // composable token related fields
-        uri_with_index_prefix: vector<String>,
-        name_with_index_prefix: vector<String>,
-        name_with_index_suffix: vector<String>,
+        composable_name: String,
+        composable_type: String,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
         property_keys: vector<String>,
@@ -209,11 +198,16 @@ module townespace::random_mint {
         property_values: vector<vector<u8>>,
         folder_uri: String,
         token_count: u64,
-        mint_price: vector<u64>,
+        mint_price: u64
     ): (vector<address>, vector<address>, Object<MintInfo<T>>, vector<object::ConstructorRef>) {
-        // assert token_count is matched with mint_price
-        assert!(vector::length(&mint_price) == token_count, ELENGTH_MISMATCH);
         
+        // prepare the vectors
+        let (
+            uri_with_index_prefix,
+            name_with_index_prefix,
+            name_with_index_suffix,
+            vec_mint_price,
+        ) = prepare_vecs(composable_name, composable_type, mint_price, token_count);
         // Build the object to hold the liquid token
         // This must be a sticky object (a non-deleteable object) to be fungible
         let (
@@ -228,7 +222,7 @@ module townespace::random_mint {
             obj_addr,
             collection,
             description,
-            name,
+            string::utf8(b""),
             uri_with_index_prefix,
             name_with_index_prefix,
             name_with_index_suffix,
@@ -245,10 +239,8 @@ module townespace::random_mint {
             signer_ref,
             collection,
             description,
-            name,
-            trait_uri_with_index_prefix,
-            trait_name_with_index_prefix,
-            trait_name_with_index_suffix,
+            trait_name,
+            trait_type,
             royalty_numerator,
             royalty_denominator,
             property_keys,
@@ -263,7 +255,7 @@ module townespace::random_mint {
         });
         let token_pool = smart_table::new<Object<Composable>, u64>();
         // add tokens and mint_price to the composable_token_pool
-        smart_table::add_all(&mut token_pool, tokens, mint_price);
+        smart_table::add_all(&mut token_pool, tokens, vec_mint_price);
         // Add the Metadata
         move_to(
             &object_signer, 
@@ -278,15 +270,48 @@ module townespace::random_mint {
         (tokens_addr, trait_tokens_addr, object::address_to_object(obj_addr), constructor_refs)
     }
 
+    /// Helper function to prepare the vectors for naming the NFTs
+    inline fun prepare_vecs(
+        name: String, 
+        type: String, 
+        mint_price: u64,
+        count: u64
+    ): (vector<String>, vector<String>, vector<String>, vector<u64>) {
+        let mint_uri_with_index_prefix = name;
+        let mint_name_with_index_prefix = name;
+
+        // e.g: Panda%20Background%20
+        string::append_utf8(&mut mint_uri_with_index_prefix, b"%20");
+        string::append(&mut mint_uri_with_index_prefix, type);
+        string::append_utf8(&mut mint_uri_with_index_prefix, b"%20");
+
+        // e.g: Panda Background #
+        string::append_utf8(&mut mint_name_with_index_prefix, b" ");
+        string::append(&mut mint_name_with_index_prefix, type);
+        string::append_utf8(&mut mint_name_with_index_prefix, b" #");
+
+        // prepare the vectors
+        let vec_mint_uri_with_index_prefix = vector::empty<String>();
+        let vec_mint_name_with_index_prefix = vector::empty<String>();
+        let vec_mint_name_with_index_suffix = vector::empty<String>();
+        let vec_mint_price = vector::empty<u64>();
+        for (i in 0..count) {
+            vector::push_back(&mut vec_mint_uri_with_index_prefix, mint_uri_with_index_prefix);
+            vector::push_back(&mut vec_mint_name_with_index_prefix, mint_name_with_index_prefix);
+            vector::push_back(&mut vec_mint_name_with_index_suffix, string::utf8(b""));
+            vector::push_back(&mut vec_mint_price, mint_price);
+        };
+
+        (vec_mint_uri_with_index_prefix, vec_mint_name_with_index_prefix, vec_mint_name_with_index_suffix, vec_mint_price)
+    }
+
     /// Helper function for creating tokens for minting
     public fun create_tokens_for_mint_internal<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
         description: String,
         name: String,
-        uri_with_index_prefix: vector<String>,
-        name_with_index_prefix: vector<String>,
-        name_with_index_suffix: vector<String>,
+        type: String,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
         property_keys: vector<String>,
@@ -294,10 +319,16 @@ module townespace::random_mint {
         property_values: vector<vector<u8>>,
         folder_uri: String,
         token_count: u64,
-        mint_price: vector<u64>
+        mint_price: u64,
     ): (vector<address>, Object<MintInfo<T>>, vector<object::ConstructorRef>) {
-        // assert token_count is matched with mint_price
-        assert!(vector::length(&mint_price) == token_count, ELENGTH_MISMATCH);
+
+        // prepare the vectors
+        let (
+            uri_with_index_prefix,
+            name_with_index_prefix,
+            name_with_index_suffix,
+            vec_mint_price,
+        ) = prepare_vecs(name, type, mint_price, token_count);
 
         // Build the object to hold the liquid token
         // This must be a sticky object (a non-deleteable object) to be fungible
@@ -328,7 +359,7 @@ module townespace::random_mint {
             );
             let composable_token_pool = smart_table::new<Object<Composable>, u64>();
             // add tokens and mint_price to the composable_token_pool
-            smart_table::add_all(&mut composable_token_pool, tokens, mint_price);
+            smart_table::add_all(&mut composable_token_pool, tokens, vec_mint_price);
             // Add the Metadata
             move_to(
                 &object_signer, 
@@ -362,7 +393,7 @@ module townespace::random_mint {
             );
             let trait_token_pool = smart_table::new();
             // add tokens and mint_price to the trait_pool
-            smart_table::add_all(&mut trait_token_pool, tokens, mint_price);
+            smart_table::add_all(&mut trait_token_pool, tokens, vec_mint_price);
             // Add the Metadata
             move_to(
                 &object_signer, 
@@ -395,7 +426,7 @@ module townespace::random_mint {
                 token_count
             );
             // add tokens and mint_price to the da_pool
-            smart_table::add_all(&mut da_pool, tokens, mint_price);
+            smart_table::add_all(&mut da_pool, tokens, vec_mint_price);
             // Add the Metadata
             move_to(
                 &object_signer, 
@@ -486,9 +517,7 @@ module townespace::random_mint {
         collection: Object<Collection>,
         description: String,
         name: String,
-        uri_with_index_prefix: vector<String>,
-        name_with_index_prefix: vector<String>,
-        name_with_index_suffix: vector<String>,
+        type: String,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
         property_keys: vector<String>,
@@ -500,6 +529,14 @@ module townespace::random_mint {
         let tokens = vector::empty<Object<T>>();
         let tokens_addr = vector::empty();
         let constructors = vector::empty<object::ConstructorRef>();
+
+        // prepare the vectors
+        let (
+            uri_with_index_prefix,
+            name_with_index_prefix,
+            name_with_index_suffix,
+            _,
+        ) = prepare_vecs(name, type, 0, token_count);
 
         // mint tokens
         for (i in 0..token_count) {
@@ -683,9 +720,7 @@ module townespace::random_mint {
         mint_info_obj_addr: address,
         description: String,
         name: String,
-        uri_with_index_prefix: vector<String>,
-        name_with_index_prefix: vector<String>,
-        name_with_index_suffix: vector<String>,
+        type: String,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
         property_keys: vector<String>,
@@ -693,9 +728,15 @@ module townespace::random_mint {
         property_values: vector<vector<u8>>,
         folder_uri: String,
         token_count: u64,
-        mint_price: vector<u64>
+        mint_price: u64
     ): vector<address> acquires MintInfo {
-        
+        // prepare the vectors
+        let (
+            uri_with_index_prefix,
+            name_with_index_prefix,
+            name_with_index_suffix,
+            vec_mint_price,
+        ) = prepare_vecs(name, type, mint_price, token_count);
         // creates tokens
         let tokens_addr = if (type_info::type_of<T>() == type_info::type_of<Composable>()) {
             let mint_info = borrow_global_mut<MintInfo<Composable>>(mint_info_obj_addr);
@@ -718,7 +759,7 @@ module townespace::random_mint {
                 token_count,
             );
             // add tokens and mint_price to the token_pool
-            smart_table::add_all(&mut mint_info.token_pool, tokens, mint_price);
+            smart_table::add_all(&mut mint_info.token_pool, tokens, vec_mint_price);
 
             tokens_addr
         } else if (type_info::type_of<T>() == type_info::type_of<Trait>()) {
@@ -742,7 +783,7 @@ module townespace::random_mint {
                 token_count
             );
             // add tokens and mint_price to the trait_pool
-            smart_table::add_all(&mut mint_info.token_pool, tokens, mint_price);
+            smart_table::add_all(&mut mint_info.token_pool, tokens, vec_mint_price);
 
             tokens_addr
         } else {
@@ -767,7 +808,7 @@ module townespace::random_mint {
             );
 
             // add tokens and mint_price to the da_pool
-            smart_table::add_all(&mut mint_info.token_pool, tokens, mint_price);
+            smart_table::add_all(&mut mint_info.token_pool, tokens, vec_mint_price);
 
             tokens_addr
         };
@@ -867,9 +908,7 @@ module townespace::random_mint {
             object::object_from_constructor_ref(&collection_constructor_ref),
             string::utf8(b"Description"),
             string::utf8(b"Name"),
-            vector[string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX)],
-            vector[string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX)],
-            vector[string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX)],
+            string::utf8(b"Type"),
             option::none(),
             option::none(),
             vector[],
@@ -877,7 +916,7 @@ module townespace::random_mint {
             vector[],
             string::utf8(b"Folder URI"),
             4,
-            vector[input_mint_price, input_mint_price, input_mint_price, input_mint_price]
+            input_mint_price
         );
 
         // minter mints tokens
@@ -917,9 +956,7 @@ module townespace::random_mint {
             object::object_address<MintInfo<Composable>>(&mint_info_obj),
             string::utf8(b"Description"),
             string::utf8(b"Name"),
-            vector[string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX)],
-            vector[string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX)],
-            vector[string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX)],
+            string::utf8(b"Type"),
             option::none(),
             option::none(),
             vector[],
@@ -927,7 +964,7 @@ module townespace::random_mint {
             vector[],
             string::utf8(b"Folder%20URI"),
             4,
-            vector[input_mint_price, input_mint_price, input_mint_price, input_mint_price]
+            input_mint_price
         );
 
         // mint the newly created tokens
@@ -995,15 +1032,12 @@ module townespace::random_mint {
             creator,
             object::object_from_constructor_ref(&collection_constructor_ref),
             string::utf8(b"Description"),
-            string::utf8(b"Name"),
             // trait token related fields
-            vector[string::utf8(TRAIT_URI_PREFIX), string::utf8(TRAIT_URI_PREFIX), string::utf8(TRAIT_URI_PREFIX), string::utf8(TRAIT_URI_PREFIX)],
-            vector[string::utf8(TRAIT_PREFIX), string::utf8(TRAIT_PREFIX), string::utf8(TRAIT_PREFIX), string::utf8(TRAIT_PREFIX)],
-            vector[string::utf8(TRAIT_SUFFIX), string::utf8(TRAIT_SUFFIX), string::utf8(TRAIT_SUFFIX), string::utf8(TRAIT_SUFFIX)],
+            string::utf8(b"Trait"),
+            string::utf8(b"type"),
             // composable token related fields
-            vector[string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX), string::utf8(URI_PREFIX)],
-            vector[string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX), string::utf8(PREFIX)],
-            vector[string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX), string::utf8(SUFFIX)],
+            string::utf8(b"Composable"),
+            string::utf8(b"type"),
             option::none(),
             option::none(),
             vector[],
@@ -1011,7 +1045,7 @@ module townespace::random_mint {
             vector[],
             string::utf8(b"Folder%20URI"),
             4,
-            vector[input_mint_price, input_mint_price, input_mint_price, input_mint_price]
+            input_mint_price
         );
 
         // assert trait tokens are soulbound to the composable tokens

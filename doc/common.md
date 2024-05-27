@@ -1,31 +1,31 @@
 
-<a id="0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_common"></a>
+<a id="0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_common"></a>
 
-# Module `0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4::common`
+# Module `0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de::common`
 
 
 
--  [Function `create_sticky_object`](#0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_common_create_sticky_object)
--  [Function `pseudorandom_u64`](#0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_common_pseudorandom_u64)
+-  [Function `create_sticky_object`](#0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_common_create_sticky_object)
+-  [Function `pseudorandom_u64`](#0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_common_pseudorandom_u64)
 
 
 <pre><code></code></pre>
 
 
 
-<a id="0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_common_create_sticky_object"></a>
+<a id="0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_common_create_sticky_object"></a>
 
 ## Function `create_sticky_object`
 
 Common logic for creating sticky object for the liquid NFTs
 
 
-<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="common.md#0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_common_create_sticky_object">create_sticky_object</a>(caller_address: <b>address</b>): (<a href="_ConstructorRef">object::ConstructorRef</a>, <a href="_ExtendRef">object::ExtendRef</a>, <a href="">signer</a>, <b>address</b>)
+<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="common.md#0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_common_create_sticky_object">create_sticky_object</a>(caller_address: <b>address</b>): (<a href="_ConstructorRef">object::ConstructorRef</a>, <a href="_ExtendRef">object::ExtendRef</a>, <a href="">signer</a>, <b>address</b>)
 </code></pre>
 
 
 
-<a id="0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_common_pseudorandom_u64"></a>
+<a id="0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_common_pseudorandom_u64"></a>
 
 ## Function `pseudorandom_u64`
 
@@ -37,5 +37,5 @@ number, which allows us to spin this multiple times in a single transaction.
 We use timestamp to ensure that people can't predict it.
 
 
-<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="common.md#0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_common_pseudorandom_u64">pseudorandom_u64</a>(size: u64): u64
+<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="common.md#0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_common_pseudorandom_u64">pseudorandom_u64</a>(size: u64): u64
 </code></pre>

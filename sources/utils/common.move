@@ -55,6 +55,8 @@ module townespace::common {
     use aptos_framework::coin;
     #[test_only]
     use aptos_std::math64::pow;
+    #[test_only]
+    friend townespace::batch_create;
 
     #[test_only]
     public(friend) fun setup_test(std: &signer, creator: &signer, collector: &signer): (address, address) {

@@ -5,6 +5,7 @@
         - create tokens ready for mint can be the same as in unveil
         - refactor module name; must be more accurate
         - Add a global storage for the tracking tokens supply per type
+        - Handle when the caller wants to mint more than it is available
 */
 
 module townespace::random_mint {
@@ -129,6 +130,7 @@ module townespace::random_mint {
     }
 
     /// Entry Function to create composable tokens with soulbound traits for minting
+    /// Should not accept generic types as it is designed for composable tokens
     public entry fun create_composable_tokens_with_soulbound_traits_for_mint<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
@@ -512,7 +514,7 @@ module townespace::random_mint {
             string::append(&mut token_uri, string_utils::to_string(&token_index));
             string::append_utf8(&mut token_uri, b".png");
 
-            let (constructor) = composable_token::create_token<T, Indexed>(
+            let constructor = composable_token::create_token<T, Indexed>(
                 signer_ref,
                 collection,
                 description,

@@ -1,12 +1,12 @@
 
-<a id="0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_studio"></a>
+<a id="0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_studio"></a>
 
-# Module `0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4::studio`
+# Module `0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de::studio`
 
 
 
--  [Struct `TokensCreated`](#0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_studio_TokensCreated)
--  [Function `mint_tokens`](#0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_studio_mint_tokens)
+-  [Struct `TokensCreated`](#0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_studio_TokensCreated)
+-  [Function `mint_tokens`](#0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_studio_mint_tokens)
 
 
 <pre><code><b>use</b> <a href="">0x1::event</a>;
@@ -20,24 +20,24 @@
 
 
 
-<a id="0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_studio_TokensCreated"></a>
+<a id="0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_studio_TokensCreated"></a>
 
 ## Struct `TokensCreated`
 
 
 
 <pre><code>#[<a href="">event</a>]
-<b>struct</b> <a href="studio.md#0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_studio_TokensCreated">TokensCreated</a> <b>has</b> drop, store
+<b>struct</b> <a href="studio.md#0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_studio_TokensCreated">TokensCreated</a> <b>has</b> drop, store
 </code></pre>
 
 
 
-<a id="0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_studio_mint_tokens"></a>
+<a id="0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_studio_mint_tokens"></a>
 
 ## Function `mint_tokens`
 
 Mint a batch of tokens
 
 
-<pre><code>entry <b>fun</b> <a href="studio.md#0xe88e538b1bdd6bc8dc40f20ec8a43554464e776198ae28f837904f5d7fa3e7e4_studio_mint_tokens">mint_tokens</a>&lt;T: key&gt;(signer_ref: &<a href="">signer</a>, <a href="">collection</a>: <a href="_Object">object::Object</a>&lt;<a href="_Collection">composable_token::Collection</a>&gt;, description: <a href="_String">string::String</a>, name: <a href="_String">string::String</a>, name_with_index_prefix: <a href="_String">string::String</a>, name_with_index_suffix: <a href="_String">string::String</a>, royalty_numerator: <a href="_Option">option::Option</a>&lt;u64&gt;, royalty_denominator: <a href="_Option">option::Option</a>&lt;u64&gt;, property_keys: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, property_types: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, property_values: <a href="">vector</a>&lt;<a href="">vector</a>&lt;u8&gt;&gt;, token_count: u64, folder_uri: <a href="_String">string::String</a>)
+<pre><code>entry <b>fun</b> <a href="studio.md#0x8ccfe7bf29ea35b26c2d42b1ff05acfbd6283ba5970bdb1ffca8110224adc5de_studio_mint_tokens">mint_tokens</a>&lt;T: key&gt;(signer_ref: &<a href="">signer</a>, <a href="">collection</a>: <a href="_Object">object::Object</a>&lt;<a href="_Collection">composable_token::Collection</a>&gt;, description: <a href="_String">string::String</a>, name: <a href="_String">string::String</a>, name_with_index_prefix: <a href="_String">string::String</a>, name_with_index_suffix: <a href="_String">string::String</a>, royalty_numerator: <a href="_Option">option::Option</a>&lt;u64&gt;, royalty_denominator: <a href="_Option">option::Option</a>&lt;u64&gt;, property_keys: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, property_types: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, property_values: <a href="">vector</a>&lt;<a href="">vector</a>&lt;u8&gt;&gt;, token_count: u64, folder_uri: <a href="_String">string::String</a>)
 </code></pre>

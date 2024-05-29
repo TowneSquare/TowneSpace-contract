@@ -36,7 +36,7 @@ module townespace::batch_create {
     public entry fun create_batch<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
-        description: String,
+        descriptions: vector<String>,
         uri_with_index_prefix: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
@@ -55,7 +55,7 @@ module townespace::batch_create {
         let constructor_refs = create_batch_tokens<T>(
             signer_ref,
             collection,
-            description,
+            descriptions,
             uri_with_index_prefix,
             name_with_index_prefix,
             name_with_index_suffix,
@@ -85,7 +85,7 @@ module townespace::batch_create {
     public fun create_batch_tokens<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
-        description: String,
+        descriptions: vector<String>,
         uri_with_index_prefix: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
@@ -99,6 +99,7 @@ module townespace::batch_create {
     ): vector<ConstructorRef> {
         let constructor_refs = vector::empty<ConstructorRef>();
         for (i in 0..count) {
+            let description = *vector::borrow<String>(&descriptions, i);
             let token_index = *option::borrow(&collection::count(collection)) + 1;
             let uri_with_index_prefix = *vector::borrow<String>(&uri_with_index_prefix, i);
             let name_with_index_prefix = *vector::borrow<String>(&name_with_index_prefix, i);
@@ -185,29 +186,35 @@ module townespace::batch_create {
         let constructor_refs = create_batch_tokens<Trait>(
             creator,
             object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
-            string::utf8(b"Token Description"),
             vector[
-                string::utf8(b"token%20cat"),
-                string::utf8(b"token%20dog"),
-                string::utf8(b"token%20horse"),
-                string::utf8(b"token%20bird"),
-                string::utf8(b"token%20fish")
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base")
             ],
             vector[
-                string::utf8(b"token_cat"), 
-                string::utf8(b"token_dog"), 
-                string::utf8(b"token_horse"),
-                string::utf8(b"token_bird"),
-                string::utf8(b"token_fish")
+                string::utf8(b"Cool%20Sloth"),
+                string::utf8(b"Cool%20Sloth"),
+                string::utf8(b"Cool%20Sloth"),
+                string::utf8(b"Cool%20Sloth"),
+                string::utf8(b"Cool%20Sloth")
             ],
             vector[
-                string::utf8(b"suffix"),
-                string::utf8(b"suffix"),
-                string::utf8(b"suffix"),
-                string::utf8(b"suffix"),
-                string::utf8(b"suffix")
+                string::utf8(b"Cool Sloth"), 
+                string::utf8(b"Cool Sloth"), 
+                string::utf8(b"Cool Sloth"),
+                string::utf8(b"Cool Sloth"),
+                string::utf8(b"Cool Sloth")
             ],
-            string::utf8(b"folder_uri"),
+            vector[
+                string::utf8(b""),
+                string::utf8(b""),
+                string::utf8(b""),
+                string::utf8(b""),
+                string::utf8(b"")
+            ],
+            string::utf8(b"https://bafybeifnhfsfugbsopnturkkhxsfwws3zhsrlnuv3e4ips4bcl4j6cszrq.ipfs.w3s.link"),
             5,
             option::none(),
             option::none(),
@@ -255,74 +262,81 @@ module townespace::batch_create {
         debug::print<String>(&token4_uri);
         debug::print<String>(&token5_uri);
 
-        // create more tokens
-        let constructor_refs2 = create_batch_tokens<Trait>(
-            creator,
-            object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
-            string::utf8(b"Token Description"),
-            vector[
-                string::utf8(b"token%20cat"),
-                string::utf8(b"token%20dog"),
-                string::utf8(b"token%20horse"),
-                string::utf8(b"token%20bird"),
-                string::utf8(b"token%20fish")
-            ],
-            vector[
-                string::utf8(b"token_cat"), 
-                string::utf8(b"token_dog"), 
-                string::utf8(b"token_horse"),
-                string::utf8(b"token_bird"),
-                string::utf8(b"token_fish")
-            ],
-            vector[
-                string::utf8(b"suffix"),
-                string::utf8(b"suffix"),
-                string::utf8(b"suffix"),
-                string::utf8(b"suffix"),
-                string::utf8(b"suffix")
-            ],
-            string::utf8(b"folder_uri"),
-            5,
-            option::none(),
-            option::none(),
-            vector::empty(),
-            vector::empty(),
-            vector::empty()
-        );
+        debug::print<String>(&string::utf8(b"Token desctiptions:"));
+        debug::print<String>(&token::description<Trait>(token1_obj));
+        debug::print<String>(&token::description<Trait>(token2_obj));
+        debug::print<String>(&token::description<Trait>(token3_obj));
+        debug::print<String>(&token::description<Trait>(token4_obj));
+        debug::print<String>(&token::description<Trait>(token5_obj));
+
+        // // create more tokens
+        // let constructor_refs2 = create_batch_tokens<Trait>(
+        //     creator,
+        //     object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+        //     string::utf8(b"Token Description"),
+        //     vector[
+        //         string::utf8(b"token%20cat"),
+        //         string::utf8(b"token%20dog"),
+        //         string::utf8(b"token%20horse"),
+        //         string::utf8(b"token%20bird"),
+        //         string::utf8(b"token%20fish")
+        //     ],
+        //     vector[
+        //         string::utf8(b"token_cat"), 
+        //         string::utf8(b"token_dog"), 
+        //         string::utf8(b"token_horse"),
+        //         string::utf8(b"token_bird"),
+        //         string::utf8(b"token_fish")
+        //     ],
+        //     vector[
+        //         string::utf8(b"suffix"),
+        //         string::utf8(b"suffix"),
+        //         string::utf8(b"suffix"),
+        //         string::utf8(b"suffix"),
+        //         string::utf8(b"suffix")
+        //     ],
+        //     string::utf8(b"folder_uri"),
+        //     5,
+        //     option::none(),
+        //     option::none(),
+        //     vector::empty(),
+        //     vector::empty(),
+        //     vector::empty()
+        // );
         
-        let token6_obj = object::object_from_constructor_ref(vector::borrow(&constructor_refs2, 0));
-        let token7_obj = object::object_from_constructor_ref(vector::borrow(&constructor_refs2, 1));
-        let token8_obj = object::object_from_constructor_ref(vector::borrow(&constructor_refs2, 2));
-        let token9_obj = object::object_from_constructor_ref(vector::borrow(&constructor_refs2, 3));
-        let token10_obj = object::object_from_constructor_ref(vector::borrow(&constructor_refs2, 4));
+        // let token6_obj = object::object_from_constructor_ref(vector::borrow(&constructor_refs2, 0));
+        // let token7_obj = object::object_from_constructor_ref(vector::borrow(&constructor_refs2, 1));
+        // let token8_obj = object::object_from_constructor_ref(vector::borrow(&constructor_refs2, 2));
+        // let token9_obj = object::object_from_constructor_ref(vector::borrow(&constructor_refs2, 3));
+        // let token10_obj = object::object_from_constructor_ref(vector::borrow(&constructor_refs2, 4));
 
-        // print names
-        let token6_name = token::name<Trait>(token6_obj);
-        let token7_name = token::name<Trait>(token7_obj);
-        let token8_name = token::name<Trait>(token8_obj);
-        let token9_name = token::name<Trait>(token9_obj);
-        let token10_name = token::name<Trait>(token10_obj);
+        // // print names
+        // let token6_name = token::name<Trait>(token6_obj);
+        // let token7_name = token::name<Trait>(token7_obj);
+        // let token8_name = token::name<Trait>(token8_obj);
+        // let token9_name = token::name<Trait>(token9_obj);
+        // let token10_name = token::name<Trait>(token10_obj);
 
-        // print uris
-        let token6_uri = token::uri<Trait>(token6_obj);
-        let token7_uri = token::uri<Trait>(token7_obj);
-        let token8_uri = token::uri<Trait>(token8_obj);
-        let token9_uri = token::uri<Trait>(token9_obj);
-        let token10_uri = token::uri<Trait>(token10_obj);
+        // // print uris
+        // let token6_uri = token::uri<Trait>(token6_obj);
+        // let token7_uri = token::uri<Trait>(token7_obj);
+        // let token8_uri = token::uri<Trait>(token8_obj);
+        // let token9_uri = token::uri<Trait>(token9_obj);
+        // let token10_uri = token::uri<Trait>(token10_obj);
 
-        debug::print<String>(&string::utf8(b"Added Token Names:"));
-        debug::print<String>(&token6_name);
-        debug::print<String>(&token7_name);
-        debug::print<String>(&token8_name);
-        debug::print<String>(&token9_name);
-        debug::print<String>(&token10_name);
+        // debug::print<String>(&string::utf8(b"Added Token Names:"));
+        // debug::print<String>(&token6_name);
+        // debug::print<String>(&token7_name);
+        // debug::print<String>(&token8_name);
+        // debug::print<String>(&token9_name);
+        // debug::print<String>(&token10_name);
 
-        debug::print<String>(&string::utf8(b"Added Token URIs:"));
-        debug::print<String>(&token6_uri);
-        debug::print<String>(&token7_uri);
-        debug::print<String>(&token8_uri);
-        debug::print<String>(&token9_uri);
-        debug::print<String>(&token10_uri);
+        // debug::print<String>(&string::utf8(b"Added Token URIs:"));
+        // debug::print<String>(&token6_uri);
+        // debug::print<String>(&token7_uri);
+        // debug::print<String>(&token8_uri);
+        // debug::print<String>(&token9_uri);
+        // debug::print<String>(&token10_uri);
     }
 
 

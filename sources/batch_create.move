@@ -48,6 +48,7 @@ module townespace::batch_create {
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
     ) {
+        assert!(count == vector::length(&descriptions), ELENGTH_MISMATCH);
         assert!(count == vector::length(&uri_with_index_prefix), ELENGTH_MISMATCH);
         assert!(count == vector::length(&name_with_index_prefix), ELENGTH_MISMATCH);
         assert!(count == vector::length(&name_with_index_suffix), ELENGTH_MISMATCH);

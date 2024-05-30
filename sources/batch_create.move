@@ -51,7 +51,7 @@ module townespace::batch_create {
         assert!(count == vector::length(&descriptions), ELENGTH_MISMATCH);
         assert!(count == vector::length(&uri_with_index_prefix), ELENGTH_MISMATCH);
         assert!(count == vector::length(&name_with_index_prefix), ELENGTH_MISMATCH);
-        assert!(count == vector::length(&name_with_index_suffix), ELENGTH_MISMATCH);
+        // assert!(count == vector::length(&name_with_index_suffix), ELENGTH_MISMATCH);
 
         let constructor_refs = create_batch_tokens<T>(
             signer_ref,
@@ -104,7 +104,7 @@ module townespace::batch_create {
             let token_index = *option::borrow(&collection::count(collection)) + 1;
             let uri_with_index_prefix = *vector::borrow<String>(&uri_with_index_prefix, i);
             let name_with_index_prefix = *vector::borrow<String>(&name_with_index_prefix, i);
-            let name_with_index_suffix = *vector::borrow<String>(&name_with_index_suffix, i);
+            // let name_with_index_suffix = *vector::borrow<String>(&name_with_index_suffix, i);
             // token uri: folder_uri + "/" + "prefix" + "%20" + "%23" + i + ".png"
             let token_uri = folder_uri;
             string::append_utf8(&mut token_uri, b"/");
@@ -116,16 +116,16 @@ module townespace::batch_create {
             
             // token name: prefix + # + index + suffix
             let prefix = name_with_index_prefix;
-            let suffix = string::utf8(b" ");
+            let suffix = string::utf8(b"");
             string::append_utf8(&mut prefix, b" #");
-            string::append(&mut suffix, name_with_index_suffix);
+            // string::append(&mut suffix, name_with_index_suffix);
             let constructor = composable_token::create_token<T, Indexed>(
                 signer_ref,
                 collection,
                 description,
                 string::utf8(b""),
                 prefix,
-                suffix,
+                string::utf8(b""),
                 token_uri,
                 royalty_numerator,
                 royalty_denominator,
@@ -157,7 +157,6 @@ module townespace::batch_create {
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
     fun test_e2e(std: &signer, creator: &signer, minter: &signer) {
-        let input_mint_price = 1000;
 
         let (creator_addr, _) = common::setup_test(std, creator, minter);
         // debug::print<u64>(&coin::balance<APT>(creator_addr));
@@ -211,9 +210,9 @@ module townespace::batch_create {
             vector[
                 string::utf8(b""),
                 string::utf8(b""),
-                string::utf8(b""),
-                string::utf8(b""),
-                string::utf8(b"")
+                // string::utf8(b""),
+                // string::utf8(b""),
+                // string::utf8(b"")
             ],
             string::utf8(b"https://bafybeifnhfsfugbsopnturkkhxsfwws3zhsrlnuv3e4ips4bcl4j6cszrq.ipfs.w3s.link"),
             5,

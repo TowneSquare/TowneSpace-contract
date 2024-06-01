@@ -116,7 +116,7 @@ module townespace::batch_create {
             
             // token name: prefix + # + index + suffix
             let prefix = name_with_index_prefix;
-            let suffix = string::utf8(b"");
+            // let suffix = string::utf8(b"");
             string::append_utf8(&mut prefix, b" #");
             // string::append(&mut suffix, name_with_index_suffix);
             let constructor = composable_token::create_token<T, Indexed>(

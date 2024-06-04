@@ -3,7 +3,7 @@
     TODO:
 */
 
-module townespace::batch_create {
+module townespace::batch_mint {
 
     use aptos_framework::event;
     use aptos_framework::object::{Self, ConstructorRef, Object};
@@ -48,12 +48,7 @@ module townespace::batch_create {
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
     ) {
-        assert!(count == vector::length(&descriptions), ELENGTH_MISMATCH);
-        assert!(count == vector::length(&uri_with_index_prefix), ELENGTH_MISMATCH);
-        assert!(count == vector::length(&name_with_index_prefix), ELENGTH_MISMATCH);
-        // assert!(count == vector::length(&name_with_index_suffix), ELENGTH_MISMATCH);
-
-        let constructor_refs = create_batch_tokens<T>(
+        let constructor_refs = create_batch_internal<T>(
             signer_ref,
             collection,
             descriptions,
@@ -83,7 +78,7 @@ module townespace::batch_create {
     // -------
 
     /// Helper function for creating a batch of tokens
-    public fun create_batch_tokens<T: key>(
+    public fun create_batch_internal<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
         descriptions: vector<String>,
@@ -98,6 +93,11 @@ module townespace::batch_create {
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
     ): vector<ConstructorRef> {
+        assert!(count == vector::length(&descriptions), ELENGTH_MISMATCH);
+        assert!(count == vector::length(&uri_with_index_prefix), ELENGTH_MISMATCH);
+        assert!(count == vector::length(&name_with_index_prefix), ELENGTH_MISMATCH);
+        // assert!(count == vector::length(&name_with_index_suffix), ELENGTH_MISMATCH);
+
         let constructor_refs = vector::empty<ConstructorRef>();
         for (i in 0..count) {
             let description = *vector::borrow<String>(&descriptions, i);
@@ -183,7 +183,7 @@ module townespace::batch_create {
 
     
         // creator creates a batch of tokens
-        let constructor_refs = create_batch_tokens<Trait>(
+        let constructor_refs = create_batch_internal<Trait>(
             creator,
             object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
             vector[
@@ -270,7 +270,7 @@ module townespace::batch_create {
         debug::print<String>(&token::description<Trait>(token5_obj));
 
         // // create more tokens
-        // let constructor_refs2 = create_batch_tokens<Trait>(
+        // let constructor_refs2 = create_batch<Trait>(
         //     creator,
         //     object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
         //     string::utf8(b"Token Description"),

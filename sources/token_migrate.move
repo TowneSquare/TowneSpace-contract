@@ -14,7 +14,6 @@
         - Does not work on soulbound tokens.
 
     TODO: 
-        - add royalty support.
         - add support to migrate NFTs to composable.
         - add support to migrate digital assets to composable.
         - add support to batch migrate.
@@ -25,15 +24,15 @@
 module townespace::token_migrate {
 
     use aptos_framework::event;
-    use aptos_framework::object;
+    use aptos_framework::object::{Self, Object};
     use aptos_token::token as token_v1;
     use aptos_token_objects::collection;
-    use aptos_token_objects::token as token_v2;
-
+    // use aptos_token_objects::token as token_v2;
+    use composable_token::composable_token::{Self, Collection, Composable, Named};
+    use composable_token::studio;
     use std::option;
     use std::signer;
     use std::string::{Self, String};
-
     use townespace::resource_manager;
 
     #[event]
@@ -42,22 +41,28 @@ module townespace::token_migrate {
         new_token_address: address,
     }
 
-    public entry fun init(signer_ref: &signer, uri: String) {
-        // assert signer is composable_token
-        assert!(signer::address_of(signer_ref) == @townespace, 1);
+    fun init_module(signer_ref: &signer) {
         // create a collection with unlimited supply
-        collection::create_unlimited_collection(
+        studio::create_collection_with_unlimited_supply_and_no_royalty(
             &resource_manager::resource_signer(),
             string::utf8(b"transform your NFTv1 into NFTv2"),
             string::utf8(b"Migrated NFTs"),
-            option::none(),
-            uri
+            string::utf8(b"MGRT"), 
+            string::utf8(b"uri"),
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
         );
     }
 
     // by owner
-    public entry fun from_v1_to_v2_by_owner(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64) {
-        let (old_token_id, token_addr) = from_v1_to_v2_by_owner_internal(signer_ref, creator_addr, collection_name, token_name, property_version);
+    public entry fun from_v1_to_v2_by_owner(signer_ref: &signer, creator_addr: address, collection_obj: Object<Collection>, token_name: String, property_version: u64) {
+        let (old_token_id, token_addr) = from_v1_to_v2_by_owner_internal(signer_ref, creator_addr, collection_obj, token_name, property_version);
         event::emit<TokenMigratedFromV1toV2>(
             TokenMigratedFromV1toV2 {
                 old_token_id: old_token_id,
@@ -67,8 +72,8 @@ module townespace::token_migrate {
     }
 
     // by creator
-    public entry fun from_v1_to_v2_by_creator(creator_signer_ref: &signer, owner_addr: address, collection_name: String, token_name: String, property_version: u64) {
-        let (old_token_id, token_addr) = from_v1_to_v2_by_creator_internal(creator_signer_ref, owner_addr, collection_name, token_name, property_version);
+    public entry fun from_v1_to_v2_by_creator(creator_signer_ref: &signer, owner_addr: address, collection_obj: Object<Collection>, token_name: String, property_version: u64) {
+        let (old_token_id, token_addr) = from_v1_to_v2_by_creator_internal(creator_signer_ref, owner_addr, collection_obj, token_name, property_version);
         event::emit<TokenMigratedFromV1toV2>(
             TokenMigratedFromV1toV2 {
                 old_token_id: old_token_id,
@@ -77,58 +82,82 @@ module townespace::token_migrate {
         )
     }
 
-    fun from_v1_to_v2_by_owner_internal(signer_ref: &signer, creator_addr: address, collection_name: String, token_name: String, property_version: u64): (token_v1::TokenId, address) {
+    fun from_v1_to_v2_by_owner_internal(
+        signer_ref: &signer, 
+        creator_addr: address, 
+        collection_obj: Object<Collection>, 
+        token_name: String, 
+        property_version: u64
+    ): (token_v1::TokenId, address) {
         let signer_addr = signer::address_of(signer_ref);
         // get the token metadata
+        let collection_name = collection::name<Collection>(collection_obj);
         let token_id = token_v1::create_token_id_raw(creator_addr, collection_name, token_name, property_version);
         let token_data_id = token_v1::create_token_data_id(creator_addr, collection_name, token_name);
         let token_description = token_v1::get_tokendata_description(token_data_id);
         let token_uri = token_v1::get_tokendata_uri(creator_addr, token_data_id);
-        // TODO: if token has royalty, get it
 
         // mint a new token v2 with the metadata
-        let constructor_ref = token_v2::create(
+        let constructor = composable_token::create_token<Composable, Named>(
             &resource_manager::resource_signer(), 
-            string::utf8(b"Migrated NFTs"),
+            collection_obj,
             token_description,
             token_name,
-            option::none(), // TODO: add royalty if applicable
-            token_uri
+            string::utf8(b""),
+            string::utf8(b""),
+            token_uri,
+            option::none(),
+            option::none(),
+            vector[],
+            vector[],
+            vector[],
         );
         // transfer it to the signer
-        let new_token_obj = object::object_from_constructor_ref<token_v2::Token>(&constructor_ref);
-        object::transfer<token_v2::Token>(&resource_manager::resource_signer(), new_token_obj, signer_addr);
+        let new_token_obj = object::object_from_constructor_ref<Composable>(&constructor);
+        object::transfer<Composable>(&resource_manager::resource_signer(), new_token_obj, signer_addr);
         // burn the token v1
         token_v1::burn(signer_ref, creator_addr, collection_name, token_name, property_version, 1);
 
-        (token_id, object::object_address<token_v2::Token>(&new_token_obj))
+        (token_id, object::object_address<Composable>(&new_token_obj))
     }
 
-    fun from_v1_to_v2_by_creator_internal(creator_signer_ref: &signer, owner_addr: address, collection_name: String, token_name: String, property_version: u64): (token_v1::TokenId, address) {
+    fun from_v1_to_v2_by_creator_internal(
+        creator_signer_ref: &signer, 
+        owner_addr: address, 
+        collection_obj: Object<Collection>, 
+        token_name: String, 
+        property_version: u64
+    ): (token_v1::TokenId, address) {
         let creator_addr = signer::address_of(creator_signer_ref);
         // get the token metadata
+        let collection_name = collection::name<Collection>(collection_obj);
         let token_id = token_v1::create_token_id_raw(creator_addr, collection_name, token_name, property_version);
         let token_data_id = token_v1::create_token_data_id(creator_addr, collection_name, token_name);
         let token_description = token_v1::get_tokendata_description(token_data_id);
         let token_uri = token_v1::get_tokendata_uri(creator_addr, token_data_id);
-        // TODO: if token has royalty, get it
        
         // mint a new token v2 with the metadata
-        let constructor_ref = token_v2::create(
+        let constructor = composable_token::create_token<Composable, Named>(
             creator_signer_ref, 
-            string::utf8(b"Migrated NFTs"),
+            collection_obj,
             token_description,
             token_name,
-            option::none(), // TODO: add royalty if applicable
-            token_uri
+            string::utf8(b""),
+            string::utf8(b""),
+            token_uri,
+            option::none(),
+            option::none(),
+            vector[],
+            vector[],
+            vector[],
         );
         // transfer it to the owner
-        let new_token_obj = object::object_from_constructor_ref<token_v2::Token>(&constructor_ref);
-        object::transfer<token_v2::Token>(creator_signer_ref, new_token_obj, owner_addr);
+        let new_token_obj = object::object_from_constructor_ref<Composable>(&constructor);
+        object::transfer<Composable>(creator_signer_ref, new_token_obj, owner_addr);
         // burn the token v1
         token_v1::burn_by_creator(creator_signer_ref, owner_addr, collection_name, token_name, property_version, 1);
 
-        (token_id, object::object_address<token_v2::Token>(&new_token_obj))
+        (token_id, object::object_address<Composable>(&new_token_obj))
     }
         
     #[test_only]
@@ -140,12 +169,36 @@ module townespace::token_migrate {
 
     #[test_only]
     public fun collection_name(): String {
-        string::utf8(b"test collection")
+        string::utf8(b"Migrated NFTs")
     }
 
     #[test_only]
     public fun token_name(): String {
         string::utf8(b"test token")
+    }
+
+    #[test_only]
+    fun test_init(signer_ref: &signer): object::ConstructorRef {
+        resource_manager::initialize(signer_ref);
+        composable_token::create_collection<collection::UnlimitedSupply>(
+            &resource_manager::resource_signer(),
+            string::utf8(b"transform your NFTv1 into NFTv2"),
+            option::none(),
+            string::utf8(b"Migrated NFTs"),
+            string::utf8(b"MGRT"), 
+            string::utf8(b"uri"),
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            option::none(),
+            option::none(),
+        )
     }
 
     #[test_only]
@@ -194,12 +247,6 @@ module townespace::token_migrate {
         token_v1::create_token_id_raw(signer::address_of(creator), collection_name(), token_name(), 0)
     }
 
-    #[test_only]
-    public fun init_test(signer_ref: &signer, uri: String) {
-        resource_manager::initialize(signer_ref);
-        init(signer_ref, uri);
-    }
-
     const BURNABLE_BY_CREATOR: vector<u8> = b"TOKEN_BURNABLE_BY_CREATOR";
     const BURNABLE_BY_OWNER: vector<u8> = b"TOKEN_BURNABLE_BY_OWNER";
 
@@ -213,7 +260,7 @@ module townespace::token_migrate {
         // auid and events
         // features::change_feature_flags(std, vector[23, 26], vector[]);
         account::create_account_for_test(signer::address_of(ts));
-        init_test(ts, string::utf8(b"test uri"));
+        let collection_constructor = test_init(ts);
         account::create_account_for_test(signer::address_of(alice));
         account::create_account_for_test(signer::address_of(creator));
         // create token v1
@@ -236,12 +283,17 @@ module townespace::token_migrate {
         // token_v1::direct_deposit_with_opt_in(signer::address_of(alice), token);
         token_v1::transfer(creator, token_id, signer::address_of(alice), 1);
         // migrate it to v2
-        let (_, token_v2_addr) = from_v1_to_v2_by_owner_internal(alice, signer::address_of(creator), collection_name(), token_name(), 0);
+        let (_, token_v2_addr) = from_v1_to_v2_by_owner_internal(
+            alice, 
+            signer::address_of(creator),
+            object::object_from_constructor_ref<Collection>(&collection_constructor),
+            token_name(), 
+            0
+        );
         // assert token v1 is burned
         assert!(token_v1::balance_of(signer::address_of(alice), token_id) == 0, 2);
-        // TODO: explore more explicit way to check if token is burned
         // assert token v2 is minted
-        // assert!(object::object_exists<token_v2::Token>(&token_v2_addr), 3);
+        // assert!(object::object_exists<Composable>(&token_v2_addr), 3);
         assert!(object::is_object(token_v2_addr), 3);
     }
 }

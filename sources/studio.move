@@ -13,6 +13,7 @@ module townespace::studio {
     use aptos_framework::event;
     use aptos_framework::object::{Self, Object};
     use aptos_token_objects::collection;
+    use aptos_token_objects::token::{Token};
     use composable_token::composable_token::{Self, Collection, Indexed};
     use std::option::{Self, Option};
     use std::string::{Self, String};
@@ -111,5 +112,26 @@ module townespace::studio {
         };
 
         (tokens, tokens_addr)
+    }
+
+
+    // -----------
+    // Public APIs
+    // -----------
+
+    #[view]
+    /// Gets a wallet address plus a list of token addresses, and returns only the owned tokens.
+    public fun owned_tokens(wallet_addr: address, token_addrs: vector<address>): vector<address> {
+        let owned_tokens = vector::empty<address>();
+        for (i in 0..vector::length(&token_addrs)) {
+            // get the object
+            let token_obj = object::address_to_object<Token>(*vector::borrow(&token_addrs, i));
+            // if true, push to owned_tokens
+            if (object::is_owner<Token>(token_obj, wallet_addr)) {
+                vector::push_back(&mut owned_tokens, *vector::borrow(&token_addrs, i));
+            }
+        };
+
+        owned_tokens
     }
 }

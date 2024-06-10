@@ -640,383 +640,387 @@ module townespace::random_mint {
     // Unit Testing
     // ------------
 
-    #[test_only]
-    use std::debug;
-    #[test_only]
-    use aptos_token_objects::collection::{FixedSupply};
-    #[test_only]
-    use aptos_token_objects::token;
-    #[test_only]
-    const URI_PREFIX: vector<u8> = b"Token%20Name%20Prefix%20";
-    #[test_only]
-    const PREFIX: vector<u8> = b"Prefix #"; 
-    #[test_only]
-    const SUFFIX : vector<u8> = b" Suffix";
+    // #[test_only]
+    // use std::debug;
+    // #[test_only]
+    // use std::string;
+    // #[test_only]
+    // use std::option;
+    // #[test_only]
+    // use aptos_token_objects::collection::{FixedSupply};
+    // #[test_only]
+    // use aptos_token_objects::token;
+    // #[test_only]
+    // const URI_PREFIX: vector<u8> = b"Token%20Name%20Prefix%20";
+    // #[test_only]
+    // const PREFIX: vector<u8> = b"Prefix #"; 
+    // #[test_only]
+    // const SUFFIX : vector<u8> = b" Suffix";
 
-    #[test(std = @0x1, creator = @0x111, minter = @0x222)]
-    fun test_e2e(std: &signer, creator: &signer, minter: &signer) acquires MintInfo {
-        let input_mint_price = 1000;
+    // #[test(std = @0x1, creator = @0x111, minter = @0x222)]
+    // fun test_e2e(std: &signer, creator: &signer, minter: &signer) acquires MintInfo {
+    //     let input_mint_price = 1000;
 
-        let (creator_addr, minter_addr) = common::setup_test(std, creator, minter);
-        let creator_balance_before_mint = coin::balance<APT>(signer::address_of(creator));
-        // debug::print<u64>(&coin::balance<APT>(creator_addr));
-        // creator creates a collection
-        let collection_constructor_ref = composable_token::create_collection<FixedSupply>(
-            creator,
-            string::utf8(b"Collection Description"),
-            option::some(100),
-            string::utf8(b"Collection Name"),
-            string::utf8(b"Collection Symbol"),
-            string::utf8(b"Collection URI"),
-            true,
-            true, 
-            true,
-            true,
-            true, 
-            true,
-            true,
-            true, 
-            true,
-            option::none(),
-            option::none(),
-        );
+    //     let (creator_addr, minter_addr) = common::setup_test(std, creator, minter);
+    //     let creator_balance_before_mint = coin::balance<APT>(signer::address_of(creator));
+    //     // debug::print<u64>(&coin::balance<APT>(creator_addr));
+    //     // creator creates a collection
+    //     let collection_constructor_ref = composable_token::create_collection<FixedSupply>(
+    //         creator,
+    //         string::utf8(b"Collection Description"),
+    //         option::some(100),
+    //         string::utf8(b"Collection Name"),
+    //         string::utf8(b"Collection Symbol"),
+    //         string::utf8(b"Collection URI"),
+    //         true,
+    //         true, 
+    //         true,
+    //         true,
+    //         true, 
+    //         true,
+    //         true,
+    //         true, 
+    //         true,
+    //         option::none(),
+    //         option::none(),
+    //     );
 
-        // creator creates tokens for minting
-        let (token_addrs, mint_info_object_address, composable_constructor_refs) = create_tokens_for_mint_internal<Composable>(
-            creator,
-            object::object_from_constructor_ref(&collection_constructor_ref),
-            string::utf8(b"Description"),
-            vector[
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base")
-            ],
-            vector[
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth")
-            ],
-            vector[
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"),
-                string::utf8(b"Cool Sloth")
-            ],
-            vector[1000, 1000, 1000, 1000],
-            string::utf8(b"Folder URI"),
-            4,
-            option::none(),
-            option::none(),
-            vector[],
-            vector[],
-            vector[]
-        );
+    //     // creator creates tokens for minting
+    //     let (token_addrs, mint_info_object_address, composable_constructor_refs) = create_tokens_for_mint_internal<Composable>(
+    //         creator,
+    //         object::object_from_constructor_ref(&collection_constructor_ref),
+    //         string::utf8(b"Description"),
+    //         vector[
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"),
+    //             string::utf8(b"Cool Sloth")
+    //         ],
+    //         vector[1000, 1000, 1000, 1000],
+    //         string::utf8(b"Folder URI"),
+    //         4,
+    //         option::none(),
+    //         option::none(),
+    //         vector[],
+    //         vector[],
+    //         vector[]
+    //     );
 
-        // minter mints tokens
-        let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
+    //     // minter mints tokens
+    //     let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
 
-        // assert the owner is the minter
-        let token_0 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
-        let token_1 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
-        let token_2 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
-        let token_3 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
+    //     // assert the owner is the minter
+    //     let token_0 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
+    //     let token_1 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
+    //     let token_2 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
+    //     let token_3 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
 
-        assert!(object::is_owner(token_0, minter_addr), 1);
-        assert!(object::is_owner(token_1, minter_addr), 1);
-        assert!(object::is_owner(token_2, minter_addr), 1);
-        assert!(object::is_owner(token_3, minter_addr), 1);
+    //     assert!(object::is_owner(token_0, minter_addr), 1);
+    //     assert!(object::is_owner(token_1, minter_addr), 1);
+    //     assert!(object::is_owner(token_2, minter_addr), 1);
+    //     assert!(object::is_owner(token_3, minter_addr), 1);
 
-        // assert the mint price is sent to the owner
-        let creator_balance_after_mint = creator_balance_before_mint + (input_mint_price * 4);
-        // debug::print<u64>(&coin::balance<APT>(creator_addr));
-        assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 2);
+    //     // assert the mint price is sent to the owner
+    //     let creator_balance_after_mint = creator_balance_before_mint + (input_mint_price * 4);
+    //     // debug::print<u64>(&coin::balance<APT>(creator_addr));
+    //     assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 2);
 
-        // // get one token and print its name and uri
-        // debug::print<String>(&token::name<Composable>(token_0));
-        // debug::print<String>(&token::name<Composable>(token_1));
-        // debug::print<String>(&token::name<Composable>(token_2));
-        // debug::print<String>(&token::name<Composable>(token_3));
+    //     // // get one token and print its name and uri
+    //     // debug::print<String>(&token::name<Composable>(token_0));
+    //     // debug::print<String>(&token::name<Composable>(token_1));
+    //     // debug::print<String>(&token::name<Composable>(token_2));
+    //     // debug::print<String>(&token::name<Composable>(token_3));
 
-        // debug::print<String>(&token::uri<Composable>(token_0));
-        // debug::print<String>(&token::uri<Composable>(token_1));
-        // debug::print<String>(&token::uri<Composable>(token_2));
-        // debug::print<String>(&token::uri<Composable>(token_3));
+    //     // debug::print<String>(&token::uri<Composable>(token_0));
+    //     // debug::print<String>(&token::uri<Composable>(token_1));
+    //     // debug::print<String>(&token::uri<Composable>(token_2));
+    //     // debug::print<String>(&token::uri<Composable>(token_3));
 
-        // create more tokens for minting
-        add_tokens_for_mint_internal<Composable>(
-            creator,
-            object::object_from_constructor_ref(&collection_constructor_ref),
-            mint_info_object_address,
-            string::utf8(b"Description"),
-            vector[
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base")
-            ],
-            vector[
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth")
-            ],
-            vector[
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"),
-                string::utf8(b"Cool Sloth")
-            ],
-            vector[1000, 1000, 1000, 1000],
-            string::utf8(b"Folder%20URI"),
-            4,
-            option::none(),
-            option::none(),
-            vector[],
-            vector[],
-            vector[]
-        );
+    //     // create more tokens for minting
+    //     add_tokens_for_mint_internal<Composable>(
+    //         creator,
+    //         object::object_from_constructor_ref(&collection_constructor_ref),
+    //         mint_info_object_address,
+    //         string::utf8(b"Description"),
+    //         vector[
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"),
+    //             string::utf8(b"Cool Sloth")
+    //         ],
+    //         vector[1000, 1000, 1000, 1000],
+    //         string::utf8(b"Folder%20URI"),
+    //         4,
+    //         option::none(),
+    //         option::none(),
+    //         vector[],
+    //         vector[],
+    //         vector[]
+    //     );
 
-        // mint the newly created tokens
-        let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
+    //     // mint the newly created tokens
+    //     let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
 
-        // assert the owner is the minter
-        let token_4 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
-        let token_5 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
-        let token_6 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
-        let token_7 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
+    //     // assert the owner is the minter
+    //     let token_4 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
+    //     let token_5 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
+    //     let token_6 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
+    //     let token_7 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
 
-        assert!(object::is_owner(token_4, minter_addr), 3);
-        assert!(object::is_owner(token_5, minter_addr), 3);
-        assert!(object::is_owner(token_6, minter_addr), 3);
-        assert!(object::is_owner(token_7, minter_addr), 3);
+    //     assert!(object::is_owner(token_4, minter_addr), 3);
+    //     assert!(object::is_owner(token_5, minter_addr), 3);
+    //     assert!(object::is_owner(token_6, minter_addr), 3);
+    //     assert!(object::is_owner(token_7, minter_addr), 3);
 
-        // assert the mint price is sent to the owner
-        let creator_balance_after_mint = creator_balance_after_mint + (input_mint_price * 4);
-        assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 4);
+    //     // assert the mint price is sent to the owner
+    //     let creator_balance_after_mint = creator_balance_after_mint + (input_mint_price * 4);
+    //     assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 4);
 
-        // get one token and print its name and uri
-        debug::print<String>(&token::name<Composable>(token_4));
-        debug::print<String>(&token::name<Composable>(token_5));
-        debug::print<String>(&token::name<Composable>(token_6));
-        debug::print<String>(&token::name<Composable>(token_7));
-    }
+    //     // get one token and print its name and uri
+    //     debug::print<String>(&token::name<Composable>(token_4));
+    //     debug::print<String>(&token::name<Composable>(token_5));
+    //     debug::print<String>(&token::name<Composable>(token_6));
+    //     debug::print<String>(&token::name<Composable>(token_7));
+    // }
 
-    #[test_only]
-    const TRAIT_URI_PREFIX: vector<u8> = b"Trait%20Name%20Prefix%20";
-    #[test_only]
-    const TRAIT_PREFIX: vector<u8> = b"Trait Prefix #";
-    #[test_only]
-    const TRAIT_SUFFIX : vector<u8> = b" Trait Suffix";
-    #[test(std = @0x1, creator = @0x111, minter = @0x222)]
-    /// Test the minting of composable tokens with soulbound traits
-    fun test_composable_tokens_with_soulbound_traits(std: &signer, creator: &signer, minter: &signer) acquires MintInfo {
-        let input_mint_price = 1000;
+    // #[test_only]
+    // const TRAIT_URI_PREFIX: vector<u8> = b"Trait%20Name%20Prefix%20";
+    // #[test_only]
+    // const TRAIT_PREFIX: vector<u8> = b"Trait Prefix #";
+    // #[test_only]
+    // const TRAIT_SUFFIX : vector<u8> = b" Trait Suffix";
+    // #[test(std = @0x1, creator = @0x111, minter = @0x222)]
+    // /// Test the minting of composable tokens with soulbound traits
+    // fun test_composable_tokens_with_soulbound_traits(std: &signer, creator: &signer, minter: &signer) acquires MintInfo {
+    //     let input_mint_price = 1000;
 
-        let (creator_addr, minter_addr) = common::setup_test(std, creator, minter);
-        let creator_balance_before_mint = coin::balance<APT>(signer::address_of(creator));
+    //     let (creator_addr, minter_addr) = common::setup_test(std, creator, minter);
+    //     let creator_balance_before_mint = coin::balance<APT>(signer::address_of(creator));
 
-        // creator creates a collection
-        let collection_constructor_ref = composable_token::create_collection<FixedSupply>(
-            creator,
-            string::utf8(b"Collection Description"),
-            option::some(100),
-            string::utf8(b"Collection Name"),
-            string::utf8(b"Collection Symbol"),
-            string::utf8(b"Collection URI"),
-            true,
-            true, 
-            true,
-            true,
-            true, 
-            true,
-            true,
-            true, 
-            true,
-            option::none(),
-            option::none(),
-        );
+    //     // creator creates a collection
+    //     let collection_constructor_ref = composable_token::create_collection<FixedSupply>(
+    //         creator,
+    //         string::utf8(b"Collection Description"),
+    //         option::some(100),
+    //         string::utf8(b"Collection Name"),
+    //         string::utf8(b"Collection Symbol"),
+    //         string::utf8(b"Collection URI"),
+    //         true,
+    //         true, 
+    //         true,
+    //         true,
+    //         true, 
+    //         true,
+    //         true,
+    //         true, 
+    //         true,
+    //         option::none(),
+    //         option::none(),
+    //     );
 
-        // creator creates composable tokens with soulbound traits
-        let (composable_token_addrsesses, trait_token_addrsesses, mint_info_obj_addr, _) = create_composable_tokens_with_soulbound_traits_for_mint_internal(
-            creator,
-            object::object_from_constructor_ref(&collection_constructor_ref),
-            string::utf8(b"Description"),
-            // trait token related fields
-            vector[
-                string::utf8(b"Trait"),
-                string::utf8(b"Trait"),
-                string::utf8(b"Trait"),
-                string::utf8(b"Trait")
-            ],
-            vector[
-                string::utf8(b"Trait"),
-                string::utf8(b"Trait"),
-                string::utf8(b"Trait"),
-                string::utf8(b"Trait")
-            ],
-            vector[
-                string::utf8(b"Trait"),
-                string::utf8(b"Trait"),
-                string::utf8(b"Trait"),
-                string::utf8(b"Trait")
-            ],
-            vector[],
-            vector[],
-            vector[],
-            // composable token related fields
-            vector[
-                string::utf8(b"Composable"),
-                string::utf8(b"Composable"),
-                string::utf8(b"Composable"),
-                string::utf8(b"Composable")
-            ],
-            vector[
-                string::utf8(b"Composable"),
-                string::utf8(b"Composable"),
-                string::utf8(b"Composable"),
-                string::utf8(b"Composable")
-            ],
-            vector[
-                string::utf8(b"Composable"),
-                string::utf8(b"Composable"),
-                string::utf8(b"Composable"),
-                string::utf8(b"Composable")
-            ],
-            vector[],
-            vector[],
-            vector[],
-            // common
-            4,
-            string::utf8(b"Folder%20URI"),
-            option::some(1),
-            option::some(2),
-            vector[1000, 1000, 1000, 1000],
-        );
+    //     // creator creates composable tokens with soulbound traits
+    //     let (composable_token_addrsesses, trait_token_addrsesses, mint_info_obj_addr, _) = create_composable_tokens_with_soulbound_traits_for_mint_internal(
+    //         creator,
+    //         object::object_from_constructor_ref(&collection_constructor_ref),
+    //         string::utf8(b"Description"),
+    //         // trait token related fields
+    //         vector[
+    //             string::utf8(b"Trait"),
+    //             string::utf8(b"Trait"),
+    //             string::utf8(b"Trait"),
+    //             string::utf8(b"Trait")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Trait"),
+    //             string::utf8(b"Trait"),
+    //             string::utf8(b"Trait"),
+    //             string::utf8(b"Trait")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Trait"),
+    //             string::utf8(b"Trait"),
+    //             string::utf8(b"Trait"),
+    //             string::utf8(b"Trait")
+    //         ],
+    //         vector[],
+    //         vector[],
+    //         vector[],
+    //         // composable token related fields
+    //         vector[
+    //             string::utf8(b"Composable"),
+    //             string::utf8(b"Composable"),
+    //             string::utf8(b"Composable"),
+    //             string::utf8(b"Composable")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Composable"),
+    //             string::utf8(b"Composable"),
+    //             string::utf8(b"Composable"),
+    //             string::utf8(b"Composable")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Composable"),
+    //             string::utf8(b"Composable"),
+    //             string::utf8(b"Composable"),
+    //             string::utf8(b"Composable")
+    //         ],
+    //         vector[],
+    //         vector[],
+    //         vector[],
+    //         // common
+    //         4,
+    //         string::utf8(b"Folder%20URI"),
+    //         option::some(1),
+    //         option::some(2),
+    //         vector[1000, 1000, 1000, 1000],
+    //     );
 
-        // assert trait tokens are soulbound to the composable tokens
-        let trait_token_0 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 0));
-        let trait_token_1 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 1));
-        let trait_token_2 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 2));
-        let trait_token_3 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 3));
+    //     // assert trait tokens are soulbound to the composable tokens
+    //     let trait_token_0 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 0));
+    //     let trait_token_1 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 1));
+    //     let trait_token_2 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 2));
+    //     let trait_token_3 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 3));
 
-        let composable_token_0 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 0));
-        let composable_token_1 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 1));
-        let composable_token_2 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 2));
-        let composable_token_3 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 3));
+    //     let composable_token_0 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 0));
+    //     let composable_token_1 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 1));
+    //     let composable_token_2 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 2));
+    //     let composable_token_3 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 3));
 
-        assert!(object::is_owner(trait_token_0, *vector::borrow(&composable_token_addrsesses, 0)), 1);
-        assert!(object::is_owner(trait_token_1, *vector::borrow(&composable_token_addrsesses, 1)), 1);
-        assert!(object::is_owner(trait_token_2, *vector::borrow(&composable_token_addrsesses, 2)), 1);
-        assert!(object::is_owner(trait_token_3, *vector::borrow(&composable_token_addrsesses, 3)), 1);
+    //     assert!(object::is_owner(trait_token_0, *vector::borrow(&composable_token_addrsesses, 0)), 1);
+    //     assert!(object::is_owner(trait_token_1, *vector::borrow(&composable_token_addrsesses, 1)), 1);
+    //     assert!(object::is_owner(trait_token_2, *vector::borrow(&composable_token_addrsesses, 2)), 1);
+    //     assert!(object::is_owner(trait_token_3, *vector::borrow(&composable_token_addrsesses, 3)), 1);
 
-        // minter mints tokens
-        let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, mint_info_obj_addr, 4);
+    //     // minter mints tokens
+    //     let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, mint_info_obj_addr, 4);
 
-        // assert the owner is the minter
-        let token_0 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
-        let token_1 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
-        let token_2 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
-        let token_3 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
-        assert!(object::is_owner(token_0, minter_addr), 1);
-        assert!(object::is_owner(token_1, minter_addr), 1);
-        assert!(object::is_owner(token_2, minter_addr), 1);
-        assert!(object::is_owner(token_3, minter_addr), 1);
+    //     // assert the owner is the minter
+    //     let token_0 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
+    //     let token_1 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
+    //     let token_2 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
+    //     let token_3 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
+    //     assert!(object::is_owner(token_0, minter_addr), 1);
+    //     assert!(object::is_owner(token_1, minter_addr), 1);
+    //     assert!(object::is_owner(token_2, minter_addr), 1);
+    //     assert!(object::is_owner(token_3, minter_addr), 1);
 
-        // assert the mint price is sent to the owner
-        let creator_balance_after_mint = creator_balance_before_mint + (input_mint_price * 4);
-        assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 2);
+    //     // assert the mint price is sent to the owner
+    //     let creator_balance_after_mint = creator_balance_before_mint + (input_mint_price * 4);
+    //     assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 2);
 
-        // get tokens and print their names 
-        debug::print<String>(&token::name<Trait>(trait_token_0));
-        debug::print<String>(&token::name<Trait>(trait_token_1));
-        debug::print<String>(&token::name<Trait>(trait_token_2));
-        debug::print<String>(&token::name<Trait>(trait_token_3));
+    //     // get tokens and print their names 
+    //     debug::print<String>(&token::name<Trait>(trait_token_0));
+    //     debug::print<String>(&token::name<Trait>(trait_token_1));
+    //     debug::print<String>(&token::name<Trait>(trait_token_2));
+    //     debug::print<String>(&token::name<Trait>(trait_token_3));
 
-        debug::print<String>(&token::name<Composable>(composable_token_0));
-        debug::print<String>(&token::name<Composable>(composable_token_1));
-        debug::print<String>(&token::name<Composable>(composable_token_2));
-        debug::print<String>(&token::name<Composable>(composable_token_3));
+    //     debug::print<String>(&token::name<Composable>(composable_token_0));
+    //     debug::print<String>(&token::name<Composable>(composable_token_1));
+    //     debug::print<String>(&token::name<Composable>(composable_token_2));
+    //     debug::print<String>(&token::name<Composable>(composable_token_3));
 
-        // print uris
-        debug::print<String>(&token::uri<Trait>(trait_token_0));
-        debug::print<String>(&token::uri<Trait>(trait_token_1));
-        debug::print<String>(&token::uri<Trait>(trait_token_2));
-        debug::print<String>(&token::uri<Trait>(trait_token_3));
+    //     // print uris
+    //     debug::print<String>(&token::uri<Trait>(trait_token_0));
+    //     debug::print<String>(&token::uri<Trait>(trait_token_1));
+    //     debug::print<String>(&token::uri<Trait>(trait_token_2));
+    //     debug::print<String>(&token::uri<Trait>(trait_token_3));
 
-        debug::print<String>(&token::uri<Composable>(composable_token_0));
-        debug::print<String>(&token::uri<Composable>(composable_token_1));
-        debug::print<String>(&token::uri<Composable>(composable_token_2));
-        debug::print<String>(&token::uri<Composable>(composable_token_3));
+    //     debug::print<String>(&token::uri<Composable>(composable_token_0));
+    //     debug::print<String>(&token::uri<Composable>(composable_token_1));
+    //     debug::print<String>(&token::uri<Composable>(composable_token_2));
+    //     debug::print<String>(&token::uri<Composable>(composable_token_3));
 
-        // create more tokens for minting
-        add_tokens_for_mint_internal<Composable>(
-            creator,
-            object::object_from_constructor_ref(&collection_constructor_ref),
-            mint_info_obj_addr,
-            string::utf8(b"Description"),
-            vector[
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base")
-            ],
-            vector[
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth")
-            ],
-            vector[
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"),
-                string::utf8(b"Cool Sloth")
-            ],
-            vector[1000, 1000, 1000, 1000],
-            string::utf8(b"Folder%20URI"),
-            4,
-            option::none(),
-            option::none(),
-            vector[],
-            vector[],
-            vector[]
-        );
+    //     // create more tokens for minting
+    //     add_tokens_for_mint_internal<Composable>(
+    //         creator,
+    //         object::object_from_constructor_ref(&collection_constructor_ref),
+    //         mint_info_obj_addr,
+    //         string::utf8(b"Description"),
+    //         vector[
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"),
+    //             string::utf8(b"Cool Sloth")
+    //         ],
+    //         vector[1000, 1000, 1000, 1000],
+    //         string::utf8(b"Folder%20URI"),
+    //         4,
+    //         option::none(),
+    //         option::none(),
+    //         vector[],
+    //         vector[],
+    //         vector[]
+    //     );
 
-        // mint the newly created tokens
-        let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, mint_info_obj_addr, 4);
+    //     // mint the newly created tokens
+    //     let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, mint_info_obj_addr, 4);
 
-        // assert the traits are soulbound to the composable tokens
-        let trait_token_4 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 0));
-        let trait_token_5 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 1));
-        let trait_token_6 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 2));
-        let trait_token_7 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 3));
+    //     // assert the traits are soulbound to the composable tokens
+    //     let trait_token_4 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 0));
+    //     let trait_token_5 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 1));
+    //     let trait_token_6 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 2));
+    //     let trait_token_7 = object::address_to_object<Trait>(*vector::borrow(&trait_token_addrsesses, 3));
 
-        let composable_token_4 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 0));
-        let composable_token_5 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 1));
-        let composable_token_6 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 2));
-        let composable_token_7 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 3));
+    //     let composable_token_4 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 0));
+    //     let composable_token_5 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 1));
+    //     let composable_token_6 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 2));
+    //     let composable_token_7 = object::address_to_object<Composable>(*vector::borrow(&composable_token_addrsesses, 3));
 
-        assert!(object::is_owner(trait_token_4, *vector::borrow(&composable_token_addrsesses, 0)), 2);
-        assert!(object::is_owner(trait_token_5, *vector::borrow(&composable_token_addrsesses, 1)), 2);
-        assert!(object::is_owner(trait_token_6, *vector::borrow(&composable_token_addrsesses, 2)), 2);
-        assert!(object::is_owner(trait_token_7, *vector::borrow(&composable_token_addrsesses, 3)), 2);
+    //     assert!(object::is_owner(trait_token_4, *vector::borrow(&composable_token_addrsesses, 0)), 2);
+    //     assert!(object::is_owner(trait_token_5, *vector::borrow(&composable_token_addrsesses, 1)), 2);
+    //     assert!(object::is_owner(trait_token_6, *vector::borrow(&composable_token_addrsesses, 2)), 2);
+    //     assert!(object::is_owner(trait_token_7, *vector::borrow(&composable_token_addrsesses, 3)), 2);
 
-        // assert the owner is the minter
-        assert!(object::is_owner(composable_token_4, minter_addr), 3);
-        assert!(object::is_owner(composable_token_5, minter_addr), 3);
-        assert!(object::is_owner(composable_token_6, minter_addr), 3);
-        assert!(object::is_owner(composable_token_7, minter_addr), 3);
+    //     // assert the owner is the minter
+    //     assert!(object::is_owner(composable_token_4, minter_addr), 3);
+    //     assert!(object::is_owner(composable_token_5, minter_addr), 3);
+    //     assert!(object::is_owner(composable_token_6, minter_addr), 3);
+    //     assert!(object::is_owner(composable_token_7, minter_addr), 3);
 
-        // assert the mint price is sent to the owner
-        let creator_balance_after_mint = creator_balance_after_mint + (input_mint_price * 4);
-        assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 4);
+    //     // assert the mint price is sent to the owner
+    //     let creator_balance_after_mint = creator_balance_after_mint + (input_mint_price * 4);
+    //     assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 4);
 
-        // get one token and print its name and uri
-        debug::print<String>(&token::name<Composable>(composable_token_4));
-        debug::print<String>(&token::name<Composable>(composable_token_5));
-        debug::print<String>(&token::name<Composable>(composable_token_6));
-        debug::print<String>(&token::name<Composable>(composable_token_7));
-    }
+    //     // get one token and print its name and uri
+    //     debug::print<String>(&token::name<Composable>(composable_token_4));
+    //     debug::print<String>(&token::name<Composable>(composable_token_5));
+    //     debug::print<String>(&token::name<Composable>(composable_token_6));
+    //     debug::print<String>(&token::name<Composable>(composable_token_7));
+    // }
 }

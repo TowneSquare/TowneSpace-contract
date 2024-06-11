@@ -16,7 +16,7 @@ module townespace::studio {
     use aptos_token_objects::collection;
     use aptos_token_objects::token::{Token};
     use composable_token::composable_token::{Self, Named, Collection, Composable, Trait};
-    use std::option::{Self, Option};
+    use std::option::{Option};
     use std::string::{Self, String};
     use std::string_utils;
     use std::vector;
@@ -65,7 +65,7 @@ module townespace::studio {
     // Entry functions
     // ---------------
 
-    /// TODO: create a collection and initialize the tracker
+    /// create a collection and initialize the tracker
     public entry fun create_collection_with_tracker<SupplyType: key>(
         signer_ref: &signer,
         // collection properties
@@ -119,7 +119,7 @@ module townespace::studio {
         type: String,
         total_supply: u64
     ) acquires Tracker {
-        // TODO: assert type not in tracker
+        // asserting type not in tracker is being handled in table.move (L139)
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
         let token_tracker = TokenTracker { total_supply, count: 0 };
         table::add<String, TokenTracker>(&mut tracker.table, type, token_tracker);
@@ -476,6 +476,8 @@ module townespace::studio {
 
     #[test_only]
     use std::debug;
+    #[test_only]
+    use std::option;
     #[test_only]
     use aptos_token_objects::collection::{FixedSupply};
     #[test_only]

@@ -5,7 +5,7 @@
     - It is also responsible for transferring tokens.
 
     TODO:
-        - use composable-token
+        - add view function to calculate rarity
 */
 
 module townespace::studio {

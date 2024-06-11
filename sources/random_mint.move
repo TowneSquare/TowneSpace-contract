@@ -16,19 +16,18 @@ module townespace::random_mint {
     use aptos_framework::object::{Self, Object, ExtendRef};
     use aptos_std::simple_map;
     use aptos_std::smart_table::{Self, SmartTable};
-    use std::option::{Option};
-    use std::signer;
-    use std::string::{String};
-    use std::vector;
     use composable_token::composable_token::{
         Self, 
         Composable,
         Trait, 
         Collection
     };
+    use std::option::{Option};
+    use std::signer;
+    use std::string::{String};
+    use std::vector;
     use townespace::batch_mint;
     use townespace::common;
-    use minter::transfer_token;
 
     // ------
     // Errors
@@ -194,6 +193,7 @@ module townespace::random_mint {
         event::emit(TokensForMintCreated { tokens: trait_tokens });
     }
 
+    #[lint::allow_unsafe_randomness]
     /// Entry Function to mint tokens
     public entry fun mint_tokens<T: key>(
         signer_ref: &signer,
@@ -309,7 +309,13 @@ module townespace::random_mint {
         );
         // soulbind the trait tokens to the composable tokens
         vector::zip(token_addrs, trait_constructor_refs, |composable_addr, trait_constructor_ref| {
-            transfer_token::transfer_soulbound(composable_addr, &trait_constructor_ref);
+            let composable_obj = object::address_to_object<Composable>(composable_addr);
+            composable_token::equip_soulbound_trait(
+                signer_ref,
+                composable_obj, 
+                &trait_constructor_ref,
+                0x4::token::uri<Composable>(composable_obj)
+            );
         });
 
         (token_addrs, trait_token_addrs, mint_info_object_address, composable_constructor_refs)
@@ -517,6 +523,7 @@ module townespace::random_mint {
         token_addr
     }
 
+    #[lint::allow_unsafe_randomness]
     /// Helper function for minting a token
     /// Returns the address of the minted token and the mint price
     public fun mint_token<T: key>(signer_ref: &signer, mint_info_obj_addr: address): (address, u64) acquires MintInfo {
@@ -544,6 +551,7 @@ module townespace::random_mint {
         (token_addr, mint_price)
     }
 
+    #[lint::allow_unsafe_randomness]
     /// Helper function for minting a batch of tokens
     public fun mint_batch_tokens<T: key>(
         signer_ref: &signer,

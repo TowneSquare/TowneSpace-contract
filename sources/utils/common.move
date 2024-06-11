@@ -4,13 +4,9 @@
 
 module townespace::common {
 
-    use std::bcs;
-    use std::hash;
-    use std::vector;
-    use aptos_std::from_bcs;
     use aptos_framework::object::{Self, ConstructorRef, ExtendRef};
+    use aptos_framework::randomness;
     use aptos_framework::timestamp;
-    use aptos_framework::transaction_context;
 
     friend townespace::batch_mint;
     friend townespace::random_mint;
@@ -34,15 +30,22 @@ module townespace::common {
     /// We use timestamp to ensure that people can't predict it.
     ///
     public(friend) inline fun pseudorandom_u64(size: u64): u64 {
-        let auid = transaction_context::generate_auid_address();
-        let bytes = bcs::to_bytes(&auid);
-        let time_bytes = bcs::to_bytes(&timestamp::now_microseconds());
-        vector::append(&mut bytes, time_bytes);
+        // ensure that the size is greater than zero
+        assert!(size > 0, 0x1234567);
+        let time_now = timestamp::now_microseconds();
+        let val_u256 = if (time_now != timestamp::now_microseconds()) {
+            // generate a random number
+            let random_u256 = randomness::u256_integer();
+            // mod by the size
+            (random_u256) % (size as u256)
+        } else { 
+            // generate a random number
+            let random_u256 = randomness::u256_integer();
+            // mod by the size
+            (random_u256) % (size as u256)
+        };
 
-        // Hash that together, and mod by the expected size
-        let hash = hash::sha3_256(bytes);
-        let val = from_bcs::to_u256(hash) % (size as u256);
-        (val as u64)
+        (val_u256 as u64)
     }
 
     #[test_only]
@@ -73,6 +76,9 @@ module townespace::common {
         // destroy APT mint and burn caps
         coin::destroy_mint_cap<APT>(aptos_coin_mint_cap);
         coin::destroy_burn_cap<APT>(aptos_coin_burn_cap);
+
+        // init randomness module for testing
+        randomness::initialize(std);
 
         (creator_address, collector_address)
     }

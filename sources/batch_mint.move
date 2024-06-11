@@ -8,11 +8,11 @@ module townespace::batch_mint {
     use aptos_framework::event;
     use aptos_framework::object::{Self, ConstructorRef, Object};
     use aptos_token_objects::collection;
+    use composable_token::composable_token::{Self, Indexed, Collection, Composable, Trait};
     use std::option::{Self, Option};
     use std::string::{Self, String};
     use std::string_utils;
     use std::vector;
-    use composable_token::composable_token::{Self, Indexed, Collection};
 
     // ------
     // Errors
@@ -62,6 +62,67 @@ module townespace::batch_mint {
             property_keys,
             property_types,
             property_values
+        );
+
+        let addresses = vector::empty<address>();
+        for (i in 0..count) {
+            let addr = object::address_from_constructor_ref(vector::borrow<ConstructorRef>(&constructor_refs, i));
+            vector::push_back(&mut addresses, addr);
+        };
+
+        event::emit<TokensCreated>( TokensCreated { addresses } );
+    }
+
+    /// Create a batch of composable tokens with soulbound traits
+    public entry fun create_batch_composables_with_soulbound_traits(
+        signer_ref: &signer,
+        collection: Object<Collection>,
+        // trait related fields
+        trait_descriptions: vector<String>,
+        trait_uri_with_index_prefix: vector<String>,
+        trait_name_with_index_prefix: vector<String>,
+        trait_name_with_index_suffix: vector<String>,
+        trait_property_keys: vector<String>,
+        trait_property_types: vector<String>,
+        trait_property_values: vector<vector<u8>>,
+        // composable related fields
+        composable_description: String,
+        composable_uri_with_index_prefix: vector<String>,
+        composable_name_with_index_prefix: vector<String>,
+        composable_name_with_index_suffix: vector<String>,
+        composable_property_keys: vector<String>,
+        composable_property_types: vector<String>,
+        composable_property_values: vector<vector<u8>>,
+        // common
+        count: u64,
+        folder_uri: String,
+        royalty_numerator: Option<u64>,
+        royalty_denominator: Option<u64>,
+    ) {
+        let constructor_refs = create_batch_composables_with_soulbound_traits_internal(
+            signer_ref,
+            collection,
+            // trait related fields
+            trait_descriptions,
+            trait_uri_with_index_prefix,
+            trait_name_with_index_prefix,
+            trait_name_with_index_suffix,
+            trait_property_keys,
+            trait_property_types,
+            trait_property_values,
+            // composable related fields
+            composable_description,
+            composable_uri_with_index_prefix,
+            composable_name_with_index_prefix,
+            composable_name_with_index_suffix,
+            composable_property_keys,
+            composable_property_types,
+            composable_property_values,
+            // common
+            count,
+            folder_uri,
+            royalty_numerator,
+            royalty_denominator
         );
 
         let addresses = vector::empty<address>();
@@ -140,6 +201,87 @@ module townespace::batch_mint {
         constructor_refs
     }
 
+    /// Helper function for creating composable tokens for minting with trait tokens bound to them
+    /// Returns the constructor refs of the created composable tokens
+    public fun create_batch_composables_with_soulbound_traits_internal(
+        signer_ref: &signer,
+        collection: Object<Collection>,
+        // trait related fields
+        trait_descriptions: vector<String>,
+        trait_uri_with_index_prefix: vector<String>,
+        trait_name_with_index_prefix: vector<String>,
+        trait_name_with_index_suffix: vector<String>,
+        trait_property_keys: vector<String>,
+        trait_property_types: vector<String>,
+        trait_property_values: vector<vector<u8>>,
+        // composable related fields
+        composable_description: String,
+        composable_uri_with_index_prefix: vector<String>,
+        composable_name_with_index_prefix: vector<String>,
+        composable_name_with_index_suffix: vector<String>,
+        composable_property_keys: vector<String>,
+        composable_property_types: vector<String>,
+        composable_property_values: vector<vector<u8>>,
+        // common
+        count: u64,
+        folder_uri: String,
+        royalty_numerator: Option<u64>,
+        royalty_denominator: Option<u64>,
+    ): vector<ConstructorRef> {
+        // create composable tokens
+        let composable_descriptions = vector::empty<String>();
+        for (i in 0..count) {
+            vector::push_back(&mut composable_descriptions, composable_description);
+        };
+        let (composable_constructor_refs) = create_batch_internal<Composable>(
+            signer_ref,
+            collection,
+            composable_descriptions,
+            composable_uri_with_index_prefix,
+            composable_name_with_index_prefix,
+            composable_name_with_index_suffix,
+            folder_uri,
+            count,
+            royalty_numerator,
+            royalty_denominator,
+            composable_property_keys,
+            composable_property_types,
+            composable_property_values,
+        );
+        // create trait tokens
+        let (trait_constructor_refs) = create_batch_internal<Trait>(
+            signer_ref,
+            collection,
+            trait_descriptions,
+            trait_uri_with_index_prefix,
+            trait_name_with_index_prefix,
+            trait_name_with_index_suffix,
+            folder_uri,
+            vector::length(&composable_constructor_refs),
+            royalty_numerator,
+            royalty_denominator,
+            trait_property_keys,
+            trait_property_types,
+            trait_property_values,
+        );
+        // soulbind the trait tokens to the composable tokens
+        let composables_objs = vector::empty<Object<Composable>>();
+        for (i in 0..vector::length(&composable_constructor_refs)) {
+            let composable_obj = object::object_from_constructor_ref(vector::borrow<ConstructorRef>(&composable_constructor_refs, i));
+            vector::push_back(&mut composables_objs, composable_obj);
+        };
+        vector::zip(composables_objs, trait_constructor_refs, |composable_obj, trait_constructor_ref| {
+            composable_token::equip_soulbound_trait(
+                signer_ref,
+                composable_obj, 
+                &trait_constructor_ref,
+                0x4::token::uri<Composable>(composable_obj),
+            );
+        });
+
+        composable_constructor_refs
+    }
+
     // ------------
     // Unit Testing
     // ------------
@@ -152,8 +294,6 @@ module townespace::batch_mint {
     use aptos_token_objects::token;
     #[test_only]
     use townespace::common;
-    #[test_only]
-    use composable_token::composable_token::{Trait};
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
     fun test_e2e(std: &signer, creator: &signer, minter: &signer) {
@@ -164,7 +304,7 @@ module townespace::batch_mint {
         let collection_constructor_ref = composable_token::create_collection<FixedSupply>(
             creator,
             string::utf8(b"Collection Description"),
-            option::some(100),
+            option::some(1000),
             string::utf8(b"Collection Name"),
             string::utf8(b"Collection Symbol"),
             string::utf8(b"Collection URI"),
@@ -268,6 +408,130 @@ module townespace::batch_mint {
         debug::print<String>(&token::description<Trait>(token3_obj));
         debug::print<String>(&token::description<Trait>(token4_obj));
         debug::print<String>(&token::description<Trait>(token5_obj));
+
+        // create composable tokens with soulbound traits
+        let composable_constructor_refs = create_batch_composables_with_soulbound_traits_internal(
+            creator,
+            object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+            // trait related fields
+            vector[
+                string::utf8(b"Body"),
+                string::utf8(b"Body"),
+                string::utf8(b"Body"),
+                string::utf8(b"Body"),
+                string::utf8(b"Body")
+            ],
+            vector[
+                string::utf8(b"Body%20Sloth"),
+                string::utf8(b"Body%20Sloth"),
+                string::utf8(b"Body%20Sloth"),
+                string::utf8(b"Body%20Sloth"),
+                string::utf8(b"Body%20Sloth")
+            ],
+            vector[
+                string::utf8(b"Body Sloth"), 
+                string::utf8(b"Body Sloth"), 
+                string::utf8(b"Body Sloth"),
+                string::utf8(b"Body Sloth"),
+                string::utf8(b"Body Sloth")
+            ],
+            vector[
+                string::utf8(b""),
+                string::utf8(b""),
+                // string::utf8(b""),
+                // string::utf8(b""),
+                // string::utf8(b"")
+            ],
+            vector[],
+            vector[],
+            vector[],
+            // composable related fields
+            string::utf8(b"Composable Description"),
+            vector[
+                string::utf8(b"Composable%20Sloth"),
+                string::utf8(b"Composable%20Sloth"),
+                string::utf8(b"Composable%20Sloth"),
+                string::utf8(b"Composable%20Sloth"),
+                string::utf8(b"Composable%20Sloth")
+            ],
+            vector[
+                string::utf8(b"Composable Sloth"), 
+                string::utf8(b"Composable Sloth"), 
+                string::utf8(b"Composable Sloth"),
+                string::utf8(b"Composable Sloth"),
+                string::utf8(b"Composable Sloth")
+            ],
+            vector[
+                string::utf8(b""),
+                string::utf8(b""),
+                // string::utf8(b""),
+                // string::utf8(b""),
+                // string::utf8(b"")
+            ],
+            vector[],
+            vector[],
+            vector[],
+            // common
+            5,
+            string::utf8(b"https://bafybeifnhfsfugbsopnturkkhxsfwws3zhsrlnuv3e4ips4bcl4j6cszrq.ipfs.w3s.link"),
+            option::none(),
+            option::none(),
+        );
+
+        let composable1_obj = object::object_from_constructor_ref(vector::borrow(&composable_constructor_refs, 0));
+        let composable2_obj = object::object_from_constructor_ref(vector::borrow(&composable_constructor_refs, 1));
+        let composable3_obj = object::object_from_constructor_ref(vector::borrow(&composable_constructor_refs, 2));
+        let composable4_obj = object::object_from_constructor_ref(vector::borrow(&composable_constructor_refs, 3));
+        let composable5_obj = object::object_from_constructor_ref(vector::borrow(&composable_constructor_refs, 4));
+        
+        // print names
+        let composable1_name = token::name<Composable>(composable1_obj);
+        let composable2_name = token::name<Composable>(composable2_obj);
+        let composable3_name = token::name<Composable>(composable3_obj);
+        let composable4_name = token::name<Composable>(composable4_obj);
+        let composable5_name = token::name<Composable>(composable5_obj);
+
+        debug::print<String>(&string::utf8(b"Composable Names:"));
+        debug::print<String>(&composable1_name);
+        debug::print<String>(&composable2_name);
+        debug::print<String>(&composable3_name);
+        debug::print<String>(&composable4_name);
+        debug::print<String>(&composable5_name);
+
+        // assert they have tokens bound to them
+        let bound_tokens1 = composable_token::traits_from_composable(composable1_obj);
+        let bound_tokens2 = composable_token::traits_from_composable(composable2_obj);
+        let bound_tokens3 = composable_token::traits_from_composable(composable3_obj);
+        let bound_tokens4 = composable_token::traits_from_composable(composable4_obj);
+        let bound_tokens5 = composable_token::traits_from_composable(composable5_obj);
+
+        // print the bound children
+        let bound_token1 = vector::borrow(&bound_tokens1, 0);
+        let bound_token2 = vector::borrow(&bound_tokens2, 0);
+        let bound_token3 = vector::borrow(&bound_tokens3, 0);
+        let bound_token4 = vector::borrow(&bound_tokens4, 0);
+        let bound_token5 = vector::borrow(&bound_tokens5, 0);
+
+        debug::print<String>(&string::utf8(b"Bound children:"));
+        debug::print<address>(&object::object_address(bound_token1));
+        debug::print<address>(&object::object_address(bound_token2));
+        debug::print<address>(&object::object_address(bound_token3));
+        debug::print<address>(&object::object_address(bound_token4));
+        debug::print<address>(&object::object_address(bound_token5));
+
+        // print their names
+        let bound_token1_name = token::name<Trait>(*bound_token1);
+        let bound_token2_name = token::name<Trait>(*bound_token2);
+        let bound_token3_name = token::name<Trait>(*bound_token3);
+        let bound_token4_name = token::name<Trait>(*bound_token4);
+        let bound_token5_name = token::name<Trait>(*bound_token5);
+
+        debug::print<String>(&string::utf8(b"Bound children names:"));
+        debug::print<String>(&bound_token1_name);
+        debug::print<String>(&bound_token2_name);
+        debug::print<String>(&bound_token3_name);
+        debug::print<String>(&bound_token4_name);
+        debug::print<String>(&bound_token5_name);
 
         // // create more tokens
         // let constructor_refs2 = create_batch<Trait>(

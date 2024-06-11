@@ -26,7 +26,7 @@ module townespace::random_mint {
     use std::signer;
     use std::string::{String};
     use std::vector;
-    use townespace::batch_mint;
+    use townespace::studio;
     use townespace::common;
 
     // ------
@@ -466,7 +466,7 @@ module townespace::random_mint {
         // mint the tokens and return their constructor refs
         let descriptions = vector::empty<String>();
         for (i in 0..count) { vector::push_back(&mut descriptions, description) };
-        batch_mint::create_batch_internal<T>(
+        studio::create_batch_internal<T>(
             signer_ref,
             collection,
             descriptions,

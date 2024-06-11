@@ -8,7 +8,7 @@ module townespace::common {
     use aptos_framework::randomness;
     use aptos_framework::timestamp;
 
-    friend townespace::batch_mint;
+    friend townespace::studio;
     friend townespace::random_mint;
 
     /// Common logic for creating sticky object for the liquid NFTs

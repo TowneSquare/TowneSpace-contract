@@ -14,14 +14,9 @@
         - Does not work on soulbound tokens.
 
     TODO: 
-        - add support to migrate NFTs to composable.
-        - add support to migrate digital assets to composable.
-        - add support to batch migrate.
-        - add events.
-        - first proposed way is owner specific. Make a creator specific way.
 */
 
-module townespace::token_migrate {
+module token_migrate::token_migrate {
 
     use aptos_framework::event;
     use aptos_framework::object::{Self, Object};
@@ -29,11 +24,11 @@ module townespace::token_migrate {
     use aptos_token_objects::collection;
     // use aptos_token_objects::token as token_v2;
     use composable_token::composable_token::{Self, Collection, Composable, Named};
-    use composable_token::studio;
+    use composable_token::composable_token_entry as studio;
     use std::option;
     use std::signer;
     use std::string::{Self, String};
-    use townespace::resource_manager;
+    use token_migrate::resource_manager;
 
     #[event]
     struct TokenMigratedFromV1toV2 has drop, store {
@@ -42,6 +37,7 @@ module townespace::token_migrate {
     }
 
     fun init_module(signer_ref: &signer) {
+        resource_manager::initialize(signer_ref);
         // create a collection with unlimited supply
         studio::create_collection_with_unlimited_supply_and_no_royalty(
             &resource_manager::resource_signer(),
@@ -250,7 +246,7 @@ module townespace::token_migrate {
     const BURNABLE_BY_CREATOR: vector<u8> = b"TOKEN_BURNABLE_BY_CREATOR";
     const BURNABLE_BY_OWNER: vector<u8> = b"TOKEN_BURNABLE_BY_OWNER";
 
-    #[test(std = @0x1, ts = @townespace, creator = @0x456, alice = @0x123)]
+    #[test(std = @0x1, ts = @token_migrate, creator = @0x456, alice = @0x123)]
     // test migration of a token v1 to v2
     fun test_migration(
         alice: &signer,

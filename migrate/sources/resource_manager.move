@@ -4,12 +4,11 @@
     to obtain the resource account signer and to keep track of the system addresses.
 */
 
-module townespace::resource_manager {
+module token_migrate::resource_manager {
     use aptos_framework::account::{Self, SignerCapability};
     use std::signer;
 
-    friend townespace::random_mint;
-    friend townespace::token_migrate;
+    friend token_migrate::token_migrate;
 
     /// Stores permission config such as SignerCapability for controlling the resource account.
     struct PermissionConfig has key {
@@ -22,10 +21,8 @@ module townespace::resource_manager {
     /// Initialize PermissionConfig to establish control over the resource account.
     /// This function is invoked only when this resource is deployed the first time.
     public entry fun initialize(deployer: &signer) {
-        let deployer_addr = signer::address_of(deployer);
-        assert!(signer::address_of(deployer) == @townespace, 1);
-        if (!exists<PermissionConfig>(deployer_addr)) {
-            let (resource_signer, signer_cap) = account::create_resource_account(deployer, b"composable_token");
+        if (!exists<PermissionConfig>(signer::address_of(deployer))) {
+            let (resource_signer, signer_cap) = account::create_resource_account(deployer, b"migrate_token");
             let resource_addr = signer::address_of(&resource_signer);
             move_to(
                 deployer, 
@@ -40,12 +37,12 @@ module townespace::resource_manager {
     /// Can be called by friended modules to obtain the resource account signer.
     /// Function will panic if the module is not friended or does not exist.
     public(friend) fun resource_signer(): signer acquires PermissionConfig {
-        let signer_cap = &borrow_global<PermissionConfig>(@townespace).signer_cap;
+        let signer_cap = &borrow_global<PermissionConfig>(@token_migrate).signer_cap;
         account::create_signer_with_capability(signer_cap)
     }
 
     #[view]
     public fun resource_address(): address acquires PermissionConfig {
-        borrow_global<PermissionConfig>(@townespace).resource_addr
+        borrow_global<PermissionConfig>(@token_migrate).resource_addr
     }
 }

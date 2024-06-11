@@ -1,0 +1,22 @@
+[package]
+name = "TokenMigrate"
+version = "1.0.0"
+authors = []
+
+[addresses]
+token_migrate = "0xe1c0b67c2e63b86d0d8842d223abb94ae137e493fe3fbd7cfe9a51864580ab40"
+
+[dev-addresses]
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "mainnet"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dev-dependencies]
+
+[dependencies.ComposableToken]
+local = "./ComposableToken"
+
+[dependencies.TokenMinter]
+local = "./TokenMinter"

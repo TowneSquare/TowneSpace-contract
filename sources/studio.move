@@ -5,6 +5,7 @@
     - It is also responsible for transferring tokens.
 
     TODO:
+    - 
         - add view function to calculate rarity
 */
 
@@ -86,7 +87,7 @@ module townespace::studio {
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>
     ) {
-        let constructor = create_collection_with_tracker_internal<SupplyType>(
+        create_collection_with_tracker_internal<SupplyType>(
             signer_ref,
             description,
             max_supply,
@@ -104,13 +105,7 @@ module townespace::studio {
             tokens_freezable_by_collection_owner,
             royalty_numerator,
             royalty_denominator
-        );
-
-        let collection_obj = object::object_from_constructor_ref<collection::Collection>(&constructor);
-
-        // emit event
-        event::emit(TrackerInitialized { collection_obj });
-            
+        );  
     }
 
     /// Add a type to the tracker table
@@ -284,6 +279,11 @@ module townespace::studio {
                 table: table::new<String, TokenTracker>()
             }
         );
+
+        let collection_obj = object::object_from_constructor_ref<collection::Collection>(&constructor);
+
+        // emit event
+        event::emit(TrackerInitialized { collection_obj });
 
         constructor
     }

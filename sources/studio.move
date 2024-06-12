@@ -5,7 +5,6 @@
     - It is also responsible for transferring tokens.
 
     TODO:
-    - 
         - add view function to calculate rarity
 */
 

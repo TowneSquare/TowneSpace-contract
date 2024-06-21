@@ -126,10 +126,9 @@ module townespace::studio {
         signer_ref: &signer,
         collection: Object<Collection>,
         descriptions: vector<String>,
-        uri_with_index_prefix: vector<String>,
+        uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
-        folder_uri: String,
         count: u64,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
@@ -141,10 +140,9 @@ module townespace::studio {
             signer_ref,
             collection,
             descriptions,
-            uri_with_index_prefix,
+            uri,
             name_with_index_prefix,
             name_with_index_suffix,
-            folder_uri,
             count,
             royalty_numerator,
             royalty_denominator,
@@ -168,7 +166,7 @@ module townespace::studio {
         collection: Object<Collection>,
         // trait related fields
         trait_descriptions: vector<String>,
-        trait_uri_with_index_prefix: vector<String>,
+        trait_uri: vector<String>,
         trait_name_with_index_prefix: vector<String>,
         trait_name_with_index_suffix: vector<String>,
         trait_property_keys: vector<String>,
@@ -176,7 +174,7 @@ module townespace::studio {
         trait_property_values: vector<vector<u8>>,
         // composable related fields
         composable_description: String,
-        composable_uri_with_index_prefix: vector<String>,
+        composable_uri: vector<String>,
         composable_name_with_index_prefix: vector<String>,
         composable_name_with_index_suffix: vector<String>,
         composable_property_keys: vector<String>,
@@ -184,7 +182,6 @@ module townespace::studio {
         composable_property_values: vector<vector<u8>>,
         // common
         count: u64,
-        folder_uri: String,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
     ) acquires Tracker {
@@ -193,7 +190,7 @@ module townespace::studio {
             collection,
             // trait related fields
             trait_descriptions,
-            trait_uri_with_index_prefix,
+            trait_uri,
             trait_name_with_index_prefix,
             trait_name_with_index_suffix,
             trait_property_keys,
@@ -201,7 +198,7 @@ module townespace::studio {
             trait_property_values,
             // composable related fields
             composable_description,
-            composable_uri_with_index_prefix,
+            composable_uri,
             composable_name_with_index_prefix,
             composable_name_with_index_suffix,
             composable_property_keys,
@@ -209,7 +206,6 @@ module townespace::studio {
             composable_property_values,
             // common
             count,
-            folder_uri,
             royalty_numerator,
             royalty_denominator
         );
@@ -292,10 +288,9 @@ module townespace::studio {
         signer_ref: &signer,
         collection: Object<Collection>,
         descriptions: vector<String>,
-        uri_with_index_prefix: vector<String>,
+        uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
-        folder_uri: String,
         count: u64,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
@@ -304,7 +299,7 @@ module townespace::studio {
         property_values: vector<vector<u8>>,
     ): vector<ConstructorRef> acquires Tracker {
         assert!(count == vector::length(&descriptions), ELENGTH_MISMATCH);
-        assert!(count == vector::length(&uri_with_index_prefix), ELENGTH_MISMATCH);
+        assert!(count == vector::length(&uri), ELENGTH_MISMATCH);
         assert!(count == vector::length(&name_with_index_prefix), ELENGTH_MISMATCH);
         // TODO: assert count + tracker count <= max_supply; shouldn't be done here
 
@@ -313,19 +308,10 @@ module townespace::studio {
         for (i in 0..count) {
             let description = *vector::borrow<String>(&descriptions, i);
             let token_index = count_from_tracker(collection_obj_addr, description) + 1;
-            let uri_with_index_prefix = *vector::borrow<String>(&uri_with_index_prefix, i);
-            let name_with_index_prefix = *vector::borrow<String>(&name_with_index_prefix, i);
-            // token uri: folder_uri + "/" + "prefix" + "%20" + "%23" + i + ".png"
-            let token_uri = folder_uri;
-            string::append_utf8(&mut token_uri, b"/");
-            string::append(&mut token_uri, uri_with_index_prefix);
-            string::append_utf8(&mut token_uri, b"%20");
-            string::append_utf8(&mut token_uri, b"%23");    // %23 is the ascii code for #
-            string::append(&mut token_uri, string_utils::to_string(&token_index));
-            string::append_utf8(&mut token_uri, b".png");
+            let uri = *vector::borrow<String>(&uri, i);
             
             // token name: prefix + # + index + suffix
-            let name = name_with_index_prefix;
+            let name = *vector::borrow<String>(&name_with_index_prefix, i);
             string::append_utf8(&mut name, b" #");
             string::append(&mut name, string_utils::to_string(&token_index));
             // string::append(&mut suffix, name_with_index_suffix);
@@ -336,7 +322,7 @@ module townespace::studio {
                 name,  // name
                 string::utf8(b""), // prefix: ignored as we're using a custom indexing
                 string::utf8(b""),  // suffix: ignored as we're using a custom indexing
-                token_uri,
+                uri,
                 royalty_numerator,
                 royalty_denominator,
                 property_keys,
@@ -359,7 +345,7 @@ module townespace::studio {
         collection: Object<Collection>,
         // trait related fields
         trait_descriptions: vector<String>,
-        trait_uri_with_index_prefix: vector<String>,
+        trait_uri: vector<String>,
         trait_name_with_index_prefix: vector<String>,
         trait_name_with_index_suffix: vector<String>,
         trait_property_keys: vector<String>,
@@ -367,7 +353,7 @@ module townespace::studio {
         trait_property_values: vector<vector<u8>>,
         // composable related fields
         composable_description: String,
-        composable_uri_with_index_prefix: vector<String>,
+        composable_uri: vector<String>,
         composable_name_with_index_prefix: vector<String>,
         composable_name_with_index_suffix: vector<String>,
         composable_property_keys: vector<String>,
@@ -375,7 +361,6 @@ module townespace::studio {
         composable_property_values: vector<vector<u8>>,
         // common
         count: u64,
-        folder_uri: String,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
     ): vector<ConstructorRef> acquires Tracker {
@@ -388,10 +373,9 @@ module townespace::studio {
             signer_ref,
             collection,
             composable_descriptions,
-            composable_uri_with_index_prefix,
+            composable_uri,
             composable_name_with_index_prefix,
             composable_name_with_index_suffix,
-            folder_uri,
             count,
             royalty_numerator,
             royalty_denominator,
@@ -404,10 +388,9 @@ module townespace::studio {
             signer_ref,
             collection,
             trait_descriptions,
-            trait_uri_with_index_prefix,
+            trait_uri,
             trait_name_with_index_prefix,
             trait_name_with_index_suffix,
-            folder_uri,
             vector::length(&composable_constructor_refs),
             royalty_numerator,
             royalty_denominator,
@@ -551,7 +534,6 @@ module townespace::studio {
                 // string::utf8(b""),
                 // string::utf8(b"")
             ],
-            string::utf8(b"https://bafybeifnhfsfugbsopnturkkhxsfwws3zhsrlnuv3e4ips4bcl4j6cszrq.ipfs.w3s.link"),
             5,
             option::none(),
             option::none(),
@@ -684,7 +666,6 @@ module townespace::studio {
             vector[],
             // common
             5,
-            string::utf8(b"https://bafybeifnhfsfugbsopnturkkhxsfwws3zhsrlnuv3e4ips4bcl4j6cszrq.ipfs.w3s.link"),
             option::none(),
             option::none(),
         );
@@ -777,7 +758,6 @@ module townespace::studio {
         //         string::utf8(b"suffix"),
         //         string::utf8(b"suffix")
         //     ],
-        //     string::utf8(b"folder_uri"),
         //     5,
         //     option::none(),
         //     option::none(),

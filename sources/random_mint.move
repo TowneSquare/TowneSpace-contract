@@ -84,11 +84,10 @@ module townespace::random_mint {
         signer_ref: &signer,
         collection: Object<Collection>,
         description: String,
-        uri_with_index_prefix: vector<String>,
+        uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
         vec_mint_price: vector<u64>,
-        folder_uri: String,
         token_count: u64,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
@@ -100,11 +99,10 @@ module townespace::random_mint {
             signer_ref,
             collection,
             description,
-            uri_with_index_prefix,
+            uri,
             name_with_index_prefix,
             name_with_index_suffix,
             vec_mint_price,
-            folder_uri,
             token_count,
             royalty_numerator,
             royalty_denominator,
@@ -142,11 +140,10 @@ module townespace::random_mint {
         collection: Object<Collection>,
         mint_info_obj_addr: address,
         description: String,
-        uri_with_index_prefix: vector<String>,
+        uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
         vec_mint_price: vector<u64>,
-        folder_uri: String,
         token_count: u64,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
@@ -159,11 +156,10 @@ module townespace::random_mint {
             collection,
             mint_info_obj_addr,
             description,
-            uri_with_index_prefix,
+            uri,
             name_with_index_prefix,
             name_with_index_suffix,
             vec_mint_price,
-            folder_uri,
             token_count,
             royalty_numerator,
             royalty_denominator,
@@ -183,11 +179,10 @@ module townespace::random_mint {
         signer_ref: &signer,
         collection: Object<Collection>,
         description: String,
-        uri_with_index_prefix: vector<String>,
+        uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
         vec_mint_price: vector<u64>,
-        folder_uri: String,
         token_count: u64,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
@@ -209,10 +204,9 @@ module townespace::random_mint {
             signer_ref,
             collection,
             description,
-            uri_with_index_prefix,
+            uri,
             name_with_index_prefix,
             name_with_index_suffix,
-            folder_uri,
             token_count,
             royalty_numerator,
             royalty_denominator,
@@ -258,10 +252,9 @@ module townespace::random_mint {
         signer_ref: &signer,
         collection: Object<Collection>,
         description: String,
-        uri_with_index_prefix: vector<String>,
+        uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
-        folder_uri: String,
         count: u64,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
@@ -275,10 +268,9 @@ module townespace::random_mint {
             signer_ref,
             collection,
             description,
-            uri_with_index_prefix,
+            uri,
             name_with_index_prefix,
             name_with_index_suffix,
-            folder_uri,
             count,
             royalty_numerator,
             royalty_denominator,
@@ -309,10 +301,9 @@ module townespace::random_mint {
         signer_ref: &signer,
         collection: Object<Collection>,
         description: String,
-        uri_with_index_prefix: vector<String>,
+        uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
-        folder_uri: String,
         count: u64,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
@@ -327,10 +318,9 @@ module townespace::random_mint {
             signer_ref,
             collection,
             descriptions,
-            uri_with_index_prefix,
+            uri,
             name_with_index_prefix,
             name_with_index_suffix,
-            folder_uri,
             count,
             royalty_numerator,
             royalty_denominator,
@@ -432,11 +422,10 @@ module townespace::random_mint {
         collection: Object<Collection>,
         mint_info_obj_addr: address,
         description: String,
-        uri_with_index_prefix: vector<String>,
+        uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
         vec_mint_price: vector<u64>,
-        folder_uri: String,
         token_count: u64,
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
@@ -451,10 +440,9 @@ module townespace::random_mint {
             signer_ref,
             collection,
             description,
-            uri_with_index_prefix,
+            uri,
             name_with_index_prefix,
             name_with_index_suffix,
-            folder_uri,
             token_count,
             royalty_numerator,
             royalty_denominator,
@@ -584,7 +572,6 @@ module townespace::random_mint {
                 string::utf8(b"Cool Sloth")
             ],
             vector[1000, 1000, 1000, 1000],
-            string::utf8(b"Folder URI"),
             4,
             option::none(),
             option::none(),
@@ -630,16 +617,10 @@ module townespace::random_mint {
             mint_info_object_address,
             string::utf8(b"Sloth"),
             vector[
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base")
-            ],
-            vector[
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth")
+                string::utf8(b"Cool%20Sloth%201"),
+                string::utf8(b"Cool%20Sloth%202"),
+                string::utf8(b"Cool%20Sloth%203"),
+                string::utf8(b"Cool%20Sloth%204")
             ],
             vector[
                 string::utf8(b"Cool Sloth"), 
@@ -647,8 +628,14 @@ module townespace::random_mint {
                 string::utf8(b"Cool Sloth"),
                 string::utf8(b"Cool Sloth")
             ],
+            vector[
+                string::utf8(b""),
+                string::utf8(b""),
+                string::utf8(b""),
+                string::utf8(b"")
+            ],
             vector[1000, 1000, 1000, 1000],
-            string::utf8(b"Folder%20URI"),
+            
             4,
             option::none(),
             option::none(),
@@ -676,10 +663,17 @@ module townespace::random_mint {
         assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 4);
 
         // get one token and print its name and uri
+        debug::print<String>(&string::utf8(b"COMPOSABLES NAMES:"));
         debug::print<String>(&token::name<Composable>(token_4));
         debug::print<String>(&token::name<Composable>(token_5));
         debug::print<String>(&token::name<Composable>(token_6));
         debug::print<String>(&token::name<Composable>(token_7));
+
+        debug::print<String>(&string::utf8(b"COMPOSABLES URIS:"));
+        debug::print<String>(&token::uri<Composable>(token_4));
+        debug::print<String>(&token::uri<Composable>(token_5));
+        debug::print<String>(&token::uri<Composable>(token_6));
+        debug::print<String>(&token::uri<Composable>(token_7));
     }
 
     // #[test_only]
@@ -774,7 +768,7 @@ module townespace::random_mint {
     //         vector[],
     //         // common
     //         4,
-    //         string::utf8(b"Folder%20URI"),
+    //         
     //         option::some(1),
     //         option::some(2),
     //         vector[1000, 1000, 1000, 1000],
@@ -860,7 +854,6 @@ module townespace::random_mint {
     //             string::utf8(b"Cool Sloth")
     //         ],
     //         vector[1000, 1000, 1000, 1000],
-    //         string::utf8(b"Folder%20URI"),
     //         4,
     //         option::none(),
     //         option::none(),

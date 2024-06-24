@@ -11,7 +11,7 @@ module townespace::common {
     friend townespace::studio;
     friend townespace::random_mint;
 
-    /// Common logic for creating sticky object for the liquid NFTs
+    /// Common logic for creating sticky object
     public(friend) inline fun create_sticky_object(
         caller_address: address
     ): (ConstructorRef, ExtendRef, signer, address) {
@@ -23,12 +23,7 @@ module townespace::common {
     }
 
     /// Generate a pseudorandom number
-    ///
-    /// We use AUID to generate a number from the transaction hash and a globally unique
-    /// number, which allows us to spin this multiple times in a single transaction.
-    ///
     /// We use timestamp to ensure that people can't predict it.
-    ///
     public(friend) inline fun pseudorandom_u64(size: u64): u64 {
         // ensure that the size is greater than zero
         assert!(size > 0, 0x1234567);

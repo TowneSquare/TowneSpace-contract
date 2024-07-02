@@ -370,6 +370,18 @@ module townespace::random_mint {
         token_addr
     }
 
+    /// Helper function for getting a token at a given index
+    inline fun token_at_index(
+        mint_info_obj_addr: address,
+        index: u64
+    ): address {
+        let mint_info = borrow_global<MintInfo>(mint_info_obj_addr);
+        let pool = indexed_tokens(&mint_info.token_pool);
+        let token_addr = *smart_table::borrow<u64, address>(&pool, index);
+        smart_table::destroy(pool);
+        token_addr
+    }
+
     #[lint::allow_unsafe_randomness]
     /// Helper function for minting a token
     /// Returns the address of the minted token and the mint price
@@ -394,6 +406,28 @@ module townespace::random_mint {
         (token_addr, mint_price)
     }
 
+    /// Helper function to mint a token at a given index
+    public fun mint_token_at_index<T: key>(
+        signer_ref: &signer,
+        mint_info_obj_addr: address,
+        index: u64
+    ): (address, u64) acquires MintInfo {
+        let signer_addr = signer::address_of(signer_ref);
+        let token_addr = token_at_index(mint_info_obj_addr, index);
+        let mint_price = mint_price(mint_info_obj_addr, token_addr);
+        assert!(coin::balance<APT>(signer_addr) >= mint_price, EINSUFFICIENT_FUNDS);
+        let mint_info = borrow_global_mut<MintInfo>(mint_info_obj_addr);
+        smart_table::remove(&mut mint_info.token_pool, token_addr);
+
+        // transfer composable from resource acc to the minter
+        let obj_signer = object::generate_signer_for_extending(&mint_info.extend_ref);
+        object::transfer_call(&obj_signer, token_addr, signer_addr);
+        // transfer mint price to the launchpad creator
+        coin::transfer<APT>(signer_ref, mint_info.owner_addr, mint_price);
+
+        (token_addr, mint_price)
+    }
+
     #[lint::allow_unsafe_randomness]
     /// Helper function for minting a batch of tokens
     public fun mint_batch_tokens<T: key>(
@@ -405,6 +439,23 @@ module townespace::random_mint {
         let mint_prices = vector::empty<u64>();
         for (i in 0..count) {
             let (token_addr, mint_price) = mint_token<T>(signer_ref, mint_info_obj_addr);
+            vector::push_back(&mut minted_tokens, token_addr);
+            vector::push_back(&mut mint_prices, mint_price);
+        };
+
+        (minted_tokens, mint_prices)
+    }
+
+    /// Helper function to mint a batch of tokens at given indices
+    public fun mint_batch_tokens_at_indices<T: key>(
+        signer_ref: &signer,
+        mint_info_obj_addr: address,
+        indices: vector<u64>
+    ): (vector<address>, vector<u64>) acquires MintInfo {
+        let minted_tokens = vector::empty<address>();
+        let mint_prices = vector::empty<u64>();
+        for (i in 0..vector::length(&indices)) {
+            let (token_addr, mint_price) = mint_token_at_index<T>(signer_ref, mint_info_obj_addr, *vector::borrow(&indices, i));
             vector::push_back(&mut minted_tokens, token_addr);
             vector::push_back(&mut mint_prices, mint_price);
         };
@@ -666,6 +717,65 @@ module townespace::random_mint {
         debug::print<String>(&token::uri<Composable>(token_5));
         debug::print<String>(&token::uri<Composable>(token_6));
         debug::print<String>(&token::uri<Composable>(token_7));
+
+        // add more tokens for minting
+        add_tokens_for_mint_internal<Composable>(
+            creator,
+            object::object_from_constructor_ref(&collection_constructor_ref),
+            mint_info_object_address,
+            string::utf8(b"Sloth"),
+            vector[
+                string::utf8(b"Cool%20Sloth%205"),
+                string::utf8(b"Cool%20Sloth%206"),
+                string::utf8(b"Cool%20Sloth%207"),
+                string::utf8(b"Cool%20Sloth%208")
+            ],
+            vector[
+                string::utf8(b"Cool Sloth"), 
+                string::utf8(b"Cool Sloth"), 
+                string::utf8(b"Cool Sloth"),
+                string::utf8(b"Cool Sloth")
+            ],
+            vector[
+                string::utf8(b""),
+                string::utf8(b""),
+                string::utf8(b""),
+                string::utf8(b"")
+            ],
+            vector[1000, 1000, 1000, 1000],
+            
+            4,
+            option::none(),
+            option::none(),
+            vector[],
+            vector[],
+            vector[]
+        );
+
+        // mint one token at index 0
+        // debug::print<u64>(&vector::length(&tokens_for_mint<Composable>(mint_info_object_address)));
+        // let indices = vector<u64>[];
+        // for (i in 0..vector::length(&tokens_for_mint<Composable>(mint_info_object_address))) {
+        //     let token = vector::borrow(&tokens_for_mint<Composable>(mint_info_object_address), i);
+        //     let (_, index) = vector::index_of(&tokens_for_mint<Composable>(mint_info_object_address), token);
+        //     vector::push_back(&mut indices, index);
+        // };
+        // debug::print<String>(&string::utf8(b"INDICES:"));
+        // debug::print<vector<u64>>(&indices);
+
+        // let mint_info = borrow_global<MintInfo>(mint_info_object_address);
+        // let pool = indexed_tokens(&mint_info.token_pool);
+        // debug::print<SimpleMap<u64, address>>(&smart_table::to_simple_map(&pool));
+
+        let (minted_token_one, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 3);
+        let (minted_token_two, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 2);
+        let (minted_token_three, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 1);
+        let (minted_token_four, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 0);
+
+        debug::print<String>(&string::utf8(b"COMPOSABLE ADDRs minted given indices:"));
+        debug::print<address>(&minted_token_one);
+
+        // smart_table::destroy(pool);
     }
 
     // #[test_only]

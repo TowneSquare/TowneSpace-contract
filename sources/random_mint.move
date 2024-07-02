@@ -387,11 +387,7 @@ module townespace::random_mint {
         // transfer composable from resource acc to the minter
         let mint_info = borrow_global<MintInfo>(mint_info_obj_addr);
         let obj_signer = object::generate_signer_for_extending(&mint_info.extend_ref);
-        composable_token::transfer_token<T>(
-            &obj_signer, 
-            object::address_to_object(token_addr), 
-            signer_addr
-        );
+        object::transfer_call(&obj_signer, token_addr, signer_addr);
         // transfer mint price to the launchpad creator
         coin::transfer<APT>(signer_ref, mint_info.owner_addr, mint_price);
 
@@ -432,7 +428,7 @@ module townespace::random_mint {
         property_keys: vector<String>,
         property_types: vector<String>,
         property_values: vector<vector<u8>>,
-    ): vector<address> acquires MintInfo {
+    ): (vector<address>, vector<object::ConstructorRef>) acquires MintInfo {
         // creates tokens
         let mint_info = borrow_global_mut<MintInfo>(mint_info_obj_addr);
         // create tokens
@@ -453,18 +449,14 @@ module townespace::random_mint {
         let token_addrs = vector::empty<address>();
         for (i in 0..vector::length(&constructor_refs)) {
             // transfer
-            composable_token::transfer_token<T>(
-                signer_ref,
-                object::object_from_constructor_ref(vector::borrow(&constructor_refs, i)),
-                mint_info_obj_addr
-            );
             let token_addr = object::address_from_constructor_ref(vector::borrow(&constructor_refs, i));
+            object::transfer_call(signer_ref, token_addr, mint_info_obj_addr);
             vector::push_back(&mut token_addrs, token_addr);
         };
         // add tokens and mint_price to the token_pool
         smart_table::add_all(&mut mint_info.token_pool, token_addrs, vec_mint_price);
 
-        token_addrs
+        (token_addrs, constructor_refs)
     } 
     
     

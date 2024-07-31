@@ -116,12 +116,15 @@ module townespace::studio {
         );  
     }
 
-    /// Add a type to the tracker table
+    /// Add a type to the tracker table; callable only by the collection owner
     public entry fun add_type_to_tracker(
+        signer_ref: &signer,
         collection_obj_addr: address,
         type: String,
         total_supply: u64
     ) acquires Tracker {
+        // asserting the signer is the collection owner
+        assert!(object::is_owner<Collection>(object::address_to_object<Collection>(collection_obj_addr), signer::address_of(signer_ref)), ENOT_OWNER);
         // asserting type not in tracker is being handled in table.move (L139)
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
         let token_tracker = TokenTracker { total_supply, count: 0 };
@@ -229,14 +232,14 @@ module townespace::studio {
     }
 
     /// Update the total supply in the tracker; callable only by the collection owner
-    public entry fun update_total_supply(
+    public entry fun update_type_total_supply(
         signer_ref: &signer,
         collection_obj: Object<Collection>,
         key: String,
         new_total_supply: u64
     ) acquires Tracker {
         assert!(object::is_owner<Collection>(collection_obj, signer::address_of(signer_ref)), ENOT_OWNER);
-        update_total_supply_internal(object::object_address(&collection_obj), key, new_total_supply);
+        update_type_total_supply_internal(object::object_address(&collection_obj), key, new_total_supply);
     }
     
     // -------
@@ -459,7 +462,7 @@ module townespace::studio {
     }
 
     /// Helper function to update the total supply in the tracker; new total supply should be greater than the current total supply
-    inline fun update_total_supply_internal(collection_obj_addr: address, key: String, new_total_supply: u64) acquires Tracker {
+    inline fun update_type_total_supply_internal(collection_obj_addr: address, key: String, new_total_supply: u64) acquires Tracker {
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
         let current_total_supply = table::borrow<String, TokenTracker>(&tracker.table, key).total_supply;
         assert!(new_total_supply > current_total_supply, ENEW_SUPPLY_LESS_THAN_OLD);
@@ -530,7 +533,7 @@ module townespace::studio {
         let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
         
         // Add base type to the tracker
-        add_type_to_tracker(collection_obj_addr, string::utf8(b"Base"), 5);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 5);
 
         // print count
         debug::print<String>(&string::utf8(b"BASE COUNT BEFORE MINT: "));
@@ -627,8 +630,8 @@ module townespace::studio {
         debug::print<u64>(&count_from_tracker(collection_obj_addr, string::utf8(b"Base")));
 
         // add body and sloth type to the tracker
-        add_type_to_tracker(collection_obj_addr, string::utf8(b"Body"), 5);
-        add_type_to_tracker(collection_obj_addr, string::utf8(b"Sloth"), 5);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Body"), 5);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Sloth"), 5);
         // print count
         debug::print<String>(&string::utf8(b"BODY COUNT BEFORE MINT: "));
         debug::print<u64>(&count_from_tracker(collection_obj_addr, string::utf8(b"Body")));
@@ -863,7 +866,7 @@ module townespace::studio {
         let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
         
         // Add base type to the tracker
-        add_type_to_tracker(collection_obj_addr, string::utf8(b"Base"), 5);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 5);
         
         assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
         assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 0, 1);
@@ -942,7 +945,7 @@ module townespace::studio {
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
     /// Test updating the total supply in the tracker
-    fun test_update_total_supply(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
+    fun test_update_type_total_supply(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
         let (creator_addr, _) = common::setup_test(std, creator, minter);
         // creator creates a collection
         let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
@@ -968,7 +971,7 @@ module townespace::studio {
         let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
         
         // Add base type to the tracker
-        add_type_to_tracker(collection_obj_addr, string::utf8(b"Base"), 5);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 5);
         
         // assert total supply is 5
         assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
@@ -1021,7 +1024,7 @@ module townespace::studio {
         assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
 
         // update total supply
-        update_total_supply_internal(collection_obj_addr, string::utf8(b"Base"), 6);
+        update_type_total_supply_internal(collection_obj_addr, string::utf8(b"Base"), 6);
 
         assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 6, 1);
         assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
@@ -1059,7 +1062,7 @@ module townespace::studio {
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222), expected_failure(abort_code = ENEW_SUPPLY_LESS_THAN_OLD)]
     /// Test update total supply with a new total supply less than the current total supply
-    fun test_update_total_supply_less_than_current(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
+    fun test_update_type_total_supply_less_than_current(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
         let (creator_addr, _) = common::setup_test(std, creator, minter);
         // creator creates a collection
         let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
@@ -1085,7 +1088,7 @@ module townespace::studio {
         let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
         
         // Add base type to the tracker
-        add_type_to_tracker(collection_obj_addr, string::utf8(b"Base"), 5);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 5);
         
         // assert total supply is 5
         assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
@@ -1094,6 +1097,88 @@ module townespace::studio {
         assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 0, 1);
 
         // update total supply
-        update_total_supply_internal(collection_obj_addr, string::utf8(b"Base"), 4);
+        update_type_total_supply_internal(collection_obj_addr, string::utf8(b"Base"), 4);
+    }
+
+    #[test(std = @0x1, creator = @0x111, minter = @0x222)]
+    /// Test add new type to the tracker
+    fun test_add_new_type_to_tracker(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
+        let (creator_addr, _) = common::setup_test(std, creator, minter);
+        // creator creates a collection
+        let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
+            creator,
+            string::utf8(b"Collection Description"),
+            option::some(1000),
+            string::utf8(b"Collection Name"),
+            string::utf8(b"Collection Symbol"),
+            string::utf8(b"Collection URI"),
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            option::none(),
+            option::none(),
+        );
+
+        let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
+        
+        // Add base type to the tracker
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 5);
+        
+        // assert total supply is 5
+        assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+
+        // assert count is 0
+        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 0, 1);
+
+        // add another type
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Body"), 5);
+
+        // assert total supply is 5
+        assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Body")) == 5, 1);
+
+        // assert count is 0
+        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Body")) == 0, 1);
+
+        // create traits
+        let constructor_refs = create_batch_internal<Trait>(
+            creator,
+            object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+            vector[
+                string::utf8(b"Base"),
+                string::utf8(b"Body"),
+                string::utf8(b"Body"),
+            ],
+            vector[
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Body"),
+                string::utf8(b"Sloth%20Body"),
+            ],
+            vector[
+                string::utf8(b"Sloth Base"),
+                string::utf8(b"Sloth Body"),
+                string::utf8(b"Sloth Body"),
+            ],
+            vector[
+                string::utf8(b""),
+                string::utf8(b""),
+                // string::utf8(b""),
+            ],
+            3,
+            option::none(),
+            option::none(),
+            vector::empty(),
+            vector::empty(),
+            vector::empty()
+        );
+
+        // assert count is 1 for base and 2 for body
+        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 1, 1);
+        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Body")) == 2, 1);
     }
 }

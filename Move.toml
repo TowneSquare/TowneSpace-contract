@@ -5,7 +5,7 @@ authors = ["lay (Aladeen)"]
 
 [addresses]
 # TODO: Publish with the modules visibility hidden
-townespace = "0x86a254a1b948d791a26ca2d5bcfc3bbc9917af55ea58fe90cd1b42aee7ce2821"
+townespace = "0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374"
 
 [dev-addresses]
 

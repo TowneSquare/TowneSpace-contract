@@ -590,9 +590,9 @@ module townespace::random_mint {
 
         // Add base type to the tracker
         let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
-        studio::add_type_to_tracker(collection_obj_addr, string::utf8(b"Base"), 25);
-        studio::add_type_to_tracker(collection_obj_addr, string::utf8(b"Body"), 25);
-        studio::add_type_to_tracker(collection_obj_addr, string::utf8(b"Sloth"), 25);
+        studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 25);
+        studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Body"), 25);
+        studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Sloth"), 25);
 
         // creator creates tokens for minting
         let (token_addrs, mint_info_object_address, composable_constructor_refs) = create_tokens_for_mint_internal<Composable>(
@@ -818,9 +818,9 @@ module townespace::random_mint {
 
     //     // Add base type to the tracker
     //     let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
-    //     studio::add_type_to_tracker(collection_obj_addr, string::utf8(b"Trait"), 20);
-    //     studio::add_type_to_tracker(collection_obj_addr, string::utf8(b"Composable"), 20);
-    //     studio::add_type_to_tracker(collection_obj_addr, string::utf8(b"Trait"), 20);
+    //     studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Trait"), 20);
+    //     studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Composable"), 20);
+    //     studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Trait"), 20);
 
     //     // creator creates composable tokens with soulbound traits
     //     let (composable_token_addrsesses, trait_token_addrsesses, mint_info_obj_addr, _) = create_composable_tokens_with_soulbound_traits_for_mint_internal(

@@ -130,7 +130,7 @@ module townespace::random_mint {
         mint_info_obj_addr: address,
         count: u64
     ) acquires MintInfo {
-        let (minted_tokens, mint_prices) = mint_batch_tokens<T>(signer_ref, mint_info_obj_addr, count);
+        let (minted_tokens, mint_prices, _) = mint_batch_tokens<T>(signer_ref, mint_info_obj_addr, count);
         event::emit(TokenMinted { tokens: minted_tokens, mint_prices });
     }
 
@@ -361,13 +361,14 @@ module townespace::random_mint {
     /// Helper function for getting a random token from a smart table
     inline fun random_token(
         mint_info_obj_addr: address
-    ): address {
+    ): (address, u64) {
         let mint_info = borrow_global_mut<MintInfo>(mint_info_obj_addr);
         let pool = indexed_tokens(&mint_info.token_pool);
         let i = common::pseudorandom_u64(smart_table::length<u64, address>(&pool));
         let token_addr = *smart_table::borrow<u64, address>(&pool, i);
         smart_table::destroy(pool);
-        token_addr
+
+        (token_addr, i)
     }
 
     /// Helper function for getting a token at a given index
@@ -385,11 +386,11 @@ module townespace::random_mint {
     #[lint::allow_unsafe_randomness]
     /// Helper function for minting a token
     /// Returns the address of the minted token and the mint price
-    public fun mint_token<T: key>(signer_ref: &signer, mint_info_obj_addr: address): (address, u64) acquires MintInfo {
+    public fun mint_token<T: key>(signer_ref: &signer, mint_info_obj_addr: address): (address, u64, u64) acquires MintInfo {
         let signer_addr = signer::address_of(signer_ref);
         // remove the token from the mint info
         // get random token from the token_pool
-        let token_addr = random_token(mint_info_obj_addr);
+        let (token_addr, index) = random_token(mint_info_obj_addr);
         // get mint price
         let mint_price = mint_price(mint_info_obj_addr, token_addr);
         assert!(coin::balance<APT>(signer_addr) >= mint_price, EINSUFFICIENT_FUNDS);
@@ -403,7 +404,7 @@ module townespace::random_mint {
         // transfer mint price to the launchpad creator
         coin::transfer<APT>(signer_ref, mint_info.owner_addr, mint_price);
 
-        (token_addr, mint_price)
+        (token_addr, mint_price, index)
     }
 
     /// Helper function to mint a token at a given index
@@ -434,16 +435,18 @@ module townespace::random_mint {
         signer_ref: &signer,
         mint_info_obj_addr: address,
         count: u64
-    ): (vector<address>, vector<u64>) acquires MintInfo {
+    ): (vector<address>, vector<u64>, vector<u64>) acquires MintInfo {
         let minted_tokens = vector::empty<address>();
         let mint_prices = vector::empty<u64>();
+        let indices = vector::empty<u64>();
         for (i in 0..count) {
-            let (token_addr, mint_price) = mint_token<T>(signer_ref, mint_info_obj_addr);
+            let (token_addr, mint_price, index) = mint_token<T>(signer_ref, mint_info_obj_addr);
             vector::push_back(&mut minted_tokens, token_addr);
             vector::push_back(&mut mint_prices, mint_price);
+            vector::push_back(&mut indices, index);
         };
 
-        (minted_tokens, mint_prices)
+        (minted_tokens, mint_prices, indices)
     }
 
     /// Helper function to mint a batch of tokens at given indices
@@ -624,7 +627,7 @@ module townespace::random_mint {
         );
 
         // minter mints tokens
-        let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
+        let (minted_tokens, _, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
 
         // assert the owner is the minter
         let token_0 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
@@ -688,7 +691,7 @@ module townespace::random_mint {
         );
 
         // mint the newly created tokens
-        let (minted_tokens, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
+        let (minted_tokens, _, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
 
         // assert the owner is the minter
         let token_4 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));

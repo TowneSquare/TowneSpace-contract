@@ -4,7 +4,8 @@ version = "1.0.0"
 authors = ["lay (Aladeen)"]
 
 [addresses]
-townespace = "0x87e1e6ba138e3ba253aa98645320e4b7b370b476d93799a657eb8f9f7ea488f8"
+# TODO: Publish with the modules visibility hidden
+townespace = "0x86a254a1b948d791a26ca2d5bcfc3bbc9917af55ea58fe90cd1b42aee7ce2821"
 
 [dev-addresses]
 

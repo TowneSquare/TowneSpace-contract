@@ -17,6 +17,7 @@ module townespace::studio {
     use aptos_token_objects::token::{Token};
     use composable_token::composable_token::{Self, Named, Collection, Composable, Trait};
     use std::option::{Option};
+    use std::signer;
     use std::string::{Self, String};
     use std::string_utils;
     use std::vector;
@@ -27,11 +28,18 @@ module townespace::studio {
 
     /// Token names and count length mismatch
     const ELENGTH_MISMATCH: u64 = 1;
+    /// Token count reached max supply
+    const EMAX_SUPPLY_REACHED: u64 = 2;
+    /// New total supply should be greater than the current total supply
+    const ENEW_SUPPLY_LESS_THAN_OLD: u64 = 3;
+    /// The signer is not the collection owner
+    const ENOT_OWNER: u64 = 4;
 
     // -------
     // Structs
     // -------
 
+    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     /// Global storage to track minting 
     struct Tracker has key {
         // collection object
@@ -40,6 +48,7 @@ module townespace::studio {
         table: Table<String, TokenTracker>
     }
 
+    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     /// Global storage to track token counts per type
     struct TokenTracker has key, store {
         // total supply
@@ -219,6 +228,17 @@ module townespace::studio {
         event::emit<TokensCreated>( TokensCreated { addresses } );
     }
 
+    /// Update the total supply in the tracker; callable only by the collection owner
+    public entry fun update_total_supply(
+        signer_ref: &signer,
+        collection_obj: Object<Collection>,
+        key: String,
+        new_total_supply: u64
+    ) acquires Tracker {
+        assert!(object::is_owner<Collection>(collection_obj, signer::address_of(signer_ref)), ENOT_OWNER);
+        update_total_supply_internal(object::object_address(&collection_obj), key, new_total_supply);
+    }
+    
     // -------
     // Helpers
     // -------
@@ -301,15 +321,14 @@ module townespace::studio {
         assert!(count == vector::length(&descriptions), ELENGTH_MISMATCH);
         assert!(count == vector::length(&uri), ELENGTH_MISMATCH);
         assert!(count == vector::length(&name_with_index_prefix), ELENGTH_MISMATCH);
-        // TODO: assert count + tracker count <= max_supply; shouldn't be done here
-
         let constructor_refs = vector::empty<ConstructorRef>();
         let collection_obj_addr = object::object_address(&collection);
         for (i in 0..count) {
             let description = *vector::borrow<String>(&descriptions, i);
+            // assert count is less or equal than total supply
+            assert!(total_supply_from_tracker(collection_obj_addr, description) > count_from_tracker(collection_obj_addr, description), EMAX_SUPPLY_REACHED);
             let token_index = count_from_tracker(collection_obj_addr, description) + 1;
             let uri = *vector::borrow<String>(&uri, i);
-            
             // token name: prefix + # + index + suffix
             let name = *vector::borrow<String>(&name_with_index_prefix, i);
             string::append_utf8(&mut name, b" #");
@@ -423,18 +442,30 @@ module townespace::studio {
         let count_before_increment = table::borrow<String, TokenTracker>(&tracker.table, key).count;
         table::borrow_mut<String, TokenTracker>(&mut tracker.table, key).count = count_before_increment + 1;
     }
+    
+    /// Helper function to return the total supply from Token Tracker given a collection object address and the type key
+    inline fun total_supply_from_tracker(collection_obj_addr: address, key: String): u64 {
+        let tracker = borrow_global<Tracker>(collection_obj_addr);
+        table::borrow<String, TokenTracker>(&tracker.table, key).total_supply
+    }
 
     /// Helper function to return count from Token Tracker given a collection object address and the type key
     inline fun count_from_tracker(collection_obj_addr: address, key: String): u64 {
-        let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
+        let tracker = borrow_global<Tracker>(collection_obj_addr);
         table::borrow<String, TokenTracker>(&tracker.table, key).count
+    }
+
+    /// Helper function to update the total supply in the tracker; new total supply should be greater than the current total supply
+    inline fun update_total_supply_internal(collection_obj_addr: address, key: String, new_total_supply: u64) acquires Tracker {
+        let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
+        let current_total_supply = table::borrow<String, TokenTracker>(&tracker.table, key).total_supply;
+        assert!(new_total_supply > current_total_supply, ENEW_SUPPLY_LESS_THAN_OLD);
+        table::borrow_mut<String, TokenTracker>(&mut tracker.table, key).total_supply = new_total_supply;
     }
 
     // -----------
     // Public APIs
     // -----------
-
-
 
     #[view]
     /// Gets a wallet address plus a list of token addresses, and returns only the owned tokens.
@@ -799,5 +830,263 @@ module townespace::studio {
         // debug::print<String>(&token8_uri);
         // debug::print<String>(&token9_uri);
         // debug::print<String>(&token10_uri);
+    }
+
+    #[test(std = @0x1, creator = @0x111, minter = @0x222), expected_failure(abort_code = EMAX_SUPPLY_REACHED)]
+    /// Test updating the total supply in the tracker
+    fun test_total_supply_exceeded(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
+        let (creator_addr, _) = common::setup_test(std, creator, minter);
+        // creator creates a collection
+        let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
+            creator,
+            string::utf8(b"Collection Description"),
+            option::some(1000),
+            string::utf8(b"Collection Name"),
+            string::utf8(b"Collection Symbol"),
+            string::utf8(b"Collection URI"),
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            option::none(),
+            option::none(),
+        );
+
+        let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
+        
+        // Add base type to the tracker
+        add_type_to_tracker(collection_obj_addr, string::utf8(b"Base"), 5);
+        
+        // create traits
+        let constructor_refs = create_batch_internal<Trait>(
+            creator,
+            object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+            vector[
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base")
+            ],
+            vector[
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base")
+            ],
+            vector[
+                string::utf8(b"Sloth Base"),
+                string::utf8(b"Sloth Base"),
+                string::utf8(b"Sloth Base"),
+                string::utf8(b"Sloth Base"),
+                string::utf8(b"Sloth Base")
+            ],
+            vector[
+                string::utf8(b""),
+                string::utf8(b""),
+                // string::utf8(b""),
+                // string::utf8(b""),
+                // string::utf8(b"")
+            ],
+            5,
+            option::none(),
+            option::none(),
+            vector::empty(),
+            vector::empty(),
+            vector::empty()
+        );
+
+        // assert total supply is 5
+        assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+
+        // assert count is 5
+        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+
+        // create one more token
+        create_batch_internal<Trait>(
+            creator,
+            object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+            vector[
+                string::utf8(b"Base"),
+            ],
+            vector[
+                string::utf8(b"Sloth%20Base"),
+            ],
+            vector[
+                string::utf8(b"Sloth Base"),
+            ],
+            vector[
+                string::utf8(b""),
+            ],
+            1,
+            option::none(),
+            option::none(),
+            vector::empty(),
+            vector::empty(),
+            vector::empty()
+        );
+    }
+
+    #[test(std = @0x1, creator = @0x111, minter = @0x222)]
+    /// Test updating the total supply in the tracker
+    fun test_update_total_supply(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
+        let (creator_addr, _) = common::setup_test(std, creator, minter);
+        // creator creates a collection
+        let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
+            creator,
+            string::utf8(b"Collection Description"),
+            option::some(1000),
+            string::utf8(b"Collection Name"),
+            string::utf8(b"Collection Symbol"),
+            string::utf8(b"Collection URI"),
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            option::none(),
+            option::none(),
+        );
+
+        let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
+        
+        // Add base type to the tracker
+        add_type_to_tracker(collection_obj_addr, string::utf8(b"Base"), 5);
+        
+        // assert total supply is 5
+        assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+
+        // assert count is 0
+        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 0, 1);
+
+        // create traits
+        let constructor_refs = create_batch_internal<Trait>(
+            creator,
+            object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+            vector[
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base")
+            ],
+            vector[
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base")
+            ],
+            vector[
+                string::utf8(b"Sloth Base"),
+                string::utf8(b"Sloth Base"),
+                string::utf8(b"Sloth Base"),
+                string::utf8(b"Sloth Base"),
+                string::utf8(b"Sloth Base")
+            ],
+            vector[
+                string::utf8(b""),
+                string::utf8(b""),
+                // string::utf8(b""),
+                // string::utf8(b""),
+                // string::utf8(b"")
+            ],
+            5,
+            option::none(),
+            option::none(),
+            vector::empty(),
+            vector::empty(),
+            vector::empty()
+        );
+
+
+        // assert count is 5
+        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+
+        // update total supply
+        update_total_supply_internal(collection_obj_addr, string::utf8(b"Base"), 6);
+
+        assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 6, 1);
+        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+
+        // create one more token
+        create_batch_internal<Trait>(
+            creator,
+            object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+            vector[
+                string::utf8(b"Base"),
+            ],
+            vector[
+                string::utf8(b"Sloth%20Base"),
+            ],
+            vector[
+                string::utf8(b"Sloth Base"),
+            ],
+            vector[
+                string::utf8(b""),
+            ],
+            1,
+            option::none(),
+            option::none(),
+            vector::empty(),
+            vector::empty(),
+            vector::empty()
+        );
+
+        assert!(
+            total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base"))
+            == count_from_tracker(collection_obj_addr, string::utf8(b"Base")), 
+            1
+        );
+    }
+
+    #[test(std = @0x1, creator = @0x111, minter = @0x222), expected_failure(abort_code = ENEW_SUPPLY_LESS_THAN_OLD)]
+    /// Test update total supply with a new total supply less than the current total supply
+    fun test_update_total_supply_less_than_current(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
+        let (creator_addr, _) = common::setup_test(std, creator, minter);
+        // creator creates a collection
+        let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
+            creator,
+            string::utf8(b"Collection Description"),
+            option::some(1000),
+            string::utf8(b"Collection Name"),
+            string::utf8(b"Collection Symbol"),
+            string::utf8(b"Collection URI"),
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            option::none(),
+            option::none(),
+        );
+
+        let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
+        
+        // Add base type to the tracker
+        add_type_to_tracker(collection_obj_addr, string::utf8(b"Base"), 5);
+        
+        // assert total supply is 5
+        assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+
+        // assert count is 0
+        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 0, 1);
+
+        // update total supply
+        update_total_supply_internal(collection_obj_addr, string::utf8(b"Base"), 4);
     }
 }

@@ -328,10 +328,6 @@ module townespace::studio {
         let collection_obj_addr = object::object_address(&collection);
         for (i in 0..count) {
             let description = *vector::borrow<String>(&descriptions, i);
-            // assert count is less or equal than total supply
-            let count_from_tracker = count_from_tracker(collection_obj_addr, description);
-            let total_supply = total_supply_from_tracker(collection_obj_addr, description);
-            assert!((count - i) <= (total_supply - count_from_tracker), EMAX_SUPPLY_REACHED);
             let token_index = count_from_tracker(collection_obj_addr, description) + 1;
             let uri = *vector::borrow<String>(&uri, i);
             // token name: prefix + # + index + suffix
@@ -443,6 +439,10 @@ module townespace::studio {
     /// Helper function to update the tracker
     /// Used when a token is created
     inline fun increment_count(collection_obj_addr: address, key: String) acquires Tracker {
+        // // assert total supply of the type is not reached
+        // let current_total_supply = count_from_tracker(collection_obj_addr, key);
+        // let total_supply = total_supply_from_tracker(collection_obj_addr, key);
+        // assert!((current_total_supply + 1) <= total_supply, EMAX_SUPPLY_REACHED);
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
         let count = table::borrow_mut<String, TokenTracker>(&mut tracker.table, key).count;
         table::borrow_mut<String, TokenTracker>(&mut tracker.table, key).count = count + 1;

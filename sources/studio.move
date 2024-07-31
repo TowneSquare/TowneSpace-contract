@@ -329,10 +329,9 @@ module townespace::studio {
         for (i in 0..count) {
             let description = *vector::borrow<String>(&descriptions, i);
             // assert count is less or equal than total supply
-            // assert!(total_supply_from_tracker(collection_obj_addr, description) >= count_from_tracker(collection_obj_addr, description), EMAX_SUPPLY_REACHED);
-            let count = count_from_tracker(collection_obj_addr, description);
+            let count_from_tracker = count_from_tracker(collection_obj_addr, description);
             let total_supply = total_supply_from_tracker(collection_obj_addr, description);
-            assert!((count+1) <= total_supply, EMAX_SUPPLY_REACHED);
+            assert!((count - i) <= (total_supply - count_from_tracker), EMAX_SUPPLY_REACHED);
             let token_index = count_from_tracker(collection_obj_addr, description) + 1;
             let uri = *vector::borrow<String>(&uri, i);
             // token name: prefix + # + index + suffix

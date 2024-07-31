@@ -332,7 +332,7 @@ module townespace::studio {
             // assert!(total_supply_from_tracker(collection_obj_addr, description) >= count_from_tracker(collection_obj_addr, description), EMAX_SUPPLY_REACHED);
             let count = count_from_tracker(collection_obj_addr, description);
             let total_supply = total_supply_from_tracker(collection_obj_addr, description);
-            assert!(count < total_supply, EMAX_SUPPLY_REACHED);
+            assert!((count+1) <= total_supply, EMAX_SUPPLY_REACHED);
             let token_index = count_from_tracker(collection_obj_addr, description) + 1;
             let uri = *vector::borrow<String>(&uri, i);
             // token name: prefix + # + index + suffix
@@ -915,10 +915,10 @@ module townespace::studio {
         assert!(total_supply_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
 
         // assert count is 5
-        // debug::print<u64>(&count_from_tracker(collection_obj_addr, string::utf8(b"Base")));
+        debug::print<u64>(&count_from_tracker(collection_obj_addr, string::utf8(b"Base")));
         assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
 
-        // create one more token
+        // create one more token; should fail
         create_batch_internal<Trait>(
             creator,
             object::object_from_constructor_ref<Collection>(&collection_constructor_ref),

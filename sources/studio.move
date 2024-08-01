@@ -488,6 +488,14 @@ module townespace::studio {
         owned_tokens
     }
 
+    #[view]
+    /// Gets the total supply of a token type and the count of minted tokens of the type; useful for calculating rarity
+    public fun token_supply(collection_obj_addr: address, type: String): (u64, u64) acquires Tracker {
+        let total_supply = total_supply_from_tracker(collection_obj_addr, type);
+        let minted_tokens_count = count_from_tracker(collection_obj_addr, type);
+        (total_supply, minted_tokens_count)
+    }
+
     // ------------
     // Unit Testing
     // ------------

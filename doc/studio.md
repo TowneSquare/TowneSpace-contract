@@ -6,13 +6,15 @@
 
 
 -  [Resource `Tracker`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_Tracker)
--  [Resource `TokenTracker`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_TokenTracker)
+-  [Resource `Variant`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_Variant)
 -  [Struct `TrackerInitialized`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_TrackerInitialized)
 -  [Struct `TypeAdded`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_TypeAdded)
+-  [Struct `VariantAdded`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_VariantAdded)
 -  [Struct `TokensCreated`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_TokensCreated)
 -  [Constants](#@Constants_0)
 -  [Function `create_collection_with_tracker`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_create_collection_with_tracker)
 -  [Function `add_type_to_tracker`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_add_type_to_tracker)
+-  [Function `add_variant_to_type`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_add_variant_to_type)
 -  [Function `create_batch`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_create_batch)
 -  [Function `create_batch_composables_with_soulbound_traits`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_create_batch_composables_with_soulbound_traits)
 -  [Function `update_type_total_supply`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_update_type_total_supply)
@@ -20,15 +22,17 @@
 -  [Function `create_batch_internal`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_create_batch_internal)
 -  [Function `create_batch_composables_with_soulbound_traits_internal`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_create_batch_composables_with_soulbound_traits_internal)
 -  [Function `owned_tokens`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_owned_tokens)
+-  [Function `type_supply`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_type_supply)
+-  [Function `variant_supply`](#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_variant_supply)
 
 
 <pre><code><b>use</b> <a href="">0x1::event</a>;
 <b>use</b> <a href="">0x1::object</a>;
 <b>use</b> <a href="">0x1::option</a>;
 <b>use</b> <a href="">0x1::signer</a>;
+<b>use</b> <a href="">0x1::smart_table</a>;
 <b>use</b> <a href="">0x1::string</a>;
 <b>use</b> <a href="">0x1::string_utils</a>;
-<b>use</b> <a href="">0x1::table</a>;
 <b>use</b> <a href="">0x1::vector</a>;
 <b>use</b> <a href="">0x4::collection</a>;
 <b>use</b> <a href="">0x4::token</a>;
@@ -50,15 +54,15 @@ Global storage to track minting
 
 
 
-<a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_TokenTracker"></a>
+<a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_Variant"></a>
 
-## Resource `TokenTracker`
+## Resource `Variant`
 
-Global storage to track token counts per type
+Variant Data Structure
 
 
 <pre><code>#[resource_group_member(#[group = <a href="_ObjectGroup">0x1::object::ObjectGroup</a>])]
-<b>struct</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_TokenTracker">TokenTracker</a> <b>has</b> store, key
+<b>struct</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_Variant">Variant</a> <b>has</b> <b>copy</b>, drop, store, key
 </code></pre>
 
 
@@ -83,6 +87,18 @@ Global storage to track token counts per type
 
 <pre><code>#[<a href="">event</a>]
 <b>struct</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_TypeAdded">TypeAdded</a> <b>has</b> drop, store
+</code></pre>
+
+
+
+<a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_VariantAdded"></a>
+
+## Struct `VariantAdded`
+
+
+
+<pre><code>#[<a href="">event</a>]
+<b>struct</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_VariantAdded">VariantAdded</a> <b>has</b> drop, store
 </code></pre>
 
 
@@ -144,6 +160,46 @@ New total supply should be greater than the current total supply
 
 
 
+<a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_ETYPE_DOES_NOT_EXIST"></a>
+
+The type does not exist in the tracker
+
+
+<pre><code><b>const</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_ETYPE_DOES_NOT_EXIST">ETYPE_DOES_NOT_EXIST</a>: u64 = 6;
+</code></pre>
+
+
+
+<a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_ETYPE_EXISTS"></a>
+
+The type exists in the tracker
+
+
+<pre><code><b>const</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_ETYPE_EXISTS">ETYPE_EXISTS</a>: u64 = 5;
+</code></pre>
+
+
+
+<a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_EVARIANT_DOES_NOT_EXIST"></a>
+
+The variant does not exist in the tracker
+
+
+<pre><code><b>const</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_EVARIANT_DOES_NOT_EXIST">EVARIANT_DOES_NOT_EXIST</a>: u64 = 8;
+</code></pre>
+
+
+
+<a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_EVARIANT_EXISTS"></a>
+
+The variant exists in the tracker
+
+
+<pre><code><b>const</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_EVARIANT_EXISTS">EVARIANT_EXISTS</a>: u64 = 7;
+</code></pre>
+
+
+
 <a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_create_collection_with_tracker"></a>
 
 ## Function `create_collection_with_tracker`
@@ -163,7 +219,19 @@ create a collection and initialize the tracker
 Add a type to the tracker table; callable only by the collection owner
 
 
-<pre><code><b>public</b> entry <b>fun</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_add_type_to_tracker">add_type_to_tracker</a>(signer_ref: &<a href="">signer</a>, collection_obj_addr: <b>address</b>, type: <a href="_String">string::String</a>, total_supply: u64)
+<pre><code><b>public</b> entry <b>fun</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_add_type_to_tracker">add_type_to_tracker</a>(signer_ref: &<a href="">signer</a>, collection_obj_addr: <b>address</b>, type_name: <a href="_String">string::String</a>)
+</code></pre>
+
+
+
+<a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_add_variant_to_type"></a>
+
+## Function `add_variant_to_type`
+
+Add variant to a type in the tracker table; callable only by the collection owner
+
+
+<pre><code><b>public</b> entry <b>fun</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_add_variant_to_type">add_variant_to_type</a>(signer_ref: &<a href="">signer</a>, collection_obj_addr: <b>address</b>, type_name: <a href="_String">string::String</a>, variant_name: <a href="_String">string::String</a>, supply: u64)
 </code></pre>
 
 
@@ -199,7 +267,7 @@ Create a batch of composable tokens with soulbound traits
 Update the total supply in the tracker; callable only by the collection owner
 
 
-<pre><code><b>public</b> entry <b>fun</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_update_type_total_supply">update_type_total_supply</a>(signer_ref: &<a href="">signer</a>, collection_obj: <a href="_Object">object::Object</a>&lt;<a href="_Collection">composable_token::Collection</a>&gt;, key: <a href="_String">string::String</a>, new_total_supply: u64)
+<pre><code><b>public</b> entry <b>fun</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_update_type_total_supply">update_type_total_supply</a>(signer_ref: &<a href="">signer</a>, collection_obj: <a href="_Object">object::Object</a>&lt;<a href="_Collection">composable_token::Collection</a>&gt;, type_name: <a href="_String">string::String</a>, variant_name: <a href="_String">string::String</a>, new_total_supply: u64)
 </code></pre>
 
 
@@ -223,7 +291,7 @@ Helper function for creating a collection and initializing the tracker
 Helper function for creating a batch of tokens
 
 
-<pre><code><b>public</b> <b>fun</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_create_batch_internal">create_batch_internal</a>&lt;T: key&gt;(signer_ref: &<a href="">signer</a>, <a href="">collection</a>: <a href="_Object">object::Object</a>&lt;<a href="_Collection">composable_token::Collection</a>&gt;, descriptions: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, uri: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, name_with_index_prefix: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, name_with_index_suffix: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, count: u64, royalty_numerator: <a href="_Option">option::Option</a>&lt;u64&gt;, royalty_denominator: <a href="_Option">option::Option</a>&lt;u64&gt;, property_keys: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, property_types: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, property_values: <a href="">vector</a>&lt;<a href="">vector</a>&lt;u8&gt;&gt;): <a href="">vector</a>&lt;<a href="_ConstructorRef">object::ConstructorRef</a>&gt;
+<pre><code><b>public</b> <b>fun</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_create_batch_internal">create_batch_internal</a>&lt;T: key&gt;(signer_ref: &<a href="">signer</a>, <a href="">collection</a>: <a href="_Object">object::Object</a>&lt;<a href="_Collection">composable_token::Collection</a>&gt;, types: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, uri: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, name_with_index_prefix: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, name_with_index_suffix: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, count: u64, royalty_numerator: <a href="_Option">option::Option</a>&lt;u64&gt;, royalty_denominator: <a href="_Option">option::Option</a>&lt;u64&gt;, property_keys: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, property_types: <a href="">vector</a>&lt;<a href="_String">string::String</a>&gt;, property_values: <a href="">vector</a>&lt;<a href="">vector</a>&lt;u8&gt;&gt;): <a href="">vector</a>&lt;<a href="_ConstructorRef">object::ConstructorRef</a>&gt;
 </code></pre>
 
 
@@ -250,4 +318,30 @@ Gets a wallet address plus a list of token addresses, and returns only the owned
 
 <pre><code>#[view]
 <b>public</b> <b>fun</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_owned_tokens">owned_tokens</a>(wallet_addr: <b>address</b>, token_addrs: <a href="">vector</a>&lt;<b>address</b>&gt;): <a href="">vector</a>&lt;<b>address</b>&gt;
+</code></pre>
+
+
+
+<a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_type_supply"></a>
+
+## Function `type_supply`
+
+Returns the total supply of a token type and the count of minted tokens of the type; useful for calculating rarity
+
+
+<pre><code>#[view]
+<b>public</b> <b>fun</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_type_supply">type_supply</a>(collection_obj_addr: <b>address</b>, type: <a href="_String">string::String</a>): (u64, u64)
+</code></pre>
+
+
+
+<a id="0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_variant_supply"></a>
+
+## Function `variant_supply`
+
+Returns the total supply of a token variant and the count of minted tokens of the variant; useful for calculating rarity
+
+
+<pre><code>#[view]
+<b>public</b> <b>fun</b> <a href="studio.md#0x5094651b0c628ceea4d38ce64e08965f15f5c1c010fe33d1b2ec991638251374_studio_variant_supply">variant_supply</a>(collection_obj_addr: <b>address</b>, type: <a href="_String">string::String</a>, variant: <a href="_String">string::String</a>): (u64, u64)
 </code></pre>

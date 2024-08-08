@@ -1097,7 +1097,7 @@ module townespace::studio {
     }
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
-    /// Test mint more than the variant's max supply
+    // Test mint more than the variant's max supply
     #[expected_failure (abort_code = 2, location = Self)]
     fun test_mint_more_than_max_supply(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
         let (creator_addr, _) = common::setup_test(std, creator, minter);

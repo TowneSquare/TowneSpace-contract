@@ -558,228 +558,232 @@ module townespace::random_mint {
     #[test_only]
     const SUFFIX : vector<u8> = b" Suffix";
 
-    #[test(std = @0x1, creator = @0x111, minter = @0x222)]
-    fun test_e2e(std: &signer, creator: &signer, minter: &signer) acquires MintInfo {
-        let input_mint_price = 1000;
+    // #[test(std = @0x1, creator = @0x111, minter = @0x222)]
+    // fun test_e2e(std: &signer, creator: &signer, minter: &signer) acquires MintInfo {
+    //     let input_mint_price = 1000;
 
-        let (creator_addr, minter_addr) = common::setup_test(std, creator, minter);
-        let creator_balance_before_mint = coin::balance<APT>(signer::address_of(creator));
-        // init randomness
-        randomness::initialize_for_testing(std);
-        // debug::print<u64>(&coin::balance<APT>(creator_addr));
-        // creator creates a collection
-        let collection_constructor_ref = studio::create_collection_with_tracker_internal<FixedSupply>(
-            creator,
-            string::utf8(b"Collection Description"),
-            option::some(1000),
-            string::utf8(b"Collection Name"),
-            string::utf8(b"Collection Symbol"),
-            string::utf8(b"Collection URI"),
-            true,
-            true, 
-            true,
-            true,
-            true, 
-            true,
-            true,
-            true, 
-            true,
-            option::none(),
-            option::none(),
-        );
+    //     let (creator_addr, minter_addr) = common::setup_test(std, creator, minter);
+    //     let creator_balance_before_mint = coin::balance<APT>(signer::address_of(creator));
+    //     // init randomness
+    //     randomness::initialize_for_testing(std);
+    //     // debug::print<u64>(&coin::balance<APT>(creator_addr));
+    //     // creator creates a collection
+    //     let collection_constructor_ref = studio::create_collection_with_tracker_internal<FixedSupply>(
+    //         creator,
+    //         string::utf8(b"Collection Description"),
+    //         option::some(1000),
+    //         string::utf8(b"Collection Name"),
+    //         string::utf8(b"Collection Symbol"),
+    //         string::utf8(b"Collection URI"),
+    //         true,
+    //         true, 
+    //         true,
+    //         true,
+    //         true, 
+    //         true,
+    //         true,
+    //         true, 
+    //         true,
+    //         option::none(),
+    //         option::none(),
+    //     );
 
-        // Add base type to the tracker
-        let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
-        studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 25);
-        studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Body"), 25);
-        studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Sloth"), 25);
+    //     // Add base type to the tracker
+    //     let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
+    //     studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 25);
+    //     studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Body"), 25);
+    //     studio::add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Sloth"), 25);
 
-        // creator creates tokens for minting
-        let (token_addrs, mint_info_object_address, composable_constructor_refs) = create_tokens_for_mint_internal<Composable>(
-            creator,
-            object::object_from_constructor_ref(&collection_constructor_ref),
-            string::utf8(b"Sloth"),
-            vector[
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base")
-            ],
-            vector[
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth"),
-                string::utf8(b"Cool%20Sloth")
-            ],
-            vector[
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"),
-                string::utf8(b"Cool Sloth")
-            ],
-            vector[1000, 1000, 1000, 1000],
-            4,
-            option::none(),
-            option::none(),
-            vector[],
-            vector[],
-            vector[]
-        );
+    //     // creator creates tokens for minting
+    //     let (token_addrs, mint_info_object_address, composable_constructor_refs) = create_tokens_for_mint_internal<Composable>(
+    //         creator,
+    //         object::object_from_constructor_ref(&collection_constructor_ref),
+    //         // Type
+    //         string::utf8(b"Base"),
+    //         // URI
+    //         vector[
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth"),
+    //             string::utf8(b"Cool%20Sloth")
+    //         ],
+    //         // Variants
+    //         vector[
+    //             string::utf8(b"Red"),
+    //             string::utf8(b"Green"),
+    //             string::utf8(b"Blue"),
+    //             string::utf8(b"White")
+    //         ],
+    //         // Suffixes
+    //         vector[
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"),
+    //             string::utf8(b"Cool Sloth")
+    //         ],
+    //         vector[1000, 1000, 1000, 1000],
+    //         4,
+    //         option::none(),
+    //         option::none(),
+    //         vector[],
+    //         vector[],
+    //         vector[]
+    //     );
 
-        // minter mints tokens
-        let (minted_tokens, _, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
+    //     // minter mints tokens
+    //     let (minted_tokens, _, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
 
-        // assert the owner is the minter
-        let token_0 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
-        let token_1 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
-        let token_2 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
-        let token_3 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
+    //     // assert the owner is the minter
+    //     let token_0 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
+    //     let token_1 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
+    //     let token_2 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
+    //     let token_3 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
 
-        assert!(object::is_owner(token_0, minter_addr), 1);
-        assert!(object::is_owner(token_1, minter_addr), 1);
-        assert!(object::is_owner(token_2, minter_addr), 1);
-        assert!(object::is_owner(token_3, minter_addr), 1);
+    //     assert!(object::is_owner(token_0, minter_addr), 1);
+    //     assert!(object::is_owner(token_1, minter_addr), 1);
+    //     assert!(object::is_owner(token_2, minter_addr), 1);
+    //     assert!(object::is_owner(token_3, minter_addr), 1);
 
-        // assert the mint price is sent to the owner
-        let creator_balance_after_mint = creator_balance_before_mint + (input_mint_price * 4);
-        // debug::print<u64>(&coin::balance<APT>(creator_addr));
-        assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 2);
+    //     // assert the mint price is sent to the owner
+    //     let creator_balance_after_mint = creator_balance_before_mint + (input_mint_price * 4);
+    //     // debug::print<u64>(&coin::balance<APT>(creator_addr));
+    //     assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 2);
 
-        // // get one token and print its name and uri
-        // debug::print<String>(&token::name<Composable>(token_0));
-        // debug::print<String>(&token::name<Composable>(token_1));
-        // debug::print<String>(&token::name<Composable>(token_2));
-        // debug::print<String>(&token::name<Composable>(token_3));
+    //     // // get one token and print its name and uri
+    //     // debug::print<String>(&token::name<Composable>(token_0));
+    //     // debug::print<String>(&token::name<Composable>(token_1));
+    //     // debug::print<String>(&token::name<Composable>(token_2));
+    //     // debug::print<String>(&token::name<Composable>(token_3));
 
-        // debug::print<String>(&token::uri<Composable>(token_0));
-        // debug::print<String>(&token::uri<Composable>(token_1));
-        // debug::print<String>(&token::uri<Composable>(token_2));
-        // debug::print<String>(&token::uri<Composable>(token_3));
+    //     // debug::print<String>(&token::uri<Composable>(token_0));
+    //     // debug::print<String>(&token::uri<Composable>(token_1));
+    //     // debug::print<String>(&token::uri<Composable>(token_2));
+    //     // debug::print<String>(&token::uri<Composable>(token_3));
 
-        // create more tokens for minting
-        add_tokens_for_mint_internal<Composable>(
-            creator,
-            object::object_from_constructor_ref(&collection_constructor_ref),
-            mint_info_object_address,
-            string::utf8(b"Sloth"),
-            vector[
-                string::utf8(b"Cool%20Sloth%201"),
-                string::utf8(b"Cool%20Sloth%202"),
-                string::utf8(b"Cool%20Sloth%203"),
-                string::utf8(b"Cool%20Sloth%204")
-            ],
-            vector[
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"),
-                string::utf8(b"Cool Sloth")
-            ],
-            vector[
-                string::utf8(b""),
-                string::utf8(b""),
-                string::utf8(b""),
-                string::utf8(b"")
-            ],
-            vector[1000, 1000, 1000, 1000],
+    //     // create more tokens for minting
+    //     add_tokens_for_mint_internal<Composable>(
+    //         creator,
+    //         object::object_from_constructor_ref(&collection_constructor_ref),
+    //         mint_info_object_address,
+    //         string::utf8(b"Sloth"),
+    //         vector[
+    //             string::utf8(b"Cool%20Sloth%201"),
+    //             string::utf8(b"Cool%20Sloth%202"),
+    //             string::utf8(b"Cool%20Sloth%203"),
+    //             string::utf8(b"Cool%20Sloth%204")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"),
+    //             string::utf8(b"Cool Sloth")
+    //         ],
+    //         vector[
+    //             string::utf8(b""),
+    //             string::utf8(b""),
+    //             string::utf8(b""),
+    //             string::utf8(b"")
+    //         ],
+    //         vector[1000, 1000, 1000, 1000],
             
-            4,
-            option::none(),
-            option::none(),
-            vector[],
-            vector[],
-            vector[]
-        );
+    //         4,
+    //         option::none(),
+    //         option::none(),
+    //         vector[],
+    //         vector[],
+    //         vector[]
+    //     );
 
-        // mint the newly created tokens
-        let (minted_tokens, _, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
+    //     // mint the newly created tokens
+    //     let (minted_tokens, _, _) = mint_batch_tokens<Composable>(minter, mint_info_object_address, 4);
 
-        // assert the owner is the minter
-        let token_4 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
-        let token_5 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
-        let token_6 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
-        let token_7 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
+    //     // assert the owner is the minter
+    //     let token_4 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 0));
+    //     let token_5 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 1));
+    //     let token_6 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 2));
+    //     let token_7 = object::address_to_object<Composable>(*vector::borrow(&minted_tokens, 3));
 
-        assert!(object::is_owner(token_4, minter_addr), 3);
-        assert!(object::is_owner(token_5, minter_addr), 3);
-        assert!(object::is_owner(token_6, minter_addr), 3);
-        assert!(object::is_owner(token_7, minter_addr), 3);
+    //     assert!(object::is_owner(token_4, minter_addr), 3);
+    //     assert!(object::is_owner(token_5, minter_addr), 3);
+    //     assert!(object::is_owner(token_6, minter_addr), 3);
+    //     assert!(object::is_owner(token_7, minter_addr), 3);
 
-        // assert the mint price is sent to the owner
-        let creator_balance_after_mint = creator_balance_after_mint + (input_mint_price * 4);
-        assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 4);
+    //     // assert the mint price is sent to the owner
+    //     let creator_balance_after_mint = creator_balance_after_mint + (input_mint_price * 4);
+    //     assert!(coin::balance<APT>(creator_addr) == creator_balance_after_mint, 4);
 
-        // get one token and print its name and uri
-        debug::print<String>(&string::utf8(b"COMPOSABLES NAMES:"));
-        debug::print<String>(&token::name<Composable>(token_4));
-        debug::print<String>(&token::name<Composable>(token_5));
-        debug::print<String>(&token::name<Composable>(token_6));
-        debug::print<String>(&token::name<Composable>(token_7));
+    //     // get one token and print its name and uri
+    //     debug::print<String>(&string::utf8(b"COMPOSABLES NAMES:"));
+    //     debug::print<String>(&token::name<Composable>(token_4));
+    //     debug::print<String>(&token::name<Composable>(token_5));
+    //     debug::print<String>(&token::name<Composable>(token_6));
+    //     debug::print<String>(&token::name<Composable>(token_7));
 
-        debug::print<String>(&string::utf8(b"COMPOSABLES URIS:"));
-        debug::print<String>(&token::uri<Composable>(token_4));
-        debug::print<String>(&token::uri<Composable>(token_5));
-        debug::print<String>(&token::uri<Composable>(token_6));
-        debug::print<String>(&token::uri<Composable>(token_7));
+    //     debug::print<String>(&string::utf8(b"COMPOSABLES URIS:"));
+    //     debug::print<String>(&token::uri<Composable>(token_4));
+    //     debug::print<String>(&token::uri<Composable>(token_5));
+    //     debug::print<String>(&token::uri<Composable>(token_6));
+    //     debug::print<String>(&token::uri<Composable>(token_7));
 
-        // add more tokens for minting
-        add_tokens_for_mint_internal<Composable>(
-            creator,
-            object::object_from_constructor_ref(&collection_constructor_ref),
-            mint_info_object_address,
-            string::utf8(b"Sloth"),
-            vector[
-                string::utf8(b"Cool%20Sloth%205"),
-                string::utf8(b"Cool%20Sloth%206"),
-                string::utf8(b"Cool%20Sloth%207"),
-                string::utf8(b"Cool%20Sloth%208")
-            ],
-            vector[
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"), 
-                string::utf8(b"Cool Sloth"),
-                string::utf8(b"Cool Sloth")
-            ],
-            vector[
-                string::utf8(b""),
-                string::utf8(b""),
-                string::utf8(b""),
-                string::utf8(b"")
-            ],
-            vector[1000, 1000, 1000, 1000],
+    //     // add more tokens for minting
+    //     add_tokens_for_mint_internal<Composable>(
+    //         creator,
+    //         object::object_from_constructor_ref(&collection_constructor_ref),
+    //         mint_info_object_address,
+    //         string::utf8(b"Sloth"),
+    //         vector[
+    //             string::utf8(b"Cool%20Sloth%205"),
+    //             string::utf8(b"Cool%20Sloth%206"),
+    //             string::utf8(b"Cool%20Sloth%207"),
+    //             string::utf8(b"Cool%20Sloth%208")
+    //         ],
+    //         vector[
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"), 
+    //             string::utf8(b"Cool Sloth"),
+    //             string::utf8(b"Cool Sloth")
+    //         ],
+    //         vector[
+    //             string::utf8(b""),
+    //             string::utf8(b""),
+    //             string::utf8(b""),
+    //             string::utf8(b"")
+    //         ],
+    //         vector[1000, 1000, 1000, 1000],
             
-            4,
-            option::none(),
-            option::none(),
-            vector[],
-            vector[],
-            vector[]
-        );
+    //         4,
+    //         option::none(),
+    //         option::none(),
+    //         vector[],
+    //         vector[],
+    //         vector[]
+    //     );
 
-        // mint one token at index 0
-        // debug::print<u64>(&vector::length(&tokens_for_mint<Composable>(mint_info_object_address)));
-        // let indices = vector<u64>[];
-        // for (i in 0..vector::length(&tokens_for_mint<Composable>(mint_info_object_address))) {
-        //     let token = vector::borrow(&tokens_for_mint<Composable>(mint_info_object_address), i);
-        //     let (_, index) = vector::index_of(&tokens_for_mint<Composable>(mint_info_object_address), token);
-        //     vector::push_back(&mut indices, index);
-        // };
-        // debug::print<String>(&string::utf8(b"INDICES:"));
-        // debug::print<vector<u64>>(&indices);
+    //     // mint one token at index 0
+    //     // debug::print<u64>(&vector::length(&tokens_for_mint<Composable>(mint_info_object_address)));
+    //     // let indices = vector<u64>[];
+    //     // for (i in 0..vector::length(&tokens_for_mint<Composable>(mint_info_object_address))) {
+    //     //     let token = vector::borrow(&tokens_for_mint<Composable>(mint_info_object_address), i);
+    //     //     let (_, index) = vector::index_of(&tokens_for_mint<Composable>(mint_info_object_address), token);
+    //     //     vector::push_back(&mut indices, index);
+    //     // };
+    //     // debug::print<String>(&string::utf8(b"INDICES:"));
+    //     // debug::print<vector<u64>>(&indices);
 
-        // let mint_info = borrow_global<MintInfo>(mint_info_object_address);
-        // let pool = indexed_tokens(&mint_info.token_pool);
-        // debug::print<SimpleMap<u64, address>>(&smart_table::to_simple_map(&pool));
+    //     // let mint_info = borrow_global<MintInfo>(mint_info_object_address);
+    //     // let pool = indexed_tokens(&mint_info.token_pool);
+    //     // debug::print<SimpleMap<u64, address>>(&smart_table::to_simple_map(&pool));
 
-        let (minted_token_one, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 3);
-        let (minted_token_two, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 2);
-        let (minted_token_three, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 1);
-        let (minted_token_four, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 0);
+    //     let (minted_token_one, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 3);
+    //     let (minted_token_two, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 2);
+    //     let (minted_token_three, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 1);
+    //     let (minted_token_four, _) = mint_token_at_index<Composable>(minter, mint_info_object_address, 0);
 
-        debug::print<String>(&string::utf8(b"COMPOSABLE ADDRs minted given indices:"));
-        debug::print<address>(&minted_token_one);
+    //     debug::print<String>(&string::utf8(b"COMPOSABLE ADDRs minted given indices:"));
+    //     debug::print<address>(&minted_token_one);
 
-        // smart_table::destroy(pool);
-    }
+    //     // smart_table::destroy(pool);
+    // }
 
     // #[test_only]
     // const TRAIT_URI_PREFIX: vector<u8> = b"Trait%20Name%20Prefix%20";

@@ -42,8 +42,6 @@ module townespace::studio {
     const EVARIANT_EXISTS: u64 = 7;
     /// The variant does not exist in the tracker
     const EVARIANT_DOES_NOT_EXIST: u64 = 8;
-    /// Invalid number
-    const EINVALID_NUMBER: u64 = 9;
 
     // -------
     // Structs
@@ -54,26 +52,8 @@ module townespace::studio {
     struct Tracker has key {
         /// collection object
         collection_obj: Object<collection::Collection>,
-        /// table to track minting <Type, vector<Variant>>.
-        table: SmartTable<Type, vector<Variant>>
-    }
-
-    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    /// Global storage to track minting
-    struct SupplyTracker has drop, copy, key, store {
-        /// total supply
-        max_supply: u64,
-        /// total minted count
-        total_minted: u64
-    }
-
-    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    /// Type Data Structure
-    struct Type has copy, drop, key, store {
-        /// type name
-        name: String,
-        /// supply tracker
-        supply_tracker: SupplyTracker
+        /// table to track minting <String, vector<Variant>>.
+        table: SmartTable<String, vector<Variant>>
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -81,8 +61,10 @@ module townespace::studio {
     struct Variant has copy, drop, key, store {
         /// variant name
         name: String,
-        /// supply tracker
-        supply_tracker: SupplyTracker
+        /// total supply
+        max_supply: u64,
+        /// total minted count
+        total_minted: u64
     }
 
     // ------
@@ -96,6 +78,13 @@ module townespace::studio {
     struct TypeAdded has drop, store { 
         collection_obj_addr: address, 
         type_name: String,
+    }
+
+    #[event]
+    struct VariantAdded has drop, store { 
+        collection_obj_addr: address, 
+        type_name: String, 
+        variant_name: String,
         initial_supply: u64
     }
 
@@ -110,51 +99,48 @@ module townespace::studio {
     inline fun assert_type_exists(collection_obj_addr: address, type_name: String) {
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
         // map to names
-        let types = smart_table::keys<Type, vector<Variant>>(&tracker.table);
-        for (i in 0..vector::length(&types)) {
-            assert!(type_name != (*vector::borrow(&types, i)).name, ETYPE_DOES_NOT_EXIST);
-        };
+        let types = smart_table::keys<String, vector<Variant>>(&tracker.table);
+        let (type_exists, _) = vector::index_of(&types, &type_name);
+        assert!(type_exists, ETYPE_DOES_NOT_EXIST);
     }
 
     /// Asserts the type does not exist in the tracker
     inline fun assert_type_does_not_exist(collection_obj_addr: address, type: String) {
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
         // get a list of type names
-        let types = smart_table::keys<Type, vector<Variant>>(&tracker.table);
-        for (i in 0..vector::length(&types)) {
-            assert!(type != (*vector::borrow(&types, i)).name, ETYPE_EXISTS);
-        };
+        let types = smart_table::keys<String, vector<Variant>>(&tracker.table);
+        let (type_exists, _) = vector::index_of(&types, &type);
+        assert!(!type_exists, ETYPE_EXISTS);
     }
 
     /// Asserts the variant exists in the tracker
-    inline fun assert_variant_exists(collection_obj_addr: address, type: Type, variant: String) {
+    inline fun assert_variant_exists(collection_obj_addr: address, type: String, variant: String) {
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
         // get a list of variant names
-        let variants = *smart_table::borrow<Type, vector<Variant>>(&tracker.table, type);
+        let variants = *smart_table::borrow<String, vector<Variant>>(&tracker.table, type);
+        let variant_exists: bool = false;
         for (i in 0..vector::length(&variants)) {
-            assert!(variant != (*vector::borrow(&variants, i)).name, EVARIANT_DOES_NOT_EXIST);
+            if (variant == (*vector::borrow(&variants, i)).name) {
+                variant_exists = true;
+                break
+            }
         };
+        assert!(variant_exists, EVARIANT_DOES_NOT_EXIST);
     }
 
     /// Asserts the variant does not exist in the tracker
-    inline fun assert_variant_does_not_exist(collection_obj_addr: address, type: Type, variant: String) {
+    inline fun assert_variant_does_not_exist(collection_obj_addr: address, type: String, variant: String) {
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
         // get a list of variant names
-        let variants = *smart_table::borrow<Type, vector<Variant>>(&tracker.table, type);
+        let variants = *smart_table::borrow<String, vector<Variant>>(&tracker.table, type);
+        let variant_exists: bool = false;
         for (i in 0..vector::length(&variants)) {
-            assert!(variant != (*vector::borrow(&variants, i)).name, EVARIANT_EXISTS);
+            if (variant == (*vector::borrow(&variants, i)).name) {
+                variant_exists = true;
+                break
+            }
         };
-    }
-
-    /// Assert requested supply is less or equal than the type total supply - type count
-    inline fun assert_variant_supply(collection_obj_addr: address, type: Type, requested_supply: u64) {
-        let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        let types = smart_table::keys<Type, vector<Variant>>(&tracker.table);
-        let (_, type_index) = vector::index_of(&types, &type);
-        let borrowed_type = *vector::borrow<Type>(&types, type_index);
-        let max_supply = borrowed_type.supply_tracker.max_supply;
-        let total_minted = borrowed_type.supply_tracker.total_minted;
-        assert!(requested_supply <= max_supply - total_minted, EMAX_SUPPLY_REACHED);
+        assert!(!variant_exists, EVARIANT_EXISTS);
     }
 
     // ---------------
@@ -208,23 +194,18 @@ module townespace::studio {
         signer_ref: &signer,
         collection_obj_addr: address,
         type_name: String,
-        max_supply: u64
     ) acquires Tracker {
         // asserting the signer is the collection owner
         assert!(object::is_owner<Collection>(object::address_to_object<Collection>(collection_obj_addr), signer::address_of(signer_ref)), ENOT_OWNER);
-        // asserting supply is greater than 0
-        assert!(max_supply > 0, EINVALID_NUMBER);
-        // initialize key
-        let type = Type { name: type_name, supply_tracker: SupplyTracker { max_supply, total_minted: 0 } };
         // asserting type not in tracker
         assert_type_does_not_exist(collection_obj_addr, type_name);
-        // initialize value
+        // initialize values
         let variants = vector::empty<Variant>();
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        smart_table::add<Type, vector<Variant>>(&mut tracker.table, type, variants);
+        smart_table::add<String, vector<Variant>>(&mut tracker.table, type_name, variants);
 
         // emit event
-        event::emit(TypeAdded { collection_obj_addr, type_name, initial_supply: max_supply });
+        event::emit(TypeAdded { collection_obj_addr, type_name });
     }
 
     /// Add variant to a type in the tracker table; callable only by the collection owner
@@ -238,16 +219,14 @@ module townespace::studio {
         // asserting the signer is the collection owner
         assert!(object::is_owner<Collection>(object::address_to_object<Collection>(collection_obj_addr), signer::address_of(signer_ref)), ENOT_OWNER);
         // assert variant does not exist in the tracker
-        let type = type_from_type_name(collection_obj_addr, type_name);
-        assert_variant_does_not_exist(collection_obj_addr, type, variant_name);
-        // assert variant supply is less or equal than the type total supply - type count
-        assert_variant_supply(collection_obj_addr, type, supply);
+        assert_variant_does_not_exist(collection_obj_addr, type_name, variant_name);
         // add variant to the tracker
-        let variant = Variant { name: variant_name, supply_tracker: SupplyTracker { max_supply: supply, total_minted: 0 } };
-        let variants = smart_table::borrow_mut<Type, vector<Variant>>(&mut borrow_global_mut<Tracker>(collection_obj_addr).table, type);
+        let variant = Variant { name: variant_name, max_supply: supply, total_minted: 0 };
+        let variants = smart_table::borrow_mut<String, vector<Variant>>(&mut borrow_global_mut<Tracker>(collection_obj_addr).table, type_name);
         vector::push_back(variants, variant);
 
-        // TODO: emit event
+        // emit event
+        event::emit( VariantAdded { collection_obj_addr, type_name, variant_name, initial_supply: supply });
     }
 
     /// Create a batch of tokens
@@ -352,11 +331,12 @@ module townespace::studio {
     public entry fun update_type_total_supply(
         signer_ref: &signer,
         collection_obj: Object<Collection>,
-        key: String,
+        type_name: String,
+        variant_name: String,
         new_total_supply: u64
     ) acquires Tracker {
         assert!(object::is_owner<Collection>(collection_obj, signer::address_of(signer_ref)), ENOT_OWNER);
-        update_type_total_supply_internal(object::object_address(&collection_obj), key, new_total_supply);
+        update_variant_total_supply_internal(object::object_address(&collection_obj), type_name, variant_name, new_total_supply);
     }
     
     // -------
@@ -411,7 +391,7 @@ module townespace::studio {
             &collection_obj_signer,
             Tracker {
                 collection_obj,
-                table: smart_table::new<Type, vector<Variant>>()
+                table: smart_table::new<String, vector<Variant>>()
             }
         );
 
@@ -445,10 +425,11 @@ module townespace::studio {
         let collection_obj_addr = object::object_address(&collection);
         for (i in 0..count) {
             let type = *vector::borrow<String>(&types, i);
-            let token_index = count_from_tracker(collection_obj_addr, type) + 1;
+            let input_name = *vector::borrow<String>(&name_with_index_prefix, i);
+            let token_index = variant_count(collection_obj_addr, type, input_name) + 1;
             let uri = *vector::borrow<String>(&uri, i);
             // token name: prefix + # + index + suffix
-            let name = *vector::borrow<String>(&name_with_index_prefix, i);
+            let name = input_name;
             string::append_utf8(&mut name, b" #");
             string::append(&mut name, string_utils::to_string(&token_index));
             // string::append(&mut suffix, name_with_index_suffix);
@@ -469,7 +450,7 @@ module townespace::studio {
 
             vector::push_back(&mut constructor_refs, constructor);
             // update the count in the tracker
-            increment_count(collection_obj_addr, type, name);
+            increment_count(collection_obj_addr, type, input_name);
         };
 
         constructor_refs
@@ -556,96 +537,47 @@ module townespace::studio {
     /// Helper function to update the tracker
     /// Used when a token is created
     inline fun increment_count(collection_obj_addr: address, type_name: String, variant_name: String) acquires Tracker {
-        // let mut_tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        // increment type count
-        let mut_type = mut_type_from_type_name(collection_obj_addr, type_name);
-        mut_type.supply_tracker.total_minted = mut_type.supply_tracker.total_minted + 1;
         // increment variant count
         let mut_variant = mut_variant_from_variant_name(collection_obj_addr, type_name, variant_name);
-        mut_variant.supply_tracker.total_minted = mut_variant.supply_tracker.total_minted + 1;
+        mut_variant.total_minted = mut_variant.total_minted + 1;
     }
 
-    /// Helper function to return count from Token Tracker given a collection object address and the type key
-    inline fun count_from_tracker(collection_obj_addr: address, key: String): u64 {
-        // let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        let type = type_from_type_name(collection_obj_addr, key);
-        type.supply_tracker.total_minted
-    }
-    
-    /// Helper function to return the total supply from Token Tracker given a collection object address and the type key
-    fun types_count(collection_obj_addr: address, type: String): u64 acquires Tracker {
-        // let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        let type = type_from_type_name(collection_obj_addr, type);
-        type.supply_tracker.total_minted
+    /// Helper function to return the total minted number of a variant
+    inline fun variant_count(collection_obj_addr: address, type: String, variant: String): u64 acquires Tracker {
+        let variant = mut_variant_from_variant_name(collection_obj_addr, type, variant);
+        variant.total_minted
     }
 
     /// Helper function to update the total supply in the tracker; new total supply should be greater than the current total supply
-    inline fun update_type_total_supply_internal(collection_obj_addr: address, type: String, new_total_supply: u64) acquires Tracker {
+    inline fun update_variant_total_supply_internal(collection_obj_addr: address, type_name: String, variant_name: String, new_total_supply: u64) acquires Tracker {
         // let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        let type = type_from_type_name(collection_obj_addr, type);
-        let current_total_supply = type.supply_tracker.max_supply;
+        let variant = variant_from_variant_name(collection_obj_addr, type_name, variant_name);
+        let current_total_supply = variant.max_supply;
         assert!(new_total_supply > current_total_supply, ENEW_SUPPLY_LESS_THAN_OLD);
-        let mut_tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        let types = smart_table::keys<Type, vector<Variant>>(&mut_tracker.table);
-        let (_, type_index) = vector::index_of(&types, &type);
-        let borrowed_type = vector::borrow_mut<Type>(&mut types, type_index);
-        borrowed_type.supply_tracker.max_supply = new_total_supply;
-    }
-
-    /// Helper function to get a type from a given type name
-    inline fun type_from_type_name(collection_obj_addr: address, type_name: String): Type acquires Tracker {
-        assert_type_exists(collection_obj_addr, type_name);
-        let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        let types = smart_table::keys<Type, vector<Variant>>(&tracker.table);
-        let type_names = vector::empty<String>();
-        for (i in 0..vector::length(&types)) {
-            vector::push_back(&mut type_names, (*vector::borrow(&types, i)).name);
-        };
-        let (_, type_index) = vector::index_of(&type_names, &type_name);
-        *vector::borrow<Type>(
-            &smart_table::keys<Type, vector<Variant>>(&tracker.table), 
-            type_index
-        )
-    }
-
-    /// Helper function to get a mut type from a given type name
-    inline fun mut_type_from_type_name(collection_obj_addr: address, type_name: String): &mut Type acquires Tracker {
-        assert_type_exists(collection_obj_addr, type_name);
-        let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        let types = smart_table::keys<Type, vector<Variant>>(&tracker.table);
-        let type_names = vector::empty<String>();
-        for (i in 0..vector::length(&types)) {
-            vector::push_back(&mut type_names, (*vector::borrow(&types, i)).name);
-        };
-        let (_, type_index) = vector::index_of(&type_names, &type_name);
-        vector::borrow_mut<Type>(
-            &mut smart_table::keys<Type, vector<Variant>>(&tracker.table),
-            type_index
-        )
+        let variant = mut_variant_from_variant_name(collection_obj_addr, type_name, variant_name);
+        variant.max_supply = new_total_supply;
     }
 
     /// Helper function to get a variant from a given type name
     inline fun variant_from_variant_name(collection_obj_addr: address, type_name: String, variant_name: String): Variant acquires Tracker {
+        assert_variant_exists(collection_obj_addr, type_name, variant_name);
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        let type = type_from_type_name(collection_obj_addr, type_name);
-        assert_variant_exists(collection_obj_addr, type, variant_name);
-        let variants = *smart_table::borrow<Type, vector<Variant>>(&tracker.table, type);
+        let variants = *smart_table::borrow<String, vector<Variant>>(&tracker.table, type_name);
         let variant_names = vector::empty<String>();
         for (i in 0..vector::length(&variants)) {
             vector::push_back(&mut variant_names, (*vector::borrow(&variants, i)).name);
         };
         let (_, variant_index) = vector::index_of(&variant_names, &variant_name);
         *vector::borrow<Variant>(
-            smart_table::borrow<Type, vector<Variant>>(&tracker.table, type), 
+            smart_table::borrow<String, vector<Variant>>(&tracker.table, type_name), 
             variant_index
         )
     }
 
     /// Helper function to get a mut variant from a given type name
     inline fun mut_variant_from_variant_name(collection_obj_addr: address, type_name: String, variant_name: String): &mut Variant acquires Tracker {
-        let type = type_from_type_name(collection_obj_addr, type_name);
-        assert_variant_exists(collection_obj_addr, type, variant_name);
-        let variants = smart_table::borrow_mut<Type, vector<Variant>>(&mut borrow_global_mut<Tracker>(collection_obj_addr).table, type);
+        assert_variant_exists(collection_obj_addr, type_name, variant_name);
+        let variants = smart_table::borrow_mut<String, vector<Variant>>(&mut borrow_global_mut<Tracker>(collection_obj_addr).table, type_name);
         let variant_names = vector::empty<String>();
         for (i in 0..vector::length(variants)) {
             vector::push_back(&mut variant_names, (*vector::borrow(variants, i)).name);
@@ -677,12 +609,6 @@ module townespace::studio {
         owned_tokens
     }
 
-    #[view]
-    /// Returns type given type name
-    public fun type(collection_obj_addr: address, type_name: String): Type acquires Tracker{
-        type_from_type_name(collection_obj_addr, type_name)
-    }
-
     // #[view]
     // /// Returns all types in the tracker
     // public fun all_types(collection_obj_addr: address): vector<String> acquires Tracker {
@@ -692,9 +618,24 @@ module townespace::studio {
     #[view]
     /// Returns the total supply of a token type and the count of minted tokens of the type; useful for calculating rarity
     public fun type_supply(collection_obj_addr: address, type: String): (u64, u64) acquires Tracker {
-        let types_count = types_count(collection_obj_addr, type);
-        let minted_tokens_count = count_from_tracker(collection_obj_addr, type);
-        (types_count, minted_tokens_count)
+        // get all variants of the type
+        let variants = *smart_table::borrow<String, vector<Variant>>(&borrow_global_mut<Tracker>(collection_obj_addr).table, type);
+        // get the total minted count and the max supply count for each variant
+        let max_supply = 0;
+        let total_minted = 0;
+        for (i in 0..vector::length(&variants)) {
+            max_supply = max_supply + (*vector::borrow(&variants, i)).max_supply;
+            total_minted = total_minted + (*vector::borrow(&variants, i)).total_minted;
+        };
+
+        (max_supply, total_minted)
+    }
+
+    #[view]
+    /// Returns the total supply of a token variant and the count of minted tokens of the variant; useful for calculating rarity
+    public fun variant_supply(collection_obj_addr: address, type: String, variant: String): (u64, u64) acquires Tracker {
+        let variant = variant_from_variant_name(collection_obj_addr, type, variant);
+        (variant.max_supply, variant.total_minted)
     }
 
     // #[view]
@@ -708,14 +649,6 @@ module townespace::studio {
     // public fun all_variants_from_type(collection_obj_addr: address, type: String): vector<String> acquires Tracker {
     //     let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
     //     let variant_
-    // }
-
-    // #[view]
-    // /// Returns the total supply of a variant of a token type
-    // public fun variant_supply(collection_obj_addr: address, type: String, variant: String): u64 acquires Tracker {
-    //     let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-    //     let variant_tracker = smart_table::borrow<String, VariantTracker>(&tracker.variants, variant);
-    //     variant_tracker.total_supply
     // }
 
     // ------------
@@ -762,16 +695,39 @@ module townespace::studio {
         let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
         
         // Add base type to the tracker
-        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 5);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"));
+        // Add variants to the base type
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Base"), 
+            string::utf8(b"variant_1"),
+            2
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Base"), 
+            string::utf8(b"variant_2"),
+            2
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Base"), 
+            string::utf8(b"variant_3"),
+            1
+        );
 
-        // print count
-        debug::print<String>(&string::utf8(b"BASE COUNT BEFORE MINT: "));
-        debug::print<u64>(&count_from_tracker(collection_obj_addr, string::utf8(b"Base")));
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
+        assert!(max_supply == 5, 1);
+        assert!(total_minted == 0, 1);
     
         // creator creates a batch of tokens
         let constructor_refs = create_batch_internal<Trait>(
             creator,
             object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+            // types
             vector[
                 string::utf8(b"Base"),
                 string::utf8(b"Base"),
@@ -779,6 +735,7 @@ module townespace::studio {
                 string::utf8(b"Base"),
                 string::utf8(b"Base")
             ],
+            // uris
             vector[
                 string::utf8(b"Sloth%20Base"),
                 string::utf8(b"Sloth%20Base"),
@@ -786,19 +743,20 @@ module townespace::studio {
                 string::utf8(b"Sloth%20Base"),
                 string::utf8(b"Sloth%20Base")
             ],
+            // variants
             vector[
-                string::utf8(b"Sloth Base"),
-                string::utf8(b"Sloth Base"),
-                string::utf8(b"Sloth Base"),
-                string::utf8(b"Sloth Base"),
-                string::utf8(b"Sloth Base")
+                string::utf8(b"variant_1"),
+                string::utf8(b"variant_2"),
+                string::utf8(b"variant_3"),
+                string::utf8(b"variant_1"),
+                string::utf8(b"variant_2")
             ],
             vector[
                 string::utf8(b""),
                 string::utf8(b""),
-                // string::utf8(b""),
-                // string::utf8(b""),
-                // string::utf8(b"")
+                string::utf8(b""),
+                string::utf8(b""),
+                string::utf8(b"")
             ],
             5,
             option::none(),
@@ -807,6 +765,14 @@ module townespace::studio {
             vector::empty(),
             vector::empty()
         );
+
+        let (max_supply, total_minted) = variant_supply(collection_obj_addr, string::utf8(b"Base"), string::utf8(b"variant_1"));
+        assert!(max_supply == 2, 1);
+        assert!(total_minted == 2, 1);
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
+        assert!(max_supply == 5, 1);
+        debug::print<u64>(&total_minted);
+        assert!(total_minted == 5, 1);
 
         // let constructor_ref2 = vector::borrow<ConstructorRef>(&constructor_refs, 1);
         // let constructor_ref3 = vector::borrow<ConstructorRef>(&constructor_refs, 2);
@@ -855,24 +821,73 @@ module townespace::studio {
         debug::print<String>(&token::description<Trait>(token5_obj));
 
         // print count
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
         debug::print<String>(&string::utf8(b"BASE COUNT AFTER MINT: "));
-        debug::print<u64>(&count_from_tracker(collection_obj_addr, string::utf8(b"Base")));
+        debug::print<u64>(&total_minted);
 
         // add body and sloth type to the tracker
-        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Body"), 5);
-        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Sloth"), 5);
-        // print count
-        debug::print<String>(&string::utf8(b"BODY COUNT BEFORE MINT: "));
-        debug::print<u64>(&count_from_tracker(collection_obj_addr, string::utf8(b"Body")));
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Body"));
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Sloth"));
+        // add variants to the body type
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Body"), 
+            string::utf8(b"body_variant_1"),
+            2
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Body"), 
+            string::utf8(b"body_variant_2"),
+            2
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Body"), 
+            string::utf8(b"body_variant_3"),
+            1
+        );
 
+        // add variants to the sloth type
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Sloth"), 
+            string::utf8(b"sloth_variant_1"),
+            2
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Sloth"), 
+            string::utf8(b"sloth_variant_2"),
+            2
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Sloth"), 
+            string::utf8(b"sloth_variant_3"),
+            1
+        );
+
+        // print count
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Body"));
+        debug::print<String>(&string::utf8(b"BODY COUNT BEFORE MINT: "));
+        debug::print<u64>(&total_minted);
+
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Sloth"));
         debug::print<String>(&string::utf8(b"SLOTH COUNT BEFORE MINT: "));
-        debug::print<u64>(&count_from_tracker(collection_obj_addr, string::utf8(b"Sloth")));
+        debug::print<u64>(&total_minted);
 
         // create composable tokens with soulbound traits
         let composable_constructor_refs = create_batch_composables_with_soulbound_traits_internal(
             creator,
             object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
-            // trait related fields
+            // trait type
             vector[
                 string::utf8(b"Body"),
                 string::utf8(b"Body"),
@@ -880,6 +895,7 @@ module townespace::studio {
                 string::utf8(b"Body"),
                 string::utf8(b"Body")
             ],
+            // uri
             vector[
                 string::utf8(b"Body%20Sloth"),
                 string::utf8(b"Body%20Sloth"),
@@ -887,12 +903,13 @@ module townespace::studio {
                 string::utf8(b"Body%20Sloth"),
                 string::utf8(b"Body%20Sloth")
             ],
+            // variant
             vector[
-                string::utf8(b"Body Sloth"), 
-                string::utf8(b"Body Sloth"), 
-                string::utf8(b"Body Sloth"),
-                string::utf8(b"Body Sloth"),
-                string::utf8(b"Body Sloth")
+                string::utf8(b"body_variant_1"),
+                string::utf8(b"body_variant_2"),
+                string::utf8(b"body_variant_3"),
+                string::utf8(b"body_variant_1"),
+                string::utf8(b"body_variant_2")
             ],
             vector[
                 string::utf8(b""),
@@ -904,8 +921,9 @@ module townespace::studio {
             vector[],
             vector[],
             vector[],
-            // composable related fields
+            // composable type
             string::utf8(b"Sloth"),
+            // uri
             vector[
                 string::utf8(b"Composable%20Sloth"),
                 string::utf8(b"Composable%20Sloth"),
@@ -913,12 +931,13 @@ module townespace::studio {
                 string::utf8(b"Composable%20Sloth"),
                 string::utf8(b"Composable%20Sloth")
             ],
+            // variant
             vector[
-                string::utf8(b"Composable Sloth"), 
-                string::utf8(b"Composable Sloth"), 
-                string::utf8(b"Composable Sloth"),
-                string::utf8(b"Composable Sloth"),
-                string::utf8(b"Composable Sloth")
+                string::utf8(b"sloth_variant_1"),
+                string::utf8(b"sloth_variant_2"),
+                string::utf8(b"sloth_variant_3"),
+                string::utf8(b"sloth_variant_1"),
+                string::utf8(b"sloth_variant_2")
             ],
             vector[
                 string::utf8(b""),
@@ -992,11 +1011,13 @@ module townespace::studio {
         debug::print<String>(&bound_token5_name);
 
         // print count after mint
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Body"));
         debug::print<String>(&string::utf8(b"BODY COUNT AFTER MINT: "));
-        debug::print<u64>(&count_from_tracker(collection_obj_addr, string::utf8(b"Body")));
+        debug::print<u64>(&total_minted);
 
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Sloth"));
         debug::print<String>(&string::utf8(b"SLOTH COUNT AFTER MINT: "));
-        debug::print<u64>(&count_from_tracker(collection_obj_addr, string::utf8(b"Sloth")));
+        debug::print<u64>(&total_minted);
 
         // // create more tokens
         // let constructor_refs2 = create_batch<Trait>(
@@ -1095,13 +1116,23 @@ module townespace::studio {
         let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
         
         // Add base type to the tracker
-        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 5);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"));
         
-        // assert total supply is 5
-        assert!(types_count(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+        // assert total supply is 0
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
+        assert!(max_supply == 0, 1);
 
         // assert count is 0
-        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 0, 1);
+        assert!(total_minted == 0, 1);
+
+        // add variants to the base type
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Base"), 
+            string::utf8(b"Sloth Base"),
+            6
+        );
 
         // create traits
         let constructor_refs = create_batch_internal<Trait>(
@@ -1145,13 +1176,21 @@ module townespace::studio {
 
 
         // assert count is 5
-        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
+        assert!(total_minted == 5, 1);
 
         // update total supply
-        update_type_total_supply_internal(collection_obj_addr, string::utf8(b"Base"), 6);
+        update_variant_total_supply_internal(
+            collection_obj_addr, 
+            string::utf8(b"Base"),
+            string::utf8(b"Sloth Base"),
+            10
+        );
 
-        assert!(types_count(collection_obj_addr, string::utf8(b"Base")) == 6, 1);
-        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
+        // debug::print<u64>(&max_supply);
+        assert!(max_supply == 10, 1);
+        assert!(total_minted == 5, 1);
 
         // create one more token
         create_batch_internal<Trait>(
@@ -1176,16 +1215,11 @@ module townespace::studio {
             vector::empty(),
             vector::empty()
         );
-
-        // assert!(
-        //     types_count(collection_obj_addr, string::utf8(b"Base"))
-        //     == count_from_tracker(collection_obj_addr, string::utf8(b"Base")), 
-        //     1
-        // );
     }
 
-    #[test(std = @0x1, creator = @0x111, minter = @0x222), expected_failure(abort_code = ENEW_SUPPLY_LESS_THAN_OLD)]
-    /// Test update total supply with a new total supply less than the current total supply
+    #[test(std = @0x1, creator = @0x111, minter = @0x222)]
+    // Test update total supply with a new total supply less than the current total supply
+    #[expected_failure (abort_code = 3, location = Self)]
     fun test_update_type_total_supply_less_than_current(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
         let (creator_addr, _) = common::setup_test(std, creator, minter);
         // creator creates a collection
@@ -1212,16 +1246,18 @@ module townespace::studio {
         let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
         
         // Add base type to the tracker
-        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 5);
-        
-        // assert total supply is 5
-        assert!(types_count(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
-
-        // assert count is 0
-        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 0, 1);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"));
+        // Add variant to the base type
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Base"), 
+            string::utf8(b"sloth_variant_1"),
+            5
+        );
 
         // update total supply
-        update_type_total_supply_internal(collection_obj_addr, string::utf8(b"Base"), 4);
+        update_variant_total_supply_internal(collection_obj_addr, string::utf8(b"Base"), string::utf8(b"sloth_variant_1"), 4);
     }
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
@@ -1252,22 +1288,44 @@ module townespace::studio {
         let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
         
         // Add base type to the tracker
-        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"), 5);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"));
         
-        // assert total supply is 5
-        assert!(types_count(collection_obj_addr, string::utf8(b"Base")) == 5, 1);
+        // assert total supply is 0
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
+        assert!(max_supply == 0, 1);
 
         // assert count is 0
-        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 0, 1);
+        assert!(total_minted == 0, 1);
 
         // add another type
-        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Body"), 5);
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Body"));
 
-        // assert total supply is 5
-        assert!(types_count(collection_obj_addr, string::utf8(b"Body")) == 5, 1);
+        // add variant to the base type
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Base"), 
+            string::utf8(b"base_variant_1"),
+            2
+        );
 
-        // assert count is 0
-        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Body")) == 0, 1);
+        // add variant to the body type
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Body"), 
+            string::utf8(b"body_variant_1"),
+            2
+        );
+
+        // add another variant to the body type
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Body"), 
+            string::utf8(b"body_variant_2"),
+            2
+        );
 
         // create traits
         let constructor_refs = create_batch_internal<Trait>(
@@ -1284,9 +1342,9 @@ module townespace::studio {
                 string::utf8(b"Sloth%20Body"),
             ],
             vector[
-                string::utf8(b"Sloth Base"),
-                string::utf8(b"Sloth Body"),
-                string::utf8(b"Sloth Body"),
+                string::utf8(b"base_variant_1"),
+                string::utf8(b"body_variant_1"),
+                string::utf8(b"body_variant_2"),
             ],
             vector[
                 string::utf8(b""),
@@ -1302,7 +1360,9 @@ module townespace::studio {
         );
 
         // assert count is 1 for base and 2 for body
-        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Base")) == 1, 1);
-        assert!(count_from_tracker(collection_obj_addr, string::utf8(b"Body")) == 2, 1);
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
+        assert!(total_minted == 1, 1);
+        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Body"));
+        assert!(total_minted == 2, 1);
     }
 }

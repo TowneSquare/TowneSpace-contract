@@ -113,20 +113,20 @@ module townespace::studio {
         assert!(!type_exists, ETYPE_EXISTS);
     }
 
-    /// Asserts the variant exists in the tracker
-    inline fun assert_variant_exists(collection_obj_addr: address, type: String, variant: String) {
-        let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-        // get a list of variant names
-        let variants = *smart_table::borrow<String, vector<Variant>>(&tracker.table, type);
-        let variant_exists: bool = false;
-        for (i in 0..vector::length(&variants)) {
-            if (variant == (*vector::borrow(&variants, i)).name) {
-                variant_exists = true;
-                break
-            }
-        };
-        assert!(variant_exists, EVARIANT_DOES_NOT_EXIST);
-    }
+    // /// Asserts the variant exists in the tracker
+    // inline fun assert_variant_exists(collection_obj_addr: address, type: String, variant: String) {
+    //     let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
+    //     // get a list of variant names
+    //     let variants = *smart_table::borrow<String, vector<Variant>>(&tracker.table, type);
+    //     let variant_exists: bool = false;
+    //     for (i in 0..vector::length(&variants)) {
+    //         if (variant == (*vector::borrow(&variants, i)).name) {
+    //             variant_exists = true;
+    //             break
+    //         }
+    //     };
+    //     // assert!(variant_exists, EVARIANT_DOES_NOT_EXIST);
+    // }
 
     /// Asserts the variant does not exist in the tracker
     inline fun assert_variant_does_not_exist(collection_obj_addr: address, type: String, variant: String) {
@@ -143,12 +143,12 @@ module townespace::studio {
         assert!(!variant_exists, EVARIANT_EXISTS);
     }
 
-    /// Helper function to check if the requested count is equal or less than (max supply - total minted)
-    inline fun assert_count(collection_obj_addr: address, type_name: String, variant_name: String, count: u64) {
-        let total_minted = variant_count(collection_obj_addr, type_name, variant_name);
-        let max_supply = variant_from_variant_name(collection_obj_addr, type_name, variant_name).max_supply;
-        assert!(count <= (max_supply - total_minted), EMAX_SUPPLY_REACHED);
-    }
+    // /// Helper function to check if the requested count is equal or less than (max supply - total minted)
+    // inline fun assert_count(collection_obj_addr: address, type_name: String, variant_name: String, count: u64) {
+    //     let total_minted = variant_count(collection_obj_addr, type_name, variant_name);
+    //     let max_supply = variant_from_variant_name(collection_obj_addr, type_name, variant_name).max_supply;
+    //     assert!(count <= (max_supply - total_minted), EMAX_SUPPLY_REACHED);
+    // }
 
     // ---------------
     // Entry functions
@@ -433,7 +433,7 @@ module townespace::studio {
         for (i in 0..count) {
             let type = *vector::borrow<String>(&types, i);
             let input_name = *vector::borrow<String>(&name_with_index_prefix, i);
-            assert_count(object::object_address(&collection), type, input_name, 1);
+            // assert_count(object::object_address(&collection), type, input_name, 1);
             let token_index = variant_count(collection_obj_addr, type, input_name) + 1;
             let uri = *vector::borrow<String>(&uri, i);
             // token name: prefix + # + index + suffix
@@ -563,7 +563,7 @@ module townespace::studio {
 
     /// Helper function to get a variant from a given type name
     inline fun variant_from_variant_name(collection_obj_addr: address, type_name: String, variant_name: String): Variant acquires Tracker {
-        assert_variant_exists(collection_obj_addr, type_name, variant_name);
+        // assert_variant_exists(collection_obj_addr, type_name, variant_name);
         let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
         let variants = *smart_table::borrow<String, vector<Variant>>(&tracker.table, type_name);
         let variant_names = vector::empty<String>();
@@ -579,7 +579,7 @@ module townespace::studio {
 
     /// Helper function to get a mut variant from a given type name
     inline fun mut_variant_from_variant_name(collection_obj_addr: address, type_name: String, variant_name: String): &mut Variant acquires Tracker {
-        assert_variant_exists(collection_obj_addr, type_name, variant_name);
+        // assert_variant_exists(collection_obj_addr, type_name, variant_name);
         let variants = smart_table::borrow_mut<String, vector<Variant>>(&mut borrow_global_mut<Tracker>(collection_obj_addr).table, type_name);
         let variant_names = vector::empty<String>();
         for (i in 0..vector::length(variants)) {

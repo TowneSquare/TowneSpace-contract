@@ -288,7 +288,7 @@ module townespace::studio {
         trait_property_types: vector<String>,
         trait_property_values: vector<vector<u8>>,
         // composable related fields
-        composable_description: String,
+        composable_descriptions: vector<String>,
         composable_uri: vector<String>,
         composable_name_with_index_prefix: vector<String>,
         composable_name_with_index_suffix: vector<String>,
@@ -312,7 +312,7 @@ module townespace::studio {
             trait_property_types,
             trait_property_values,
             // composable related fields
-            composable_description,
+            composable_descriptions,
             composable_uri,
             composable_name_with_index_prefix,
             composable_name_with_index_suffix,
@@ -478,7 +478,7 @@ module townespace::studio {
         trait_property_types: vector<String>,
         trait_property_values: vector<vector<u8>>,
         // composable related fields
-        composable_description: String,
+        composable_descriptions: vector<String>,
         composable_uri: vector<String>,
         composable_name_with_index_prefix: vector<String>,
         composable_name_with_index_suffix: vector<String>,
@@ -490,11 +490,6 @@ module townespace::studio {
         royalty_numerator: Option<u64>,
         royalty_denominator: Option<u64>,
     ): vector<ConstructorRef> acquires Tracker {
-        // create composable tokens
-        let composable_descriptions = vector::empty<String>();
-        for (i in 0..count) {
-            vector::push_back(&mut composable_descriptions, composable_description);
-        };
         let (composable_constructor_refs) = create_batch_internal<Composable>(
             signer_ref,
             collection,
@@ -930,7 +925,13 @@ module townespace::studio {
             vector[],
             vector[],
             // composable type
-            string::utf8(b"Sloth"),
+            vector[
+                string::utf8(b"Sloth"),
+                string::utf8(b"Sloth"),
+                string::utf8(b"Sloth"),
+                string::utf8(b"Sloth"),
+                string::utf8(b"Sloth")
+            ],
             // uri
             vector[
                 string::utf8(b"Composable%20Sloth"),

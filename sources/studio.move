@@ -143,6 +143,13 @@ module townespace::studio {
         assert!(!variant_exists, EVARIANT_EXISTS);
     }
 
+    /// Helper function to check if the requested count is equal or less than (max supply - total minted)
+    inline fun assert_count(collection_obj_addr: address, type_name: String, variant_name: String, count: u64) {
+        let total_minted = variant_count(collection_obj_addr, type_name, variant_name);
+        let max_supply = variant_from_variant_name(collection_obj_addr, type_name, variant_name).max_supply;
+        assert!(count <= (max_supply - total_minted), EMAX_SUPPLY_REACHED);
+    }
+
     // ---------------
     // Entry functions
     // ---------------
@@ -426,6 +433,7 @@ module townespace::studio {
         for (i in 0..count) {
             let type = *vector::borrow<String>(&types, i);
             let input_name = *vector::borrow<String>(&name_with_index_prefix, i);
+            assert_count(object::object_address(&collection), type, input_name, 1);
             let token_index = variant_count(collection_obj_addr, type, input_name) + 1;
             let uri = *vector::borrow<String>(&uri, i);
             // token name: prefix + # + index + suffix
@@ -1086,6 +1094,85 @@ module townespace::studio {
         // debug::print<String>(&token8_uri);
         // debug::print<String>(&token9_uri);
         // debug::print<String>(&token10_uri);
+    }
+
+    #[test(std = @0x1, creator = @0x111, minter = @0x222)]
+    /// Test mint more than the variant's max supply
+    #[expected_failure (abort_code = 2, location = Self)]
+    fun test_mint_more_than_max_supply(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
+        let (creator_addr, _) = common::setup_test(std, creator, minter);
+        // creator creates a collection
+        let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
+            creator,
+            string::utf8(b"Collection Description"),
+            option::some(1000),
+            string::utf8(b"Collection Name"),
+            string::utf8(b"Collection Symbol"),
+            string::utf8(b"Collection URI"),
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            option::none(),
+            option::none(),
+        );
+
+        let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
+        
+        // Add base type to the tracker
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"));
+        // Add variants to the base type
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Base"), 
+            string::utf8(b"variant_1"),
+            2
+        );
+
+        // creator creates a batch of tokens
+        let constructor_refs = create_batch_internal<Trait>(
+            creator,
+            object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+            // types
+            vector[
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+                string::utf8(b"Base"),
+            ],
+            // uris
+            vector[
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base"),
+                string::utf8(b"Sloth%20Base"),
+            ],
+            // variants
+            vector[
+                string::utf8(b"variant_1"),
+                string::utf8(b"variant_1"),
+                string::utf8(b"variant_1"),
+                string::utf8(b"variant_1"),
+            ],
+            vector[
+                string::utf8(b""),
+                string::utf8(b""),
+                string::utf8(b""),
+                string::utf8(b""),
+            ],
+            4,
+            option::none(),
+            option::none(),
+            vector::empty(),
+            vector::empty(),
+            vector::empty()
+        );
     }
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]

@@ -16,7 +16,7 @@ module townespace::studio {
     use aptos_token_objects::collection;
     use aptos_token_objects::token::{Token};
     use composable_token::composable_token::{Self, Named, Collection, Composable, Trait};
-    use std::option::{Option};
+    use std::option::{Self, Option};
     use std::signer;
     use std::string::{Self, String};
     use std::string_utils;
@@ -67,6 +67,12 @@ module townespace::studio {
         max_supply: u64,
         /// total minted count
         total_minted: u64
+    }
+
+    /// Global storage for type; will be moved to the token's object
+    struct Type has key {
+        /// type name
+        name: String
     }
 
     // ------
@@ -458,6 +464,12 @@ module townespace::studio {
                 property_values
             );
 
+            // create a type resource and move it to the token's object
+            move_to(
+                &object::generate_signer(&constructor),
+                Type { name: type }
+            );
+
             vector::push_back(&mut constructor_refs, constructor);
             // update the count in the tracker
             increment_count(collection_obj_addr, type, input_name);
@@ -658,6 +670,17 @@ module townespace::studio {
         assert!(exists<Tracker>(collection_obj_addr), ETRACKER_DOES_NOT_EXIST);
         let variant = variant_from_variant_name(collection_obj_addr, type, variant);
         (variant.max_supply, variant.total_minted)
+    }
+
+    #[view]
+    /// Returns the type of the token
+    public fun token_type(token_addr: address): Option<String> acquires Type {
+        if (exists<Type>(token_addr)) {
+            let type = borrow_global<Type>(token_addr);
+            option::some(type.name)
+        } else {
+            option::none()
+        }
     }
 
     // ------------

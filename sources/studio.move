@@ -248,6 +248,7 @@ module townespace::studio {
     public entry fun create_batch<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
+        types: vector<String>,
         descriptions: vector<String>,
         uri: vector<String>,
         name_with_index_prefix: vector<String>,
@@ -262,6 +263,7 @@ module townespace::studio {
         let constructor_refs = create_batch_internal<T>(
             signer_ref,
             collection,
+            types,
             descriptions,
             uri,
             name_with_index_prefix,
@@ -288,6 +290,7 @@ module townespace::studio {
         signer_ref: &signer,
         collection: Object<Collection>,
         // trait related fields
+        trait_types: vector<String>,
         trait_descriptions: vector<String>,
         trait_uri: vector<String>,
         trait_name_with_index_prefix: vector<String>,
@@ -312,6 +315,7 @@ module townespace::studio {
             signer_ref,
             collection,
             // trait related fields
+            trait_types,
             trait_descriptions,
             trait_uri,
             trait_name_with_index_prefix,
@@ -320,6 +324,7 @@ module townespace::studio {
             trait_property_types,
             trait_property_values,
             // composable related fields
+            composable_name_with_index_prefix,
             composable_descriptions,
             composable_uri,
             composable_name_with_index_prefix,
@@ -423,6 +428,7 @@ module townespace::studio {
         signer_ref: &signer,
         collection: Object<Collection>,
         types: vector<String>,
+        descriptions: vector<String>,
         uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
@@ -434,12 +440,14 @@ module townespace::studio {
         property_values: vector<vector<u8>>,
     ): vector<ConstructorRef> acquires Tracker {
         assert!(count == vector::length(&types), ELENGTH_MISMATCH);
+        assert!(count == vector::length(&descriptions), ELENGTH_MISMATCH);
         assert!(count == vector::length(&uri), ELENGTH_MISMATCH);
         assert!(count == vector::length(&name_with_index_prefix), ELENGTH_MISMATCH);
         let constructor_refs = vector::empty<ConstructorRef>();
         let collection_obj_addr = object::object_address(&collection);
         for (i in 0..count) {
             let type = *vector::borrow<String>(&types, i);
+            let description = *vector::borrow<String>(&descriptions, i);
             let input_name = *vector::borrow<String>(&name_with_index_prefix, i);
             // assert_count(object::object_address(&collection), type, input_name, 1);
             let token_index = variant_count(collection_obj_addr, type, input_name) + 1;
@@ -452,7 +460,7 @@ module townespace::studio {
             let constructor = composable_token::create_token<T, Named>(
                 signer_ref,
                 collection,
-                type,
+                description,
                 name,  // name
                 string::utf8(b""), // prefix: ignored as we're using a custom indexing
                 string::utf8(b""),  // suffix: ignored as we're using a custom indexing
@@ -484,6 +492,7 @@ module townespace::studio {
         signer_ref: &signer,
         collection: Object<Collection>,
         // trait related fields
+        trait_types: vector<String>,
         trait_descriptions: vector<String>,
         trait_uri: vector<String>,
         trait_name_with_index_prefix: vector<String>,
@@ -492,6 +501,7 @@ module townespace::studio {
         trait_property_types: vector<String>,
         trait_property_values: vector<vector<u8>>,
         // composable related fields
+        composable_names: vector<String>,
         composable_descriptions: vector<String>,
         composable_uri: vector<String>,
         composable_name_with_index_prefix: vector<String>,
@@ -507,6 +517,7 @@ module townespace::studio {
         let (composable_constructor_refs) = create_batch_internal<Composable>(
             signer_ref,
             collection,
+            composable_names,   
             composable_descriptions,
             composable_uri,
             composable_name_with_index_prefix,
@@ -522,6 +533,7 @@ module townespace::studio {
         let (trait_constructor_refs) = create_batch_internal<Trait>(
             signer_ref,
             collection,
+            trait_types,
             trait_descriptions,
             trait_uri,
             trait_name_with_index_prefix,
@@ -683,14 +695,29 @@ module townespace::studio {
         }
     }
 
+    #[view]
+    /// Returns the type of a list of tokens
+    public fun token_types(token_addrs: vector<address>): vector<Option<String>> acquires Type {
+        let types = vector::empty<Option<String>>();
+        for (i in 0..vector::length(&token_addrs)) {
+            let token_addr = *vector::borrow(&token_addrs, i);
+            if (exists<Type>(token_addr)) {
+                let type = borrow_global<Type>(token_addr);
+                vector::push_back(&mut types, option::some(type.name));
+            } else {
+                vector::push_back(&mut types, option::none());
+            }
+        };
+
+        types
+    }
+    
     // ------------
     // Unit Testing
     // ------------
 
     #[test_only]
     use std::debug;
-    #[test_only]
-    use std::option;
     #[test_only]
     use aptos_token_objects::collection::{FixedSupply};
     #[test_only]
@@ -766,6 +793,14 @@ module townespace::studio {
                 string::utf8(b"Base"),
                 string::utf8(b"Base"),
                 string::utf8(b"Base")
+            ],
+            // descriptions
+            vector[
+                string::utf8(b"Token Description"),
+                string::utf8(b"Token Description"),
+                string::utf8(b"Token Description"),
+                string::utf8(b"Token Description"),
+                string::utf8(b"Token Description")
             ],
             // uris
             vector[
@@ -927,6 +962,14 @@ module townespace::studio {
                 string::utf8(b"Body"),
                 string::utf8(b"Body")
             ],
+            // traits descriptions
+            vector[
+                string::utf8(b"Body Trait description"),
+                string::utf8(b"Body Trait description"),
+                string::utf8(b"Body Trait description"),
+                string::utf8(b"Body Trait description"),
+                string::utf8(b"Body Trait description")
+            ],
             // uri
             vector[
                 string::utf8(b"Body%20Sloth"),
@@ -960,6 +1003,14 @@ module townespace::studio {
                 string::utf8(b"Sloth"),
                 string::utf8(b"Sloth"),
                 string::utf8(b"Sloth")
+            ],
+            // composable descriptions
+            vector[
+                string::utf8(b"Composable description"),
+                string::utf8(b"Composable description"),
+                string::utf8(b"Composable description"),
+                string::utf8(b"Composable description"),
+                string::utf8(b"Composable description")
             ],
             // uri
             vector[
@@ -1263,6 +1314,13 @@ module townespace::studio {
                 string::utf8(b"Base")
             ],
             vector[
+                string::utf8(b"Sloth Base description"),
+                string::utf8(b"Sloth Base description"),
+                string::utf8(b"Sloth Base description"),
+                string::utf8(b"Sloth Base description"),
+                string::utf8(b"Sloth Base description")
+            ],
+            vector[
                 string::utf8(b"Sloth%20Base"),
                 string::utf8(b"Sloth%20Base"),
                 string::utf8(b"Sloth%20Base"),
@@ -1315,6 +1373,9 @@ module townespace::studio {
             object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
             vector[
                 string::utf8(b"Base"),
+            ],
+            vector[
+                string::utf8(b"Sloth Base description"),
             ],
             vector[
                 string::utf8(b"Sloth%20Base"),
@@ -1454,6 +1515,11 @@ module townespace::studio {
                 string::utf8(b"Body"),
             ],
             vector[
+                string::utf8(b"Sloth base description"),
+                string::utf8(b"Sloth body description"),
+                string::utf8(b"Sloth body description"),
+            ],
+            vector[
                 string::utf8(b"Sloth%20Base"),
                 string::utf8(b"Sloth%20Body"),
                 string::utf8(b"Sloth%20Body"),
@@ -1485,7 +1551,7 @@ module townespace::studio {
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
     // Test view functions
-    fun test_view_functions(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
+    fun test_view_functions(std: &signer, creator: &signer, minter: &signer) acquires Tracker, Type {
         common::setup_test(std, creator, minter);
         // creator creates a collection
         let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
@@ -1565,5 +1631,47 @@ module townespace::studio {
         let variants = all_variants_from_type(collection_obj_addr, string::utf8(b"Base"));
         debug::print<vector<String>>(&types);
         debug::print<vector<String>>(&variants);
+
+        // get type of a token
+        let constructor_refs = create_batch_internal<Trait>(
+            creator,
+            object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+            vector[
+                string::utf8(b"Base"),
+                string::utf8(b"Hat")
+            ],
+            vector[
+                string::utf8(b"Base Token Description"),
+                string::utf8(b"Hat Token Description")
+            ],
+            vector[
+                string::utf8(b"Base%20Token"),
+                string::utf8(b"Hat%20Token")
+            ],
+            vector[
+                string::utf8(b"variant_1"),
+                string::utf8(b"hat_variant_1")
+            ],
+            vector[
+                string::utf8(b""),
+                string::utf8(b"")
+            ],
+            2,
+            option::none(),
+            option::none(),
+            vector::empty(),
+            vector::empty(),
+            vector::empty()
+        );
+
+        let token1_addr = object::address_from_constructor_ref(vector::borrow(&constructor_refs, 0));
+        let token2_addr = object::address_from_constructor_ref(vector::borrow(&constructor_refs, 1));
+
+        let token1_type = token_type(token1_addr);
+        assert!(token1_type == option::some(string::utf8(b"Base")), 1);
+        let token_types = token_types(vector[token1_addr, token2_addr]);
+
+        assert!(*vector::borrow(&token_types, 0) == option::some(string::utf8(b"Base")), 1);
+        assert!(*vector::borrow(&token_types, 1) == option::some(string::utf8(b"Hat")), 1);
     }
 }

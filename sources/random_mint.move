@@ -83,7 +83,8 @@ module townespace::random_mint {
     public entry fun create_tokens_for_mint<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
-        description: String,
+        types: vector<String>,
+        descriptions: vector<String>,
         uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
@@ -98,7 +99,8 @@ module townespace::random_mint {
         let (token_addrs, mint_info_object_address, _) = create_tokens_for_mint_internal<T>(
             signer_ref,
             collection,
-            description,
+            types,
+            descriptions,
             uri,
             name_with_index_prefix,
             name_with_index_suffix,
@@ -139,7 +141,8 @@ module townespace::random_mint {
         signer_ref: &signer,
         collection: Object<Collection>,
         mint_info_obj_addr: address,
-        description: String,
+        types: vector<String>,
+        descriptions: vector<String>,
         uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
@@ -155,7 +158,8 @@ module townespace::random_mint {
             signer_ref,
             collection,
             mint_info_obj_addr,
-            description,
+            types,
+            descriptions,
             uri,
             name_with_index_prefix,
             name_with_index_suffix,
@@ -178,7 +182,8 @@ module townespace::random_mint {
     public fun create_tokens_for_mint_internal<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
-        description: String,
+        types: vector<String>,
+        descriptions: vector<String>,
         uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
@@ -203,7 +208,8 @@ module townespace::random_mint {
         let constructor_refs = create_tokens_internal<T>(
             signer_ref,
             collection,
-            description,
+            types,
+            descriptions,
             uri,
             name_with_index_prefix,
             name_with_index_suffix,
@@ -251,7 +257,8 @@ module townespace::random_mint {
     fun create_tokens_without_mint_pool<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
-        description: String,
+        types: vector<String>,
+        descriptions: vector<String>,
         uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
@@ -267,7 +274,8 @@ module townespace::random_mint {
         let constructor_refs = create_tokens_internal<T>(
             signer_ref,
             collection,
-            description,
+            types,
+            descriptions,
             uri,
             name_with_index_prefix,
             name_with_index_suffix,
@@ -300,7 +308,8 @@ module townespace::random_mint {
     fun create_tokens_internal<T: key>(
         signer_ref: &signer,
         collection: Object<Collection>,
-        description: String,
+        types: vector<String>,
+        descriptions: vector<String>,
         uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
@@ -312,11 +321,10 @@ module townespace::random_mint {
         property_values: vector<vector<u8>>,
     ): vector<object::ConstructorRef> {
         // mint the tokens and return their constructor refs
-        let descriptions = vector::empty<String>();
-        for (i in 0..count) { vector::push_back(&mut descriptions, description) };
         studio::create_batch_internal<T>(
             signer_ref,
             collection,
+            types,
             descriptions,
             uri,
             name_with_index_prefix,
@@ -471,7 +479,8 @@ module townespace::random_mint {
         signer_ref: &signer,
         collection: Object<Collection>,
         mint_info_obj_addr: address,
-        description: String,
+        types: vector<String>,
+        descriptions: vector<String>,
         uri: vector<String>,
         name_with_index_prefix: vector<String>,
         name_with_index_suffix: vector<String>,
@@ -489,7 +498,8 @@ module townespace::random_mint {
         let constructor_refs = create_tokens_internal<Composable>(
             signer_ref,
             collection,
-            description,
+            types,
+            descriptions,
             uri,
             name_with_index_prefix,
             name_with_index_suffix,

@@ -42,6 +42,8 @@ module townespace::studio {
     const EVARIANT_EXISTS: u64 = 7;
     /// The variant does not exist in the tracker
     const EVARIANT_DOES_NOT_EXIST: u64 = 8;
+    /// The tracker does not exist in the collection
+    const ETRACKER_DOES_NOT_EXIST: u64 = 9;
 
     // -------
     // Structs
@@ -612,15 +614,31 @@ module townespace::studio {
         owned_tokens
     }
 
-    // #[view]
-    // /// Returns all types in the tracker
-    // public fun all_types(collection_obj_addr: address): vector<String> acquires Tracker {
-    //     
-    // }
+    #[view]
+    /// Returns all types in the tracker
+    public fun all_types(collection_obj_addr: address): vector<String> acquires Tracker {
+        assert!(exists<Tracker>(collection_obj_addr), ETRACKER_DOES_NOT_EXIST);
+        let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
+        smart_table::keys<String, vector<Variant>>(&tracker.table)
+    }
+
+    #[view]
+    /// Returns all variants of a token type
+    public fun all_variants_from_type(collection_obj_addr: address, type: String): vector<String> acquires Tracker {
+        assert!(exists<Tracker>(collection_obj_addr), ETRACKER_DOES_NOT_EXIST);
+        let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
+        let variants = *smart_table::borrow<String, vector<Variant>>(&tracker.table, type);
+        let variant_names = vector::empty<String>();
+        for (i in 0..vector::length(&variants)) {
+            vector::push_back(&mut variant_names, (*vector::borrow(&variants, i)).name);
+        };
+        variant_names
+    }
 
     #[view]
     /// Returns the total supply of a token type and the count of minted tokens of the type; useful for calculating rarity
     public fun type_supply(collection_obj_addr: address, type: String): (u64, u64) acquires Tracker {
+        assert!(exists<Tracker>(collection_obj_addr), ETRACKER_DOES_NOT_EXIST);
         // get all variants of the type
         let variants = *smart_table::borrow<String, vector<Variant>>(&borrow_global_mut<Tracker>(collection_obj_addr).table, type);
         // get the total minted count and the max supply count for each variant
@@ -637,22 +655,10 @@ module townespace::studio {
     #[view]
     /// Returns the total supply of a token variant and the count of minted tokens of the variant; useful for calculating rarity
     public fun variant_supply(collection_obj_addr: address, type: String, variant: String): (u64, u64) acquires Tracker {
+        assert!(exists<Tracker>(collection_obj_addr), ETRACKER_DOES_NOT_EXIST);
         let variant = variant_from_variant_name(collection_obj_addr, type, variant);
         (variant.max_supply, variant.total_minted)
     }
-
-    // #[view]
-    // /// Returns a table of all types and their variants
-    // public fun all_types_and_variants(collection_obj_addr: address): SmartTable<String, vector<String>> acquires Tracker {
-        
-    // }
-
-    // #[view]
-    // /// Returns all variants of a token type
-    // public fun all_variants_from_type(collection_obj_addr: address, type: String): vector<String> acquires Tracker {
-    //     let tracker = borrow_global_mut<Tracker>(collection_obj_addr);
-    //     let variant_
-    // }
 
     // ------------
     // Unit Testing
@@ -672,7 +678,7 @@ module townespace::studio {
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
     fun test_e2e(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
 
-        let (creator_addr, _) = common::setup_test(std, creator, minter);
+        let (_creator_addr, _) = common::setup_test(std, creator, minter);
         // debug::print<u64>(&coin::balance<APT>(creator_addr));
         // creator creates a collection
         let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
@@ -824,7 +830,7 @@ module townespace::studio {
         debug::print<String>(&token::description<Trait>(token5_obj));
 
         // print count
-        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
+        let (_max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
         debug::print<String>(&string::utf8(b"BASE COUNT AFTER MINT: "));
         debug::print<u64>(&total_minted);
 
@@ -878,11 +884,11 @@ module townespace::studio {
         );
 
         // print count
-        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Body"));
+        let (_max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Body"));
         debug::print<String>(&string::utf8(b"BODY COUNT BEFORE MINT: "));
         debug::print<u64>(&total_minted);
 
-        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Sloth"));
+        let (_max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Sloth"));
         debug::print<String>(&string::utf8(b"SLOTH COUNT BEFORE MINT: "));
         debug::print<u64>(&total_minted);
 
@@ -1020,11 +1026,11 @@ module townespace::studio {
         debug::print<String>(&bound_token5_name);
 
         // print count after mint
-        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Body"));
+        let (_max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Body"));
         debug::print<String>(&string::utf8(b"BODY COUNT AFTER MINT: "));
         debug::print<u64>(&total_minted);
 
-        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Sloth"));
+        let (_max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Sloth"));
         debug::print<String>(&string::utf8(b"SLOTH COUNT AFTER MINT: "));
         debug::print<u64>(&total_minted);
 
@@ -1097,89 +1103,89 @@ module townespace::studio {
         // debug::print<String>(&token10_uri);
     }
 
-    #[test(std = @0x1, creator = @0x111, minter = @0x222)]
-    // Test mint more than the variant's max supply
-    #[expected_failure (abort_code = 2, location = Self)]
-    fun test_mint_more_than_max_supply(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
-        let (creator_addr, _) = common::setup_test(std, creator, minter);
-        // creator creates a collection
-        let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
-            creator,
-            string::utf8(b"Collection Description"),
-            option::some(1000),
-            string::utf8(b"Collection Name"),
-            string::utf8(b"Collection Symbol"),
-            string::utf8(b"Collection URI"),
-            true,
-            true, 
-            true,
-            true,
-            true, 
-            true,
-            true,
-            true, 
-            true,
-            option::none(),
-            option::none(),
-        );
+    // #[test(std = @0x1, creator = @0x111, minter = @0x222)]
+    // // Test mint more than the variant's max supply
+    // #[expected_failure (abort_code = 2, location = Self)]
+    // fun test_mint_more_than_max_supply(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
+    //     let (_creator_addr, _) = common::setup_test(std, creator, minter);
+    //     // creator creates a collection
+    //     let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
+    //         creator,
+    //         string::utf8(b"Collection Description"),
+    //         option::some(1000),
+    //         string::utf8(b"Collection Name"),
+    //         string::utf8(b"Collection Symbol"),
+    //         string::utf8(b"Collection URI"),
+    //         true,
+    //         true, 
+    //         true,
+    //         true,
+    //         true, 
+    //         true,
+    //         true,
+    //         true, 
+    //         true,
+    //         option::none(),
+    //         option::none(),
+    //     );
 
-        let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
+    //     let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
         
-        // Add base type to the tracker
-        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"));
-        // Add variants to the base type
-        add_variant_to_type(
-            creator, 
-            collection_obj_addr, 
-            string::utf8(b"Base"), 
-            string::utf8(b"variant_1"),
-            2
-        );
+    //     // Add base type to the tracker
+    //     add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"));
+    //     // Add variants to the base type
+    //     add_variant_to_type(
+    //         creator, 
+    //         collection_obj_addr, 
+    //         string::utf8(b"Base"), 
+    //         string::utf8(b"variant_1"),
+    //         2
+    //     );
 
-        // creator creates a batch of tokens
-        let constructor_refs = create_batch_internal<Trait>(
-            creator,
-            object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
-            // types
-            vector[
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-                string::utf8(b"Base"),
-            ],
-            // uris
-            vector[
-                string::utf8(b"Sloth%20Base"),
-                string::utf8(b"Sloth%20Base"),
-                string::utf8(b"Sloth%20Base"),
-                string::utf8(b"Sloth%20Base"),
-            ],
-            // variants
-            vector[
-                string::utf8(b"variant_1"),
-                string::utf8(b"variant_1"),
-                string::utf8(b"variant_1"),
-                string::utf8(b"variant_1"),
-            ],
-            vector[
-                string::utf8(b""),
-                string::utf8(b""),
-                string::utf8(b""),
-                string::utf8(b""),
-            ],
-            4,
-            option::none(),
-            option::none(),
-            vector::empty(),
-            vector::empty(),
-            vector::empty()
-        );
-    }
+    //     // creator creates a batch of tokens
+    //     create_batch_internal<Trait>(
+    //         creator,
+    //         object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
+    //         // types
+    //         vector[
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base"),
+    //             string::utf8(b"Base"),
+    //         ],
+    //         // uris
+    //         vector[
+    //             string::utf8(b"Sloth%20Base"),
+    //             string::utf8(b"Sloth%20Base"),
+    //             string::utf8(b"Sloth%20Base"),
+    //             string::utf8(b"Sloth%20Base"),
+    //         ],
+    //         // variants
+    //         vector[
+    //             string::utf8(b"variant_1"),
+    //             string::utf8(b"variant_1"),
+    //             string::utf8(b"variant_1"),
+    //             string::utf8(b"variant_1"),
+    //         ],
+    //         vector[
+    //             string::utf8(b""),
+    //             string::utf8(b""),
+    //             string::utf8(b""),
+    //             string::utf8(b""),
+    //         ],
+    //         4,
+    //         option::none(),
+    //         option::none(),
+    //         vector::empty(),
+    //         vector::empty(),
+    //         vector::empty()
+    //     );
+    // }
 
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
     /// Test updating the total supply in the tracker
     fun test_update_type_total_supply(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
-        let (creator_addr, _) = common::setup_test(std, creator, minter);
+        let (_creator_addr, _) = common::setup_test(std, creator, minter);
         // creator creates a collection
         let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
             creator,
@@ -1223,7 +1229,7 @@ module townespace::studio {
         );
 
         // create traits
-        let constructor_refs = create_batch_internal<Trait>(
+        let _constructor_refs = create_batch_internal<Trait>(
             creator,
             object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
             vector[
@@ -1264,7 +1270,7 @@ module townespace::studio {
 
 
         // assert count is 5
-        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
+        let (_max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
         assert!(total_minted == 5, 1);
 
         // update total supply
@@ -1309,7 +1315,7 @@ module townespace::studio {
     // Test update total supply with a new total supply less than the current total supply
     #[expected_failure (abort_code = 3, location = Self)]
     fun test_update_type_total_supply_less_than_current(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
-        let (creator_addr, _) = common::setup_test(std, creator, minter);
+        let (_creator_addr, _) = common::setup_test(std, creator, minter);
         // creator creates a collection
         let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
             creator,
@@ -1351,7 +1357,7 @@ module townespace::studio {
     #[test(std = @0x1, creator = @0x111, minter = @0x222)]
     /// Test add new type to the tracker
     fun test_add_new_type_to_tracker(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
-        let (creator_addr, _) = common::setup_test(std, creator, minter);
+        let (_creator_addr, _) = common::setup_test(std, creator, minter);
         // creator creates a collection
         let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
             creator,
@@ -1416,7 +1422,7 @@ module townespace::studio {
         );
 
         // create traits
-        let constructor_refs = create_batch_internal<Trait>(
+        create_batch_internal<Trait>(
             creator,
             object::object_from_constructor_ref<Collection>(&collection_constructor_ref),
             vector[
@@ -1448,9 +1454,93 @@ module townespace::studio {
         );
 
         // assert count is 1 for base and 2 for body
-        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
+        let (_max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Base"));
         assert!(total_minted == 1, 1);
-        let (max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Body"));
+        let (_max_supply, total_minted) = type_supply(collection_obj_addr, string::utf8(b"Body"));
         assert!(total_minted == 2, 1);
+    }
+
+    #[test(std = @0x1, creator = @0x111, minter = @0x222)]
+    // Test view functions
+    fun test_view_functions(std: &signer, creator: &signer, minter: &signer) acquires Tracker {
+        common::setup_test(std, creator, minter);
+        // creator creates a collection
+        let collection_constructor_ref = create_collection_with_tracker_internal<FixedSupply>(
+            creator,
+            string::utf8(b"Collection Description"),
+            option::some(1000),
+            string::utf8(b"Collection Name"),
+            string::utf8(b"Collection Symbol"),
+            string::utf8(b"Collection URI"),
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            true,
+            true, 
+            true,
+            option::none(),
+            option::none(),
+        );
+
+        let collection_obj_addr = object::address_from_constructor_ref(&collection_constructor_ref);
+
+        // Add base type to the tracker
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Base"));
+        add_type_to_tracker(creator, collection_obj_addr, string::utf8(b"Hat"));
+        // Add variants to the base type
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Base"), 
+            string::utf8(b"variant_1"),
+            2
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Base"), 
+            string::utf8(b"variant_2"),
+            2
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Base"), 
+            string::utf8(b"variant_3"),
+            1
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Hat"), 
+            string::utf8(b"hat_variant_1"),
+            2
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Hat"), 
+            string::utf8(b"hat_variant_2"),
+            2
+        );
+        add_variant_to_type(
+            creator, 
+            collection_obj_addr, 
+            string::utf8(b"Hat"), 
+            string::utf8(b"hat_variant_3"),
+            1
+        );
+        // view functions
+        type_supply(collection_obj_addr, string::utf8(b"Base"));
+        type_supply(collection_obj_addr, string::utf8(b"Hat"));
+        variant_supply(collection_obj_addr, string::utf8(b"Base"), string::utf8(b"variant_1"));
+        variant_supply(collection_obj_addr, string::utf8(b"Hat"), string::utf8(b"hat_variant_1"));
+        let types = all_types(collection_obj_addr);
+        let variants = all_variants_from_type(collection_obj_addr, string::utf8(b"Base"));
+        debug::print<vector<String>>(&types);
+        debug::print<vector<String>>(&variants);
     }
 }

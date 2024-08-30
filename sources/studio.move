@@ -700,13 +700,7 @@ module townespace::studio {
     public fun token_types(token_addrs: vector<address>): vector<Option<String>> acquires Type {
         let types = vector::empty<Option<String>>();
         for (i in 0..vector::length(&token_addrs)) {
-            let token_addr = *vector::borrow(&token_addrs, i);
-            if (exists<Type>(token_addr)) {
-                let type = borrow_global<Type>(token_addr);
-                vector::push_back(&mut types, option::some(type.name));
-            } else {
-                vector::push_back(&mut types, option::none());
-            }
+            vector::push_back(&mut types, token_type(*vector::borrow(&token_addrs, i)));
         };
 
         types
